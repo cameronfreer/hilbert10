@@ -1,0 +1,18 @@
+name = "hilbert10"
+version = "0.1.0"
+license = "Apache-2.0"
+keywords = ["math"]
+defaultTargets = ["Hilbert10"]
+
+# Pinned to the mathlib revision at the v4.32.0 tag, matching the other projects
+# in this workspace so everything builds against exactly one mathlib.
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "81a5d257c8e410db227a6665ed08f64fea08e997"
+
+[[lean_lib]]
+name = "Hilbert10"
+# `longFile` and `longFileDefValue` must be set to the same value, or the linter
+# nags to remove a `set_option` on every short file (fatal under `warningAsError`).
+leanOptions = { autoImplicit = false, weak.linter.mathlibStandardSet = true, weak.linter.style.longFile = 1500, weak.linter.style.longFileDefValue = 1500, warningAsError = true }
