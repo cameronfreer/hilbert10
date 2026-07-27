@@ -4,7 +4,9 @@ A Lean 4 / [mathlib](https://github.com/leanprover-community/mathlib4) library o
 Hilbert's tenth problem.
 
 The repository is currently a scaffold: the build, the root import spine, and CI are
-wired up, but the mathematical content has not landed yet.
+wired up, but the mathematical content has not landed yet. The plan — the DPRM theorem,
+the H10 wire format, and the RE-completeness endpoint — is mapped out in
+[issue #1](https://github.com/cameronfreer/hilbert10/issues/1).
 
 ## Building
 
