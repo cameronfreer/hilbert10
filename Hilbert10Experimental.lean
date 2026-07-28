@@ -1,0 +1,15 @@
+/-
+Copyright (c) 2026 Cameron Freer. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Cameron Freer
+-/
+import Hilbert10Experimental.HaltingComplete
+import Hilbert10Experimental.RightRename
+
+/-!
+# Staging area
+
+Work in progress and material staged for upstreaming to mathlib. This root is **not**
+imported by `Hilbert10.lean`; see `scripts/check_sorry_boundary.py` for the policy and
+issue #31 for why the boundary exists.
+-/
