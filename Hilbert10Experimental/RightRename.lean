@@ -29,15 +29,32 @@ variable {n : ℕ} {β R : Type*} [CommSemiring R]
 /-- Compact only the right summand of the variable type: the `Fin n` inputs are preserved
 pointwise, and the witnesses are reindexed by a finite injection.
 
-Proof plan: `MvPolynomial.exists_finset_rename` gives `p = rename Subtype.val q` for `q`
-over some `Finset (Fin n ⊕ β)`. Split that finset along the sum with `Finset.preimage`
-(or `Finset.toLeft`/`Finset.toRight`), enlarge the left part to all of `Fin n` — harmless,
-it only adds unused variables — and enumerate the right part with `Fintype.equivFin`. The
-work over `exists_fin_rename` is exactly the "leave the left summand alone" bookkeeping. -/
+The proof: `MvPolynomial.exists_finset_rename` gives `p = rename Subtype.val q` for `q`
+over some `s : Finset (Fin n ⊕ β)`. Enumerate `s.toRight` with `Fintype.equivFin` and send
+`s` into `Fin n ⊕ Fin m` by leaving left-hand variables alone and reindexing right-hand
+ones — the whole content is that this map composed with `Sum.map id f` is `Subtype.val`.
+Note the left part is *not* cut down to those inputs that actually occur: keeping all of
+`Fin n` is what makes the statement usable, and unused variables are harmless. -/
 theorem exists_fin_right_rename (p : MvPolynomial (Fin n ⊕ β) R) :
     ∃ (m : ℕ) (f : Fin m → β) (_ : Function.Injective f) (q : MvPolynomial (Fin n ⊕ Fin m) R),
       p = rename (Sum.map id f) q := by
-  sorry
+  classical
+  obtain ⟨s, q, rfl⟩ := exists_finset_rename p
+  let e := Fintype.equivFin {x // x ∈ s.toRight}
+  let g : {x // x ∈ s} → Fin n ⊕ Fin (Fintype.card {x // x ∈ s.toRight}) := fun x =>
+    match h : x.1 with
+    | Sum.inl a => Sum.inl a
+    | Sum.inr b => Sum.inr (e ⟨b, Finset.mem_toRight.mpr (h ▸ x.2)⟩)
+  have hcomp : ∀ x : {x // x ∈ s},
+      Sum.map id (fun i => (e.symm i : β)) (g x) = (x : Fin n ⊕ β) := by
+    rintro ⟨v, hv⟩
+    cases v with
+    | inl a => rfl
+    | inr b => simp [g]
+  refine ⟨_, fun i => (e.symm i : β), fun i j hij => e.symm.injective (Subtype.ext hij),
+    rename g q, ?_⟩
+  have hfun : ((Sum.map id fun i => (e.symm i : β)) ∘ g) = Subtype.val := funext hcomp
+  rw [rename_rename, hfun]
 
 /-- The evaluation corollary that downstream actually consumes. Stated with assignments in
 the coefficient ring; for a different target ring use `eval₂` with a `RingHom R →+* S`

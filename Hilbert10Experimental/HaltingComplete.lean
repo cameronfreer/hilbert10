@@ -57,4 +57,30 @@ theorem rePred_manyOneReducible_halts {R : ℕ → Prop} (h : REPred R) : R ≤�
     rw [Halts, this]
     exact (hdom a).symm
 
+/-- The halting problem in two-argument form: does the program with code `c` halt on
+input `x`? -/
+def HaltsOn (p : Code × ℕ) : Prop := (Code.eval p.1 p.2).Dom
+
+/-- Every recursively enumerable predicate on `ℕ` many-one reduces to the two-argument
+halting problem. The reduction pairs the specialized code with an arbitrary input, `0`
+here, since after specialization the input is ignored. -/
+theorem rePred_manyOneReducible_haltsOn {R : ℕ → Prop} (h : REPred R) : R ≤₀ HaltsOn := by
+  obtain ⟨g, hg, hgR⟩ := rePred_manyOneReducible_halts h
+  exact ⟨fun a => (g a, 0), hg.pair (Computable.const 0), hgR⟩
+
+/-- The one-argument form reduces to the two-argument form. -/
+theorem halts_manyOneReducible_haltsOn : Halts ≤₀ HaltsOn :=
+  ⟨fun c => (c, 0), Computable.id.pair (Computable.const 0), fun _ => Iff.rfl⟩
+
+/-- The two-argument form reduces to the one-argument form, by specializing the input into
+the code. -/
+theorem haltsOn_manyOneReducible_halts : HaltsOn ≤₀ Halts := by
+  refine ⟨fun p => p.1.comp (Code.const p.2),
+    (Code.primrec₂_comp.comp Primrec.fst (Code.primrec_const.comp Primrec.snd)).to_comp, ?_⟩
+  intro p
+  have : Code.eval (p.1.comp (Code.const p.2)) 0 = Code.eval p.1 p.2 := by
+    simp [Code.eval]
+  rw [Halts, this]
+  rfl
+
 end Hilbert10Experimental
