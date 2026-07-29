@@ -24,44 +24,54 @@ namespace Hilbert10Experimental
 
 open MvPolynomial
 
-variable {n : ℕ} {β R : Type*} [CommSemiring R]
+variable {β R : Type*} [CommSemiring R]
 
-/-- Compact only the right summand of the variable type: the `Fin n` inputs are preserved
-pointwise, and the witnesses are reindexed by a finite injection.
-
-The proof: `MvPolynomial.exists_finset_rename` gives `p = rename Subtype.val q` for `q`
-over some `s : Finset (Fin n ⊕ β)`. Enumerate `s.toRight` with `Fintype.equivFin` and send
-`s` into `Fin n ⊕ Fin m` by leaving left-hand variables alone and reindexing right-hand
-ones — the whole content is that this map composed with `Sum.map id f` is `Subtype.val`.
-Note the left part is *not* cut down to those inputs that actually occur: keeping all of
-`Fin n` is what makes the statement usable, and unused variables are harmless. -/
-theorem exists_fin_right_rename (p : MvPolynomial (Fin n ⊕ β) R) :
-    ∃ (m : ℕ) (f : Fin m → β) (_ : Function.Injective f) (q : MvPolynomial (Fin n ⊕ Fin m) R),
-      p = rename (Sum.map id f) q := by
+/-- Every polynomial in `σ ⊕ τ` is a polynomial in all of the variables from `σ` and finitely
+many of the variables from `τ`. Mirrors `MvPolynomial.exists_finset_rename`. -/
+theorem exists_finset_right_rename {σ : Type*} (p : MvPolynomial (σ ⊕ β) R) :
+    ∃ (t : Finset β) (q : MvPolynomial (σ ⊕ { x // x ∈ t }) R),
+      p = rename (Sum.map id (↑)) q := by
   classical
   obtain ⟨s, q, rfl⟩ := exists_finset_rename p
-  let e := Fintype.equivFin {x // x ∈ s.toRight}
-  let g : {x // x ∈ s} → Fin n ⊕ Fin (Fintype.card {x // x ∈ s.toRight}) := fun x =>
+  let f : { x // x ∈ s } → σ ⊕ { x // x ∈ s.toRight } := fun x =>
     match h : x.1 with
-    | Sum.inl a => Sum.inl a
-    | Sum.inr b => Sum.inr (e ⟨b, Finset.mem_toRight.mpr (h ▸ x.2)⟩)
-  have hcomp : ∀ x : {x // x ∈ s},
-      Sum.map id (fun i => (e.symm i : β)) (g x) = (x : Fin n ⊕ β) := by
-    rintro ⟨v, hv⟩
-    cases v with
-    | inl a => rfl
-    | inr b => simp [g]
-  refine ⟨_, fun i => (e.symm i : β), fun i j hij => e.symm.injective (Subtype.ext hij),
-    rename g q, ?_⟩
-  have hfun : ((Sum.map id fun i => (e.symm i : β)) ∘ g) = Subtype.val := funext hcomp
-  rw [rename_rename, hfun]
+    | .inl a => .inl a
+    | .inr b => .inr ⟨b, Finset.mem_toRight.mpr (h ▸ x.2)⟩
+  refine ⟨s.toRight, rename f q, ?_⟩
+  rw [rename_rename]
+  congr 2
+  funext x
+  rcases x with ⟨a | b, h⟩
+  · rfl
+  · simp [f]
+
+/-- Compact only the right summand of the variable type: the variables from `σ` are preserved
+pointwise, and the witnesses are reindexed by a finite injection.
+
+Unlike `MvPolynomial.exists_fin_rename`, which reindexes the whole variable type along an
+injection `Fin n → σ ⊕ β`, the left summand is left untouched. This is what the Diophantine
+normal form needs: renumbering the *input* variables would change the relation represented.
+
+Upstreamed as leanprover-community/mathlib4#42203; delete this file once that merges. -/
+theorem exists_fin_right_rename {σ : Type*} (p : MvPolynomial (σ ⊕ β) R) :
+    ∃ (m : ℕ) (f : Fin m → β) (_ : Function.Injective f) (q : MvPolynomial (σ ⊕ Fin m) R),
+      p = rename (Sum.map id f) q := by
+  obtain ⟨t, q, rfl⟩ := exists_finset_right_rename p
+  let m := Fintype.card { x // x ∈ t }
+  let e := Fintype.equivFin { x // x ∈ t }
+  refine ⟨m, (↑) ∘ e.symm, Subtype.val_injective.comp e.symm.injective,
+    rename (Sum.map id e) q, ?_⟩
+  rw [rename_rename]
+  congr 1
+  ext x
+  obtain a | b := x <;> simp
 
 /-- The evaluation corollary that downstream actually consumes. Stated with assignments in
 the coefficient ring; for a different target ring use `eval₂` with a `RingHom R →+* S`
 rather than an `S`-valued `eval`, which would not typecheck against `R` coefficients. -/
-theorem eval_of_exists_fin_right_rename (p : MvPolynomial (Fin n ⊕ β) R)
-    {m : ℕ} {f : Fin m → β} {q : MvPolynomial (Fin n ⊕ Fin m) R}
-    (hq : p = rename (Sum.map id f) q) (x : Fin n → R) (y : β → R) :
+theorem eval_of_exists_fin_right_rename {σ : Type*} (p : MvPolynomial (σ ⊕ β) R)
+    {m : ℕ} {f : Fin m → β} {q : MvPolynomial (σ ⊕ Fin m) R}
+    (hq : p = rename (Sum.map id f) q) (x : σ → R) (y : β → R) :
     eval (Sum.elim x y) p = eval (Sum.elim x (y ∘ f)) q := by
   subst hq
   have hassign : Sum.elim x y ∘ Sum.map id f = Sum.elim x (y ∘ f) := by
