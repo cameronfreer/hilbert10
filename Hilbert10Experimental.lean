@@ -7,6 +7,7 @@ import Hilbert10Experimental.HaltingComplete
 import Hilbert10Experimental.RightRename
 import Hilbert10Experimental.PolyBridge
 import Hilbert10Experimental.NormalForm
+import Hilbert10Experimental.PolynomialCode
 
 /-!
 # Staging area
