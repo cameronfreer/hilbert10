@@ -11,6 +11,7 @@ import Hilbert10Experimental.PolyBridge
 import Hilbert10Experimental.NormalForm
 import Hilbert10Experimental.PolynomialCode
 import Hilbert10Experimental.PolynomialCodeComp
+import Hilbert10Experimental.PolynomialCodeDenote
 
 /-!
 # Staging area
