@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ForMathlib.PrimrecInt
+import Hilbert10Experimental.ForMathlib.PrimrecNat
 import Hilbert10Experimental.HaltingComplete
 import Hilbert10Experimental.RightRename
 import Hilbert10Experimental.PolyBridge
