@@ -1,0 +1,38 @@
+/-
+Copyright (c) 2026 Cameron Freer. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Cameron Freer
+-/
+import Hilbert10Experimental.ExistsCode
+import Hilbert10Experimental.PolyBridge
+
+/-!
+# Coding a polynomial that represents a relation
+
+Issue #11, compatibility half: the one statement that needs `RepresentsNat` from #5, kept
+in its own module so that `Hilbert10Experimental.ExistsCode` genuinely does not depend on
+the `Poly`/`MvPolynomial` bridge — a fact about the import graph, not a claim in prose.
+-/
+
+namespace Hilbert10Experimental
+
+namespace PolynomialCode
+
+open MvPolynomial
+
+variable {n m : ℕ}
+
+/-- If a polynomial represents a relation, some code has that relation as its natural-root
+condition, with inputs in the first `n` slots and witnesses in the next `m`. -/
+theorem exists_code_representsNat {R : (Fin n → ℕ) → Prop}
+    {p : MvPolynomial (Fin n ⊕ Fin m) ℤ} (hp : RepresentsNat p R) :
+    ∃ q : PolynomialCode, q.arity ≤ n + m ∧
+      ∀ x : Fin n → ℕ, R x ↔ ∃ y : Fin m → ℕ, q.eval (List.ofFn x ++ List.ofFn y) = 0 := by
+  obtain ⟨q, harity, hden⟩ := exists_code p
+  refine ⟨q, harity, fun x => ?_⟩
+  rw [hp x]
+  exact exists_congr fun y => by rw [eval_exists_code hden x y]
+
+end PolynomialCode
+
+end Hilbert10Experimental

@@ -106,6 +106,11 @@ private theorem denoteMonomialFrom_append_replicate_zero (e : MonomialCode) (i k
     exact (denoteMonomialFrom_replicate_zero i k).trans rfl
   | cons a es ih => simp [denoteMonomialFrom, ih]
 
+/-- An all-zero exponent vector denotes `1`. -/
+@[simp] theorem denoteMonomial_replicate_zero (k : ℕ) :
+    denoteMonomial (List.replicate k 0) = 1 :=
+  denoteMonomialFrom_replicate_zero 0 k
+
 /-- Trailing zero exponents do not change a denotation, though they do inflate `arity`. -/
 theorem denoteMonomial_append_replicate_zero (e : MonomialCode) (k : ℕ) :
     denoteMonomial (e ++ List.replicate k 0) = denoteMonomial e :=
@@ -128,6 +133,34 @@ example : denoteMonomial ([1] ++ List.replicate 2 0) = denoteMonomial [1] :=
 example (e : MonomialCode) :
     (⟨[(1, e), (1, e)]⟩ : PolynomialCode).denote = (⟨[(2, e)]⟩ : PolynomialCode).denote := by
   simpa using denote_duplicate 1 1 e
+
+/-- Incrementing the exponent at index `k` multiplies the monomial by `X k`. Sound only
+when the exponent vector is long enough to reach `k`: `List.set` past the end is silently a
+no-op. Used by #11, where every exponent vector is padded to a fixed length. -/
+theorem denoteMonomial_set :
+    ∀ (e : MonomialCode) (k : ℕ), k < e.length →
+      denoteMonomial (e.set k (e.getD k 0 + 1)) = denoteMonomial e * X k := by
+  have aux : ∀ (e : MonomialCode) (i k : ℕ), k < e.length →
+      denoteMonomialFrom i (e.set k (e.getD k 0 + 1)) =
+        denoteMonomialFrom i e * X (i + k) := by
+    intro e
+    induction e with
+    | nil => intro i k hk; simp at hk
+    | cons a es ih =>
+      intro i k hk
+      cases k with
+      | zero =>
+        simp only [List.set_cons_zero, List.getD_cons_zero, denoteMonomialFrom, Nat.add_zero,
+          pow_succ]
+        ring
+      | succ k =>
+        have hk' : k < es.length := by simpa using hk
+        simp only [List.set_cons_succ, List.getD_cons_succ, denoteMonomialFrom, ih (i + 1) k hk']
+        have hi : i + 1 + k = i + (k + 1) := by omega
+        rw [hi]
+        ring
+  intro e k hk
+  simpa [denoteMonomial] using aux e 0 k hk
 
 /-! ### Evaluation -/
 
