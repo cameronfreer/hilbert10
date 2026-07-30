@@ -29,12 +29,13 @@ It is proved by searching the *encodings* of witnesses with `Nat.rfindOpt`, so t
 enumerates encoded witness tuples directly rather than boxes of naturals, and invalid codes
 map to `none` rather than to some default.
 
-## A deviation worth flagging
+## Why `decode` and not `decode₂`
 
-The enumeration uses `Encodable.decode` rather than `decode₂`. `decode₂` additionally
-rejects non-canonical codes, which is what one needs for an *injective* enumeration; here
-only completeness matters, and that is exactly `Encodable.encodek : decode (encode b) =
-some b`. Soundness is unaffected because the predicate is rechecked on whatever is decoded.
+The search needs a computable surjection onto candidate witnesses, and rechecks `P` on every
+one, so canonicality of codes is irrelevant. `decode₂` additionally rejects non-canonical
+codes — what an *injective* enumeration needs — which would add machinery without
+strengthening soundness or completeness. Completeness here is exactly
+`Encodable.encodek : decode (encode b) = some b`.
 -/
 
 namespace Hilbert10Experimental
