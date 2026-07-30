@@ -14,6 +14,7 @@ import Hilbert10Experimental.PolynomialCodeComp
 import Hilbert10Experimental.PolynomialCodeDenote
 import Hilbert10Experimental.ExistsCode
 import Hilbert10Experimental.ExistsCodeRepresents
+import Hilbert10Experimental.Instantiate
 
 /-!
 # Staging area
