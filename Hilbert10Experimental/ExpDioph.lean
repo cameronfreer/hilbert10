@@ -29,11 +29,24 @@ already has. `DiophFn` is itself ℕ-valued, and every term constructor here is 
 | `var`, `const` | `Dioph.proj_dioph`, `Dioph.const_dioph` |
 | `add`, `mul`, `pow` | `Dioph.add_dioph`, `Dioph.mul_dioph`, `Dioph.pow_dioph` |
 | `div`, `mod` | `Dioph.div_dioph`, `Dioph.mod_dioph` |
+| `sub` (truncated) | `Dioph.sub_dioph` |
 
 `div` and `mod` are constructors for a concrete reason: base-`u` digit extraction (#33) needs
 them at the `ExpDioph` level, and `ExpDioph.dioph` is one-directional, so a `Dioph`-level
 lemma could not be pulled back. Relations that are *not* `DiophFn`-valued in mathlib —
 `≤`, `<`, `∣` — appear instead as closure lemmas below.
+
+`sub` is truncated subtraction, and it earns its place by making **conjunction** available.
+Over `ℤ` a system of equations is combined by sum of squares (`Poly.sumsq`); over `ℕ` that is
+unavailable, but
+
+```
+s₁ = t₁ ∧ s₂ = t₂  ↔  (s₁ ∸ t₁) + (t₁ ∸ s₁) + (s₂ ∸ t₂) + (t₂ ∸ s₂) = 0
+```
+
+does the same job, since a sum of naturals vanishes iff every summand does. Without it
+`ExpDioph` could express only single equations, which is not enough for any real
+arithmetisation — a packed machine run is a *system* whose constraints share witnesses.
 
 ## Universes
 
@@ -60,6 +73,7 @@ inductive ExpTerm (α : Type) : Type
   | pow : ExpTerm α → ExpTerm α → ExpTerm α
   | div : ExpTerm α → ExpTerm α → ExpTerm α
   | mod : ExpTerm α → ExpTerm α → ExpTerm α
+  | sub : ExpTerm α → ExpTerm α → ExpTerm α
 
 namespace ExpTerm
 
@@ -72,6 +86,7 @@ def eval : ExpTerm α → (α → ℕ) → ℕ
   | pow s t, x => s.eval x ^ t.eval x
   | div s t, x => s.eval x / t.eval x
   | mod s t, x => s.eval x % t.eval x
+  | sub s t, x => s.eval x - t.eval x
 
 /-- **The bridge.** Every exponential term denotes a Diophantine function.
 
@@ -86,6 +101,7 @@ theorem diophFn (t : ExpTerm α) : Dioph.DiophFn fun x => t.eval x := by
   | pow s t hs ht => exact Dioph.pow_dioph hs ht
   | div s t hs ht => exact Dioph.div_dioph hs ht
   | mod s t hs ht => exact Dioph.mod_dioph hs ht
+  | sub s t hs ht => exact Dioph.sub_dioph hs ht
 
 /-- Reindex the variables of a term. -/
 def map (f : α → β) : ExpTerm α → ExpTerm β
@@ -96,6 +112,7 @@ def map (f : α → β) : ExpTerm α → ExpTerm β
   | pow s t => pow (s.map f) (t.map f)
   | div s t => div (s.map f) (t.map f)
   | mod s t => mod (s.map f) (t.map f)
+  | sub s t => sub (s.map f) (t.map f)
 
 @[simp] theorem eval_map (f : α → β) (t : ExpTerm α) (x : β → ℕ) :
     (t.map f).eval x = t.eval (x ∘ f) := by
@@ -119,6 +136,40 @@ theorem dioph {S : Set (α → ℕ)} (h : ExpDioph S) : Dioph S := by
   have heq : Dioph {z : α ⊕ β → ℕ | s.eval z = t.eval z} :=
     Dioph.eq_dioph s.diophFn t.diophFn
   exact (Dioph.ex_dioph heq).ext fun v => (hst v).symm
+
+/-- Two natural numbers are equal iff their two truncated differences both vanish. This is
+the ℕ substitute for the sum-of-squares trick that combines a system of equations over `ℤ`. -/
+theorem eq_iff_sub_add_sub {a b : ℕ} : a = b ↔ (a - b) + (b - a) = 0 := by omega
+
+/-- `ExpDioph` is closed under conjunction, with the two witness blocks combined. This is
+what makes a *system* of constraints expressible, which every arithmetisation needs. -/
+theorem and {S T : Set (α → ℕ)} (hS : ExpDioph S) (hT : ExpDioph T) : ExpDioph (S ∩ T) := by
+  obtain ⟨β, s₁, t₁, h₁⟩ := hS
+  obtain ⟨γ, s₂, t₂, h₂⟩ := hT
+  -- Reindex each equation into the combined witness block `β ⊕ γ`.
+  let f₁ : α ⊕ β → α ⊕ (β ⊕ γ) := Sum.elim Sum.inl (fun b => Sum.inr (Sum.inl b))
+  let f₂ : α ⊕ γ → α ⊕ (β ⊕ γ) := Sum.elim Sum.inl (fun c => Sum.inr (Sum.inr c))
+  refine ⟨β ⊕ γ,
+    .add (.add (.sub (s₁.map f₁) (t₁.map f₁)) (.sub (t₁.map f₁) (s₁.map f₁)))
+      (.add (.sub (s₂.map f₂) (t₂.map f₂)) (.sub (t₂.map f₂) (s₂.map f₂))),
+    .const 0, fun v => ?_⟩
+  have key : ∀ (w : (β ⊕ γ) → ℕ),
+      (Sum.elim v w ∘ f₁ = Sum.elim v (w ∘ Sum.inl)) ∧
+        (Sum.elim v w ∘ f₂ = Sum.elim v (w ∘ Sum.inr)) := by
+    intro w
+    constructor <;> (funext z; cases z <;> rfl)
+  constructor
+  · rintro ⟨hv₁, hv₂⟩
+    obtain ⟨w₁, hw₁⟩ := (h₁ v).mp hv₁
+    obtain ⟨w₂, hw₂⟩ := (h₂ v).mp hv₂
+    refine ⟨Sum.elim w₁ w₂, ?_⟩
+    have e := key (Sum.elim w₁ w₂)
+    simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2, Sum.elim_comp_inl, Sum.elim_comp_inr]
+    omega
+  · rintro ⟨w, hw⟩
+    have e := key w
+    simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2] at hw
+    refine ⟨(h₁ v).mpr ⟨w ∘ Sum.inl, by omega⟩, (h₂ v).mpr ⟨w ∘ Sum.inr, by omega⟩⟩
 
 /-- Any equation between exponential terms with no witnesses is exponential Diophantine. -/
 theorem of_eq {s t : ExpTerm α} : ExpDioph {v | s.eval v = t.eval v} := by
