@@ -18,6 +18,7 @@ import Hilbert10Experimental.Instantiate
 import Hilbert10Experimental.NatSolvable
 import Hilbert10Experimental.Specialization
 import Hilbert10Experimental.DiophToRE
+import Hilbert10Experimental.ExpDioph
 
 /-!
 # Staging area
