@@ -43,7 +43,7 @@ private theorem ofFn_getD_of_length_eq {l : List ℕ} {m : ℕ} (hl : l.length =
     List.ofFn (fun i : Fin m => l.getD i 0) = l := by
   subst hl
   refine List.ext_getElem (by simp) fun i h1 h2 => ?_
-  simp [List.getD_eq_getElem]
+  simp
 
 /-- Roots may be taken in `List.ofFn` form at any length at least the arity. This is the one
 place the conversion between root lists and `Fin`-indexed witnesses happens. -/
