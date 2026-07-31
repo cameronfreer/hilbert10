@@ -326,6 +326,107 @@ theorem isBinarySubmask_guardMask_iff {k t R : ℕ} :
       · have := hblk (i + 1) (by omega)
         rwa [Nat.div_div_eq_div_mul, ← pow_succ']
 
+/-! ### Guarded soundness
+
+Digits are read straight off the step equation. The characterisation supplies `r i < D`, so
+`r i + 1 ≤ D < B` and no carry can occur; the wrap digit `B - 1` is therefore unreachable,
+which is exactly what excludes a run that continues past zero. No induction through `n - 1`
+and so no positivity obligation.
+-/
+
+private theorem sound_aux (k : ℕ) : ∀ t n R : ℕ, n < dataBound k → R < blockBase k ^ t →
+    (∀ i < t, (R / blockBase k ^ i) % blockBase k < dataBound k) →
+    R + blockBase k * geom (blockBase k) t = n + blockBase k * R → n = t := by
+  have hB : 0 < blockBase k := by simp [blockBase]
+  have hDB : dataBound k < blockBase k := by
+    simp only [dataBound, blockBase]
+    exact Nat.pow_lt_pow_right (by norm_num) (by omega)
+  intro t
+  induction t with
+  | zero =>
+    intro n R hn hR _ hstep
+    simp only [pow_zero, Nat.lt_one_iff] at hR
+    subst hR
+    simpa [geom] using hstep.symm
+  | succ t ih =>
+    intro n R hn hR hdig hstep
+    rw [geom_succ] at hstep
+    -- digit 0 of `R` is `n`
+    have hmod : R % blockBase k = n := by
+      have e1 : (R + blockBase k * (1 + blockBase k * geom (blockBase k) t)) % blockBase k
+          = R % blockBase k := by
+        simp [Nat.add_mul_mod_self_left]
+      have e2 : (n + blockBase k * R) % blockBase k = n % blockBase k := by
+        simp [Nat.add_mul_mod_self_left]
+      rw [hstep] at e1
+      rw [e2, Nat.mod_eq_of_lt (lt_trans hn hDB)] at e1
+      exact e1.symm
+    set R' := R / blockBase k with hR'
+    have hsplit : R = blockBase k * R' + n := by
+      conv_lhs => rw [← Nat.div_add_mod R (blockBase k)]
+      rw [hmod]
+    have hR'lt : R' < blockBase k ^ t := by
+      rw [hR', Nat.div_lt_iff_lt_mul hB, ← pow_succ]
+      exact hR
+    have hdig' : ∀ i < t, (R' / blockBase k ^ i) % blockBase k < dataBound k := by
+      intro i hi
+      rw [hR', Nat.div_div_eq_div_mul, ← pow_succ']
+      exact hdig (i + 1) (by omega)
+    -- cancel one block from the step equation
+    have hstep' : R' + 1 + blockBase k * geom (blockBase k) t = blockBase k * R' + n := by
+      refine Nat.eq_of_mul_eq_mul_left hB ?_
+      have h' : blockBase k * R' + n +
+            (blockBase k + blockBase k * (blockBase k * geom (blockBase k) t))
+          = n + (blockBase k * (blockBase k * R') + blockBase k * n) := by
+        calc blockBase k * R' + n +
+              (blockBase k + blockBase k * (blockBase k * geom (blockBase k) t))
+            = blockBase k * R' + n +
+                blockBase k * (1 + blockBase k * geom (blockBase k) t) := by ring
+          _ = n + blockBase k * (blockBase k * R' + n) := by rw [← hsplit]; exact hstep
+          _ = n + (blockBase k * (blockBase k * R') + blockBase k * n) := by ring
+      have goal1 : blockBase k * (R' + 1 + blockBase k * geom (blockBase k) t)
+          = blockBase k * R' + blockBase k +
+            blockBase k * (blockBase k * geom (blockBase k) t) := by ring
+      have goal2 : blockBase k * (blockBase k * R' + n)
+          = blockBase k * (blockBase k * R') + blockBase k * n := by ring
+      rw [goal1, goal2]
+      omega
+    rcases Nat.eq_zero_or_pos n with rfl | hpos
+    · -- `n = 0` would need the wrap digit `B - 1`, which the mask forbids
+      exfalso
+      rcases Nat.eq_zero_or_pos t with rfl | htpos
+      · have hz : R' = 0 := by simpa using hR'lt
+        rw [hz] at hstep'
+        simp [geom] at hstep'
+      · have hd1 : R' % blockBase k < dataBound k := by
+          simpa using hdig' 0 htpos
+        have : (R' + 1) % blockBase k = 0 := by
+          have e : (R' + 1 + blockBase k * geom (blockBase k) t) % blockBase k
+              = (R' + 1) % blockBase k := by simp [Nat.add_mul_mod_self_left]
+          rw [hstep'] at e
+          simpa [Nat.mul_mod_right] using e.symm
+        have hlt : R' % blockBase k + 1 < blockBase k := by omega
+        have hB2 : 1 < blockBase k := by
+          have := Nat.two_pow_pos k
+          simp only [dataBound] at hDB
+          omega
+        rw [Nat.add_mod, Nat.mod_eq_of_lt hB2, Nat.mod_eq_of_lt hlt] at this
+        omega
+    · obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
+      have : m + 1 = t + 1 := by
+        have := ih m R' (by omega) hR'lt hdig' (by omega)
+        omega
+      exact this
+
+/-- **Guarded soundness.** A satisfying encoding yields a real run. -/
+theorem guarded_sound {n k t R G : ℕ} (h : Guarded n k t R G) : HaltsIn n t := by
+  obtain ⟨hbase, hgeo, hstep, hmask⟩ := h
+  have hG : G = geom (blockBase k) t := geo_unique hgeo
+  subst hG
+  rw [← guardMask'_eq] at hmask
+  obtain ⟨hlt, hdig⟩ := isBinarySubmask_guardMask_iff.mp hmask
+  exact (haltsIn_iff n t).mpr (sound_aux k t n R hbase hlt hdig hstep)
+
 end DecLoop
 
 end Hilbert10Experimental
