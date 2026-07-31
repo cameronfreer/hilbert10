@@ -211,6 +211,56 @@ theorem geo_unique {k t G : ℕ} (h : G * blockBase k + 1 = G + blockBase k ^ t)
   exact Nat.eq_of_mul_eq_mul_right hC0 (Nat.add_right_cancel (h1.trans h2.symm))
 
 
+/-! ### The mask characterisation
+
+The single theorem both directions need. It is stated as an equivalence rather than as a
+one-way consumer lemma so that it also fixes #34's **semantic contract**: whatever #34 proves
+exponential Diophantine must be equivalent to exactly this.
+-/
+
+/-- `guardMask k t` is the number whose set bits are the low `k` bits of each of the first
+`t` blocks of width `k + 1`. -/
+def guardMask' (k t : ℕ) : ℕ := (dataBound k - 1) * geom (blockBase k) t
+
+theorem guardMask'_zero (k : ℕ) : guardMask' k 0 = 0 := by simp [guardMask', geom]
+
+/-- One more block, prepended below the rest. -/
+theorem guardMask'_succ (k t : ℕ) :
+    guardMask' k (t + 1) = (dataBound k - 1) + blockBase k * guardMask' k t := by
+  simp only [guardMask', geom_succ, Nat.mul_add, mul_one]
+  ring
+
+/-- Splitting a submask condition at a power-of-two boundary. This is the engine of the
+characterisation: because `blockBase k` is a power of two, the low block and the remaining
+blocks are independent bit ranges. -/
+theorem isBinarySubmask_split {k x a b : ℕ} (ha : a < blockBase k) :
+    Nat.IsBinarySubmask x (a + blockBase k * b) ↔
+      Nat.IsBinarySubmask (x % blockBase k) a ∧ Nat.IsBinarySubmask (x / blockBase k) b := by
+  have ha' : a < 2 ^ (k + 1) := by simpa [blockBase] using ha
+  have hmask : ∀ j, (a + 2 ^ (k + 1) * b).testBit j =
+      if j < k + 1 then a.testBit j else b.testBit (j - (k + 1)) := by
+    intro j
+    have h : a + 2 ^ (k + 1) * b = 2 ^ (k + 1) * b + a := by ring
+    rw [h, Nat.testBit_two_pow_mul_add b ha' j]
+  simp only [Nat.IsBinarySubmask, blockBase, Nat.testBit_mod_two_pow, Nat.testBit_div_two_pow,
+    Bool.and_eq_true, decide_eq_true_eq]
+  constructor
+  · intro h
+    refine ⟨fun i hi => ?_, fun i hi => ?_⟩
+    · have := h i hi.2
+      rw [hmask i, if_pos hi.1] at this
+      exact this
+    · have := h (i + (k + 1)) hi
+      rw [hmask _, if_neg (by omega)] at this
+      simpa using this
+  · rintro ⟨hlo, hhi⟩ i hi
+    rw [hmask i]
+    by_cases hik : i < k + 1
+    · rw [if_pos hik]
+      exact hlo i ⟨hik, hi⟩
+    · rw [if_neg hik]
+      exact hhi (i - (k + 1)) (by rwa [Nat.sub_add_cancel (by omega)])
+
 end DecLoop
 
 end Hilbert10Experimental
