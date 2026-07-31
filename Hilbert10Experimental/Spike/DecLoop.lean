@@ -24,7 +24,8 @@ about the technique, not about this loop.
 ## Result so far
 
 Completeness works and is cheap. **Soundness fails for the naive constraint system**, and the
-failure is instructive rather than incidental: see `not_sound_without_digit_bounds` below.
+failure is instructive: the counterexample's digits are all below the base, so what is missing
+is a no-borrow *guard bit*, not a digit bound. See `not_sound_without_guard_bits` below.
 -/
 
 namespace Hilbert10Experimental
@@ -110,25 +111,71 @@ theorem packed_spec (n b : ℕ) :
 
 The three constraints
 
-* `n < b` — the digit bound,
+* `n < b` — a bound on the initial value,
 * `geom b t * b + 1 = geom b t + b ^ t` — the geometric identity,
 * `R + b * geom b t = n + b * R` — the step identity,
 
-are satisfied by `n = 2, b = 3, t = 4, R = 59`, where the true run has length `2`. In base
-`3`, `59` has digits `2, 1, 0, 2`: the first three are a real run, and then the fourth
-*wraps* — `0 - 1` is not representable, so the borrow silently produces a digit of `2`
-instead of failing.
+are satisfied by `n = 2, b = 3, t = 4, R = 59`, where the true run has length `2`.
 
-So the step identity encodes "each digit is one less than the previous" only when the digits
-are known to stay below the base. Constraining `R < b ^ t` does not help: `59 < 81`.
-Controlling digits is exactly what binary masking (#18, #33, #34) exists to do, which places
-that machinery on the critical path for even this trivial loop. -/
-theorem not_sound_without_digit_bounds :
+**The digits are not the problem.** In base `3`, `59` is `2, 1, 0, 2`, and every digit is
+already below the base. The sequence is a real run for three digits and then *wraps*: at the
+fourth, `0 - 1` borrows, and the borrow propagates consistently enough that the step identity
+still holds. Constraining `R < b ^ t` does not detect it either — `59 < 81`.
+
+What is missing is a **no-borrow guard**, not a digit bound. The fix is to give every block a
+spare high bit that a wrap would have to touch:
+
+```
+D := 2 ^ k                    -- permitted register values are `< D`
+B := 2 * D                    -- one guard bit per block
+A := (D - 1) * geom B t       -- only the low `k` bits allowed, in every block
+```
+
+and to require `n < D` together with `Nat.IsBinarySubmask R A`. The mask forces every
+`B`-block of `R` below `D`; a wrap from zero produces `B - 1 ≥ D`, which sets the guard bit
+and so violates the mask. It also implies `R < B ^ t`, making a separate size condition
+unnecessary.
+
+That is the invariant the masking machinery (#18, #33, #34) exists to supply, which places it
+on the critical path for even this one-instruction loop. -/
+theorem not_sound_without_guard_bits :
     2 < 3 ∧ geom 3 4 * 3 + 1 = geom 3 4 + 3 ^ 4 ∧
       59 + 3 * geom 3 4 = 2 + 3 * 59 ∧ ¬ HaltsIn 2 4 := by
   refine ⟨by norm_num, by decide, by decide, ?_⟩
   rw [haltsIn_iff]
   decide
+
+/-! ### The guarded encoding
+
+The corrected system, stated so that the arithmetic content can be settled before any
+`ExpDioph` or `Nat.choose` machinery is involved. `Nat.IsBinarySubmask` is defined here
+rather than imported, so that this development fixes #34's consumer lemma rather than
+waiting on it: what the soundness proof needs is exactly
+
+```lean
+Nat.IsBinarySubmask R (guardMask D t)
+```
+
+with `guardMask D t = (D - 1) * geom (2 * D) t`.
+-/
+
+/-- Every binary digit of `a` is at most the corresponding digit of `b`. Stated on
+`Nat.testBit` so the guard-bit argument is about bits rather than about `Nat.choose`; #18
+supplies the bridge to `Odd (b.choose a)` that #33 and #34 then make exponential
+Diophantine. -/
+def _root_.Nat.IsBinarySubmask (a b : ℕ) : Prop := ∀ i, a.testBit i = true → b.testBit i = true
+
+/-- Permitted register values are `< D`; the packing base is `2 * D`, giving each block one
+guard bit above the value. -/
+def guardMask (D t : ℕ) : ℕ := (D - 1) * geom (2 * D) t
+
+/-- The guarded constraint system: `n` fits in a block, the geometric identity holds, the
+step identity holds, and the packed run has a clear guard bit in every block. -/
+structure Guarded (n D t R : ℕ) : Prop where
+  base : n < D
+  geo : geom (2 * D) t * (2 * D) + 1 = geom (2 * D) t + (2 * D) ^ t
+  step : R + (2 * D) * geom (2 * D) t = n + (2 * D) * R
+  mask : Nat.IsBinarySubmask R (guardMask D t)
 
 end DecLoop
 
