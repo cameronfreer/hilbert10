@@ -171,6 +171,84 @@ theorem and {S T : Set (α → ℕ)} (hS : ExpDioph S) (hT : ExpDioph T) : ExpDi
     simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2] at hw
     refine ⟨(h₁ v).mpr ⟨w ∘ Sum.inl, by omega⟩, (h₂ v).mpr ⟨w ∘ Sum.inr, by omega⟩⟩
 
+/-- `ExpDioph` respects extensional equality of relations. -/
+theorem congr {S T : Set (α → ℕ)} (h : ExpDioph S) (hST : ∀ v, v ∈ S ↔ v ∈ T) :
+    ExpDioph T := by
+  obtain ⟨β, s, t, hst⟩ := h
+  exact ⟨β, s, t, fun v => (hST v).symm.trans (hst v)⟩
+
+/-- Reindexing the variables of an exponential Diophantine set. -/
+theorem reindex {S : Set (α → ℕ)} (h : ExpDioph S) (f : α → β) :
+    ExpDioph {v : β → ℕ | (v ∘ f) ∈ S} := by
+  obtain ⟨γ, s, t, hst⟩ := h
+  refine ⟨γ, s.map (Sum.map f id), t.map (Sum.map f id), fun v => ?_⟩
+  have e : ∀ w : γ → ℕ,
+      Sum.elim v w ∘ Sum.map f id = Sum.elim (v ∘ f) w := by
+    intro w
+    funext z
+    cases z <;> rfl
+  simp only [Set.mem_setOf_eq, ExpTerm.eval_map, e]
+  exact hst (v ∘ f)
+
+/-- Projecting away the last block of variables. -/
+theorem exists' {S : Set (α ⊕ β → ℕ)} (h : ExpDioph S) :
+    ExpDioph {v : α → ℕ | ∃ w : β → ℕ, Sum.elim v w ∈ S} := by
+  obtain ⟨γ, s, t, hst⟩ := h
+  -- Combine the projected block with the existing witnesses.
+  let f : (α ⊕ β) ⊕ γ → α ⊕ (β ⊕ γ) :=
+    Sum.elim (Sum.elim Sum.inl (fun b => Sum.inr (Sum.inl b))) (fun c => Sum.inr (Sum.inr c))
+  refine ⟨β ⊕ γ, s.map f, t.map f, fun v => ?_⟩
+  have e : ∀ (w : β → ℕ) (u : γ → ℕ),
+      Sum.elim v (Sum.elim w u) ∘ f = Sum.elim (Sum.elim v w) u := by
+    intro w u
+    funext z
+    rcases z with (a | b) | c <;> rfl
+  constructor
+  · rintro ⟨w, hw⟩
+    obtain ⟨u, hu⟩ := (hst (Sum.elim v w)).mp hw
+    exact ⟨Sum.elim w u, by simpa only [ExpTerm.eval_map, e w u] using hu⟩
+  · rintro ⟨wu, hwu⟩
+    refine ⟨wu ∘ Sum.inl, (hst _).mpr ⟨wu ∘ Sum.inr, ?_⟩⟩
+    have := hwu
+    simp only [ExpTerm.eval_map] at this
+    rwa [show Sum.elim v wu ∘ f
+        = Sum.elim (Sum.elim v (wu ∘ Sum.inl)) (wu ∘ Sum.inr) by
+      funext z; rcases z with (a | b) | c <;> rfl] at this
+
+/-- `≤` between exponential terms, via a slack witness. -/
+theorem of_le {s t : ExpTerm α} : ExpDioph {v | s.eval v ≤ t.eval v} := by
+  refine ⟨Unit, .add (s.map Sum.inl) (.var (Sum.inr ())), t.map Sum.inl, fun v => ?_⟩
+  simp only [Set.mem_setOf_eq, ExpTerm.eval, ExpTerm.eval_map, Sum.elim_comp_inl]
+  constructor
+  · intro h
+    exact ⟨fun _ => t.eval v - s.eval v, by simp [Sum.elim_inr]; omega⟩
+  · rintro ⟨w, hw⟩
+    simp only [Sum.elim_inr] at hw
+    omega
+
+/-- `<` between exponential terms, via a slack witness. -/
+theorem of_lt {s t : ExpTerm α} : ExpDioph {v | s.eval v < t.eval v} := by
+  refine ⟨Unit, .add (.add (s.map Sum.inl) (.var (Sum.inr ()))) (.const 1),
+    t.map Sum.inl, fun v => ?_⟩
+  simp only [Set.mem_setOf_eq, ExpTerm.eval, ExpTerm.eval_map, Sum.elim_comp_inl]
+  constructor
+  · intro h
+    exact ⟨fun _ => t.eval v - s.eval v - 1, by simp [Sum.elim_inr]; omega⟩
+  · rintro ⟨w, hw⟩
+    simp only [Sum.elim_inr] at hw
+    omega
+
+/-- Divisibility between exponential terms, via a cofactor witness. -/
+theorem of_dvd {s t : ExpTerm α} : ExpDioph {v | s.eval v ∣ t.eval v} := by
+  refine ⟨Unit, .mul (s.map Sum.inl) (.var (Sum.inr ())), t.map Sum.inl, fun v => ?_⟩
+  simp only [Set.mem_setOf_eq, ExpTerm.eval, ExpTerm.eval_map, Sum.elim_comp_inl]
+  constructor
+  · rintro ⟨c, hc⟩
+    exact ⟨fun _ => c, by simp [Sum.elim_inr, hc]⟩
+  · rintro ⟨w, hw⟩
+    simp only [Sum.elim_inr] at hw
+    exact ⟨w (), hw.symm⟩
+
 /-- Any equation between exponential terms with no witnesses is exponential Diophantine. -/
 theorem of_eq {s t : ExpTerm α} : ExpDioph {v | s.eval v = t.eval v} := by
   refine ⟨PEmpty, s.map Sum.inl, t.map Sum.inl, fun v => ?_⟩

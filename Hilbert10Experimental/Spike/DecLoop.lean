@@ -5,7 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ExpDioph
 import Mathlib.Algebra.BigOperators.Intervals
-import Mathlib.Data.Nat.Bitwise
+import Hilbert10Experimental.ForMathlib.BinarySubmask
 
 /-!
 # Route spike: arithmetising a decrement-to-zero loop
@@ -165,9 +165,6 @@ consumer lemma instead of waiting on it, and #18's eventual public contract shou
 consumer rather than carrying a separate digit-list formulation.
 -/
 
-/-- Every binary digit of `a` is at most the corresponding digit of `b`. -/
-def _root_.Nat.IsBinarySubmask (a b : ℕ) : Prop := ∀ i, a.testBit i = true → b.testBit i = true
-
 /-- Permitted register values are `< 2 ^ k`. -/
 def dataBound (k : ℕ) : ℕ := 2 ^ k
 
@@ -231,36 +228,12 @@ theorem guardMask'_succ (k t : ℕ) :
   simp only [guardMask', geom_succ, Nat.mul_add, mul_one]
   ring
 
-/-- Splitting a submask condition at a power-of-two boundary. This is the engine of the
-characterisation: because `blockBase k` is a power of two, the low block and the remaining
-blocks are independent bit ranges. -/
+/-- The split, specialised to the block layout. The content is generic — see
+`Nat.isBinarySubmask_add_mul_two_pow_iff` — since `blockBase k` is a power of two. -/
 theorem isBinarySubmask_split {k x a b : ℕ} (ha : a < blockBase k) :
     Nat.IsBinarySubmask x (a + blockBase k * b) ↔
-      Nat.IsBinarySubmask (x % blockBase k) a ∧ Nat.IsBinarySubmask (x / blockBase k) b := by
-  have ha' : a < 2 ^ (k + 1) := by simpa [blockBase] using ha
-  have hmask : ∀ j, (a + 2 ^ (k + 1) * b).testBit j =
-      if j < k + 1 then a.testBit j else b.testBit (j - (k + 1)) := by
-    intro j
-    have h : a + 2 ^ (k + 1) * b = 2 ^ (k + 1) * b + a := by ring
-    rw [h, Nat.testBit_two_pow_mul_add b ha' j]
-  simp only [Nat.IsBinarySubmask, blockBase, Nat.testBit_mod_two_pow, Nat.testBit_div_two_pow,
-    Bool.and_eq_true, decide_eq_true_eq]
-  constructor
-  · intro h
-    refine ⟨fun i hi => ?_, fun i hi => ?_⟩
-    · have := h i hi.2
-      rw [hmask i, if_pos hi.1] at this
-      exact this
-    · have := h (i + (k + 1)) hi
-      rw [hmask _, if_neg (by omega)] at this
-      simpa using this
-  · rintro ⟨hlo, hhi⟩ i hi
-    rw [hmask i]
-    by_cases hik : i < k + 1
-    · rw [if_pos hik]
-      exact hlo i ⟨hik, hi⟩
-    · rw [if_neg hik]
-      exact hhi (i - (k + 1)) (by rwa [Nat.sub_add_cancel (by omega)])
+      Nat.IsBinarySubmask (x % blockBase k) a ∧ Nat.IsBinarySubmask (x / blockBase k) b :=
+  Nat.isBinarySubmask_add_mul_two_pow_iff ha
 
 /-- The API bridge: `Guarded.mask` is stated with the closed form `(dataBound k - 1) * G`, and
 after `geo_unique` that *is* `guardMask' k t`. Definitional, but named so the rewrite step is
@@ -268,22 +241,12 @@ explicit. -/
 theorem guardMask'_eq (k t : ℕ) :
     guardMask' k t = (dataBound k - 1) * geom (blockBase k) t := rfl
 
-/-- A number is a submask of `2 ^ k - 1` exactly when it fits in `k` bits. This is where the
-guard bit does its work: `dataBound k - 1` permits precisely the low `k` bits, so the extra
-bit of each `(k + 1)`-bit block is unavailable. -/
+/-- Fitting in the data field, specialised from
+`Nat.isBinarySubmask_two_pow_sub_one_iff`. This is where the guard bit does its work:
+`dataBound k - 1` permits precisely the low `k` bits. -/
 theorem isBinarySubmask_dataBound_sub_one_iff {k x : ℕ} :
-    Nat.IsBinarySubmask x (dataBound k - 1) ↔ x < dataBound k := by
-  simp only [Nat.IsBinarySubmask, dataBound, Nat.testBit_two_pow_sub_one, decide_eq_true_eq]
-  constructor
-  · intro h
-    refine Nat.lt_pow_two_of_testBit x fun i hi => ?_
-    by_contra hc
-    exact absurd (h i (by simpa using hc)) (by omega)
-  · intro hx i hi
-    by_contra hik
-    have hle : (2 : ℕ) ^ k ≤ 2 ^ i := Nat.pow_le_pow_right (by norm_num) (by omega)
-    rw [Nat.testBit_lt_two_pow (lt_of_lt_of_le hx hle)] at hi
-    simp at hi
+    Nat.IsBinarySubmask x (dataBound k - 1) ↔ x < dataBound k :=
+  Nat.isBinarySubmask_two_pow_sub_one_iff
 
 /-- **The mask characterisation.** Stated as an equivalence, so that it serves soundness
 (every block bound, plus the global bound), completeness (the mask reduced to ordinary bounds
@@ -293,14 +256,12 @@ theorem isBinarySubmask_guardMask_iff {k t R : ℕ} :
       R < blockBase k ^ t ∧ ∀ i < t, (R / blockBase k ^ i) % blockBase k < dataBound k := by
   induction t generalizing R with
   | zero =>
-    simp only [guardMask'_zero, pow_zero, Nat.lt_one_iff]
+    simp only [guardMask'_zero, pow_zero, Nat.lt_one_iff, Nat.isBinarySubmask_zero_iff]
     constructor
     · intro h
-      refine ⟨Nat.zero_of_testBit_eq_false fun i => ?_, by omega⟩
-      by_contra hc
-      simpa using h i (by simpa using hc)
-    · rintro ⟨rfl, -⟩ i hi
-      simp at hi
+      exact ⟨h, by omega⟩
+    · rintro ⟨h, -⟩
+      exact h
   | succ t ih =>
     have hlow : dataBound k - 1 < blockBase k := by
       simp only [dataBound, blockBase]
