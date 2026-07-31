@@ -147,35 +147,69 @@ theorem not_sound_without_guard_bits :
 
 /-! ### The guarded encoding
 
-The corrected system, stated so that the arithmetic content can be settled before any
-`ExpDioph` or `Nat.choose` machinery is involved. `Nat.IsBinarySubmask` is defined here
-rather than imported, so that this development fixes #34's consumer lemma rather than
-waiting on it: what the soundness proof needs is exactly
+Parameterised by the **bit width** `k`, not by an arbitrary bound. The mask has its intended
+block reading only when the data bound is `2 ^ k` and the block base is `2 ^ (k + 1)`: for a
+general `D`, `(D - 1) * geom (2 * D) t` need not be repeated aligned binary fields at all —
+base `2 * D` is not a power of two — so `IsBinarySubmask` would say nothing about base-`2D`
+digits. Carrying `k` rather than an equation `D = 2 ^ k` keeps that fact out of every proof.
 
-```lean
-Nat.IsBinarySubmask R (guardMask D t)
-```
+The geometric sum is an **existential witness** `G`, not the computed `geom`. Otherwise `geo`
+is merely a true statement about an already-computed value and tests nothing: in the
+`ExpDioph` encoding `G` is a variable, so the system must pin it down. `geo_unique` below
+discharges that, leaving exactly one non-`ExpTerm` obligation — `mask` — rather than quietly
+leaving geometric-sum arithmetisation outstanding as well.
 
-with `guardMask D t = (D - 1) * geom (2 * D) t`.
+`Nat.IsBinarySubmask` is defined here on `Nat.testBit`, so this development fixes #34's
+consumer lemma instead of waiting on it, and #18's eventual public contract should match this
+consumer rather than carrying a separate digit-list formulation.
 -/
 
-/-- Every binary digit of `a` is at most the corresponding digit of `b`. Stated on
-`Nat.testBit` so the guard-bit argument is about bits rather than about `Nat.choose`; #18
-supplies the bridge to `Odd (b.choose a)` that #33 and #34 then make exponential
-Diophantine. -/
+/-- Every binary digit of `a` is at most the corresponding digit of `b`. -/
 def _root_.Nat.IsBinarySubmask (a b : ℕ) : Prop := ∀ i, a.testBit i = true → b.testBit i = true
 
-/-- Permitted register values are `< D`; the packing base is `2 * D`, giving each block one
-guard bit above the value. -/
-def guardMask (D t : ℕ) : ℕ := (D - 1) * geom (2 * D) t
+/-- Permitted register values are `< 2 ^ k`. -/
+def dataBound (k : ℕ) : ℕ := 2 ^ k
 
-/-- The guarded constraint system: `n` fits in a block, the geometric identity holds, the
-step identity holds, and the packed run has a clear guard bit in every block. -/
-structure Guarded (n D t R : ℕ) : Prop where
-  base : n < D
-  geo : geom (2 * D) t * (2 * D) + 1 = geom (2 * D) t + (2 * D) ^ t
-  step : R + (2 * D) * geom (2 * D) t = n + (2 * D) * R
-  mask : Nat.IsBinarySubmask R (guardMask D t)
+/-- The packing base: one guard bit above the data field. -/
+def blockBase (k : ℕ) : ℕ := 2 ^ (k + 1)
+
+theorem blockBase_eq (k : ℕ) : blockBase k = 2 * dataBound k := by
+  simp [blockBase, dataBound, pow_succ, mul_comm]
+
+theorem two_le_blockBase (k : ℕ) : 2 ≤ blockBase k := by
+  simpa [blockBase] using Nat.pow_le_pow_right (by norm_num) (Nat.succ_le_succ (Nat.zero_le k))
+
+/-- The guarded constraint system. Every component is an `ExpTerm` equation except `mask`,
+which is the single obligation #34 must supply. -/
+structure Guarded (n k t R G : ℕ) : Prop where
+  base : n < dataBound k
+  geo : G * blockBase k + 1 = G + blockBase k ^ t
+  step : R + blockBase k * G = n + blockBase k * R
+  mask : Nat.IsBinarySubmask R ((dataBound k - 1) * G)
+
+/-- The geometric identity pins `G` down: it has exactly one solution, the geometric sum.
+So making `G` a variable costs nothing, and the arithmetisation of the geometric series is
+not left as a hidden obligation. -/
+theorem geo_unique {k t G : ℕ} (h : G * blockBase k + 1 = G + blockBase k ^ t) :
+    G = geom (blockBase k) t := by
+  obtain ⟨C, hC⟩ : ∃ C, blockBase k = C + 1 :=
+    ⟨blockBase k - 1, by have := two_le_blockBase k; omega⟩
+  have hC0 : 0 < C := by have := two_le_blockBase k; omega
+  have h1 : G * C + 1 = blockBase k ^ t := by
+    have h' : G * C + G + 1 = G + blockBase k ^ t := by
+      calc G * C + G + 1 = G * (C + 1) + 1 := by ring
+        _ = G + blockBase k ^ t := by rw [← hC]; exact h
+    omega
+  have h2 : geom (blockBase k) t * C + 1 = blockBase k ^ t := by
+    have hg := geom_spec (blockBase k) t
+    have h' : geom (blockBase k) t * C + geom (blockBase k) t + 1 =
+        geom (blockBase k) t + blockBase k ^ t := by
+      calc geom (blockBase k) t * C + geom (blockBase k) t + 1
+          = geom (blockBase k) t * (C + 1) + 1 := by ring
+        _ = geom (blockBase k) t + blockBase k ^ t := by rw [← hC]; exact hg
+    omega
+  exact Nat.eq_of_mul_eq_mul_right hC0 (Nat.add_right_cancel (h1.trans h2.symm))
+
 
 end DecLoop
 
