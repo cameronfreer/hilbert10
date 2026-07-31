@@ -38,6 +38,24 @@ coefficient extraction, CRT aggregation, or masking — must be charged. The cos
 allowed to disappear into a strong sequence-coding lemma: what gets recorded is the theorem
 that actually converts all indexed checks into one finite equation.
 
+## The finite-witness boundary, for gate 2
+
+`ExpDioph` existentially quantifies an *arbitrary* witness type, but the per-step witnesses
+must be packed into finitely many β-coded sequences. Only finitely many witness variables
+occur in the two `ExpTerm`s, yet that finiteness is not exposed by the proposition — so gate
+2's converting theorem consumes an **explicit finite witness block**:
+
+```lean
+theorem expDioph_bounded_forall_eq
+    (bound : ExpTerm α) (s t : ExpTerm ((α ⊕ Unit) ⊕ Fin m)) :
+    ExpDioph { v | ∀ i < bound.eval v, ∃ w : Fin m → ℕ, s.eval … = t.eval … }
+```
+
+with the four ingredients visible: a variable bound, indexed checks, a genuinely nonempty
+finite local witness block, and one witness tuple per index. Lifting this to arbitrary
+`ExpDioph` relations is a finite-witness normalisation theorem, charged separately as
+representation plumbing rather than as gate 2's number theory.
+
 ## Gate 1, first half: the lookup graph
 
 `beta a b i = a % (1 + (i + 1) * b)` is the Gödel β-function. Its graph is `ExpDioph` for
