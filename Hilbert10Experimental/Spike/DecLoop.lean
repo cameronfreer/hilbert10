@@ -5,6 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ExpDioph
 import Mathlib.Algebra.BigOperators.Intervals
+import Mathlib.Data.Nat.Bitwise
 
 /-!
 # Route spike: arithmetising a decrement-to-zero loop
@@ -260,6 +261,70 @@ theorem isBinarySubmask_split {k x a b : ℕ} (ha : a < blockBase k) :
       exact hlo i ⟨hik, hi⟩
     · rw [if_neg hik]
       exact hhi (i - (k + 1)) (by rwa [Nat.sub_add_cancel (by omega)])
+
+/-- The API bridge: `Guarded.mask` is stated with the closed form `(dataBound k - 1) * G`, and
+after `geo_unique` that *is* `guardMask' k t`. Definitional, but named so the rewrite step is
+explicit. -/
+theorem guardMask'_eq (k t : ℕ) :
+    guardMask' k t = (dataBound k - 1) * geom (blockBase k) t := rfl
+
+/-- A number is a submask of `2 ^ k - 1` exactly when it fits in `k` bits. This is where the
+guard bit does its work: `dataBound k - 1` permits precisely the low `k` bits, so the extra
+bit of each `(k + 1)`-bit block is unavailable. -/
+theorem isBinarySubmask_dataBound_sub_one_iff {k x : ℕ} :
+    Nat.IsBinarySubmask x (dataBound k - 1) ↔ x < dataBound k := by
+  simp only [Nat.IsBinarySubmask, dataBound, Nat.testBit_two_pow_sub_one, decide_eq_true_eq]
+  constructor
+  · intro h
+    refine Nat.lt_pow_two_of_testBit x fun i hi => ?_
+    by_contra hc
+    exact absurd (h i (by simpa using hc)) (by omega)
+  · intro hx i hi
+    by_contra hik
+    have hle : (2 : ℕ) ^ k ≤ 2 ^ i := Nat.pow_le_pow_right (by norm_num) (by omega)
+    rw [Nat.testBit_lt_two_pow (lt_of_lt_of_le hx hle)] at hi
+    simp at hi
+
+/-- **The mask characterisation.** Stated as an equivalence, so that it serves soundness
+(every block bound, plus the global bound), completeness (the mask reduced to ordinary bounds
+on packed values), and fixes #34's exact semantic contract. -/
+theorem isBinarySubmask_guardMask_iff {k t R : ℕ} :
+    Nat.IsBinarySubmask R (guardMask' k t) ↔
+      R < blockBase k ^ t ∧ ∀ i < t, (R / blockBase k ^ i) % blockBase k < dataBound k := by
+  induction t generalizing R with
+  | zero =>
+    simp only [guardMask'_zero, pow_zero, Nat.lt_one_iff]
+    constructor
+    · intro h
+      refine ⟨Nat.zero_of_testBit_eq_false fun i => ?_, by omega⟩
+      by_contra hc
+      simpa using h i (by simpa using hc)
+    · rintro ⟨rfl, -⟩ i hi
+      simp at hi
+  | succ t ih =>
+    have hlow : dataBound k - 1 < blockBase k := by
+      simp only [dataBound, blockBase]
+      have h1 : 0 < 2 ^ k := Nat.two_pow_pos k
+      have h2 : (2 : ℕ) ^ k < 2 ^ (k + 1) := Nat.pow_lt_pow_right (by norm_num) (by omega)
+      omega
+    rw [guardMask'_succ, isBinarySubmask_split hlow, isBinarySubmask_dataBound_sub_one_iff, ih]
+    have hB : 0 < blockBase k := by simp [blockBase]
+    constructor
+    · rintro ⟨hmod, hdiv, hblk⟩
+      refine ⟨?_, fun i hi => ?_⟩
+      · rw [pow_succ]
+        exact (Nat.div_lt_iff_lt_mul hB).mp hdiv
+      · cases i with
+        | zero => simpa using hmod
+        | succ i =>
+          have := hblk i (by omega)
+          rwa [Nat.div_div_eq_div_mul, ← pow_succ'] at this
+    · rintro ⟨hlt, hblk⟩
+      refine ⟨by simpa using hblk 0 (by omega), ?_, fun i hi => ?_⟩
+      · refine (Nat.div_lt_iff_lt_mul hB).mpr ?_
+        rwa [← pow_succ]
+      · have := hblk (i + 1) (by omega)
+        rwa [Nat.div_div_eq_div_mul, ← pow_succ']
 
 end DecLoop
 
