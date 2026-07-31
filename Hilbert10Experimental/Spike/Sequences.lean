@@ -116,4 +116,49 @@ private theorem coprime_modulus {b i j : ℕ} (hij : i < j)
   have hdb : d ∣ b := hdji.trans hdvd
   exact hcop.eq_one_of_dvd hdb
 
+/-- **Gate 1, second half.** Every finite sequence has a β-code.
+
+Note the asymmetry, which is the point: the Chinese-remainder argument is needed only for
+*completeness* — that every desired sequence has some code. Soundness needs no code-validity
+predicate at all, because **every** pair `(a, b)` already denotes a sequence through `beta`.
+Factorials, coprimality and CRT therefore live entirely in this existence proof and never
+enter an `ExpDioph` relation.
+
+This is the same permissiveness that paid off for `PolynomialCode`: malformed or
+non-canonical representations do not exist, because every representation simply has
+semantics. -/
+theorem exists_beta_code {n : ℕ} (x : Fin n → ℕ) : ∃ a b, ∀ i : Fin n, beta a b i = x i := by
+  classical
+  set M := Finset.univ.sup x with hM
+  set b := Nat.factorial n * (M + 1) with hb
+  have hfac : 0 < Nat.factorial n := Nat.factorial_pos n
+  have hbM : M < b := by
+    have : M + 1 ≤ Nat.factorial n * (M + 1) := Nat.le_mul_of_pos_left _ hfac
+    omega
+  -- each entry is below its modulus
+  have hlt : ∀ i : Fin n, x i < modulus b i := by
+    intro i
+    have hxM : x i ≤ M := Finset.le_sup (Finset.mem_univ i)
+    have : b ≤ (i + 1) * b := Nat.le_mul_of_pos_left _ (by omega)
+    simp only [modulus]
+    omega
+  -- distinct moduli are coprime, since the index gap divides `b`
+  have hpair : Set.Pairwise (↑(Finset.univ : Finset (Fin n)))
+      (Function.onFun Nat.Coprime fun i : Fin n => modulus b i) := by
+    intro i _ j _ hij
+    have key : ∀ p q : Fin n, p < q → Nat.Coprime (modulus b p) (modulus b q) := by
+      intro p q hpq
+      refine coprime_modulus hpq ?_
+      have h1 : 0 < (q : ℕ) - p := by omega
+      have h2 : (q : ℕ) - p ≤ n := by have := q.isLt; omega
+      exact Dvd.dvd.mul_right (Nat.dvd_factorial h1 h2) _
+    rcases lt_or_gt_of_ne (fun h => hij (Fin.ext h) : (i : ℕ) ≠ j) with h | h
+    · exact key i j h
+    · exact (key j i h).symm
+  obtain ⟨a, ha⟩ := Nat.chineseRemainderOfFinset x (fun i : Fin n => modulus b i)
+    Finset.univ (fun i _ => (modulus_pos b i).ne') hpair
+  refine ⟨a, b, fun i => ?_⟩
+  have hmod : a % modulus b i = x i % modulus b i := ha i (Finset.mem_univ i)
+  rw [beta, ← modulus, hmod, Nat.mod_eq_of_lt (hlt i)]
+
 end Hilbert10Experimental
