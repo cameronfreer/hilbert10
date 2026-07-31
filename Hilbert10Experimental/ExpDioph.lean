@@ -190,8 +190,9 @@ theorem reindex {S : Set (α → ℕ)} (h : ExpDioph S) (f : α → β) :
   simp only [Set.mem_setOf_eq, ExpTerm.eval_map, e]
   exact hst (v ∘ f)
 
-/-- Projecting away the last block of variables. -/
-theorem exists' {S : Set (α ⊕ β → ℕ)} (h : ExpDioph S) :
+/-- Projecting away the last block of variables. Mirrors `Dioph.ex_dioph`; this is the
+primary projection operation, not a variant of another lemma. -/
+theorem ex {S : Set (α ⊕ β → ℕ)} (h : ExpDioph S) :
     ExpDioph {v : α → ℕ | ∃ w : β → ℕ, Sum.elim v w ∈ S} := by
   obtain ⟨γ, s, t, hst⟩ := h
   -- Combine the projected block with the existing witnesses.

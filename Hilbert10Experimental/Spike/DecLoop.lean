@@ -388,6 +388,63 @@ theorem guarded_sound {n k t R G : ℕ} (h : Guarded n k t R G) : HaltsIn n t :=
   obtain ⟨hlt, hdig⟩ := isBinarySubmask_guardMask_iff.mp hmask
   exact (haltsIn_iff n t).mpr (sound_aux k t n R hbase hlt hdig hstep)
 
+/-! ### Guarded completeness
+
+Structural, and consuming the recursive split directly rather than the characterisation:
+`packed_succ` and `guardMask'_succ` peel one block from each side in step, so
+`isBinarySubmask_split` reduces the mask obligation to a digit bound plus the induction
+hypothesis. That is the second of the two real use patterns — soundness consumes the
+characterisation, completeness the split — and between them they fix what the eventual
+block-packing module needs to export.
+-/
+
+/-- The packed countdown is a submask of the guard mask, provided the initial value fits in
+the data field. -/
+theorem packed_mask (k : ℕ) : ∀ n : ℕ, n < dataBound k →
+    Nat.IsBinarySubmask (packed n (blockBase k) n) (guardMask' k n) := by
+  have hB : 0 < blockBase k := by simp [blockBase]
+  have hDB : dataBound k < blockBase k := by
+    simp only [dataBound, blockBase]
+    exact Nat.pow_lt_pow_right (by norm_num) (by omega)
+  intro n
+  induction n with
+  | zero => intro _; simp [packed, guardMask'_zero]
+  | succ n ih =>
+    intro hn
+    rw [packed_succ, guardMask'_succ]
+    have hlow : dataBound k - 1 < blockBase k := by omega
+    rw [isBinarySubmask_split hlow]
+    have hmod : ((n + 1) + blockBase k * packed n (blockBase k) n) % blockBase k = n + 1 := by
+      rw [Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt (by omega)]
+    have hdiv : ((n + 1) + blockBase k * packed n (blockBase k) n) / blockBase k
+        = packed n (blockBase k) n := by
+      rw [Nat.add_mul_div_left _ _ hB, Nat.div_eq_of_lt (by omega), Nat.zero_add]
+    rw [hmod, hdiv]
+    exact ⟨isBinarySubmask_dataBound_sub_one_iff.mpr hn, ih (by omega)⟩
+
+/-- **Guarded completeness.** A real run yields a satisfying encoding: take the bit width
+from the initial value, the geometric sum for `G`, and the packed countdown for `R`. -/
+theorem guarded_complete {n t : ℕ} (h : HaltsIn n t) :
+    ∃ k R G, Guarded n k t R G := by
+  obtain rfl : n = t := (haltsIn_iff n t).mp h
+  have hk : n < dataBound n := by simpa [dataBound] using Nat.lt_two_pow_self
+  exact ⟨n, packed n (blockBase n) n, geom (blockBase n) n,
+    hk, geom_spec _ _, packed_spec n _, packed_mask n n hk⟩
+
+/-- **The spike's public slice.** The machine encoding is semantically exact: a decrement
+loop halts in `t` steps from `n` exactly when the guarded constraint system has a solution.
+
+`k` is quantified existentially because `base : n < 2 ^ k` is representation data — a choice
+of bit width wide enough to hold the run — and not a restriction on the relation being
+encoded. -/
+theorem haltsIn_iff_guarded (n t : ℕ) :
+    HaltsIn n t ↔ ∃ k R G, Guarded n k t R G :=
+  ⟨guarded_complete, fun ⟨_, _, _, hg⟩ => guarded_sound hg⟩
+
+/-- The slice at work on a concrete run. -/
+example : ∃ k R G, Guarded 3 k 3 R G :=
+  (haltsIn_iff_guarded 3 3).mp ((haltsIn_iff 3 3).mpr rfl)
+
 end DecLoop
 
 end Hilbert10Experimental
