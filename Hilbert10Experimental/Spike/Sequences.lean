@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ExpDioph
+import Mathlib.Data.Nat.ChineseRemainder
+import Mathlib.Data.Nat.Factorial.Basic
 
 /-!
 # Route spike, direct route: sequence coding
@@ -65,13 +67,53 @@ theorem dioph_beta {α : Type} (a b i r : α) :
     Dioph {v : α → ℕ | beta (v a) (v b) (v i) = v r} :=
   (expDioph_beta a b i r).dioph
 
-/-! ### What remains of gate 1
+/-! ### Gate 1, second half: the encoding theorem
 
-The other half is the encoding theorem: for every finite sequence `s` and length `n`, there
-are `a, b` with `beta a b i = s i` for all `i < n`. That is the Chinese-remainder argument —
-choose `b` a common multiple making the moduli `1 + (i + 1) * b` pairwise coprime and each
-larger than every entry, then take `a` by CRT. Mathlib supplies `Nat.chineseRemainder`; the
-coprimality bookkeeping is the work.
+Built on `Nat.chineseRemainderOfFinset`, which mathlib motivates by the β-function itself,
+rather than on a recursive CRT of our own.
+
+The modulus at index `i` is `1 + (i + 1) * b` with `b = n ! * (M + 1)` and `M` bounding the
+entries. The factorial is used **only semantically**, to show an encoding exists; it does not
+appear in any `ExpDioph` relation, so gate 1 charges no factorial-graph obligation.
 -/
+
+/-- The moduli used to code a sequence with spacing `b`. -/
+private def modulus (b i : ℕ) : ℕ := 1 + (i + 1) * b
+
+private theorem modulus_pos (b i : ℕ) : 0 < modulus b i := by simp [modulus]
+
+/-- Any divisor of a modulus is coprime to the spacing: it divides `1 + (i + 1) * b`, and a
+common factor with `b` would have to divide `1`. -/
+private theorem coprime_of_dvd_modulus {b i d : ℕ} (hd : d ∣ modulus b i) :
+    Nat.Coprime d b := by
+  have hgd : Nat.gcd d b ∣ modulus b i := (Nat.gcd_dvd_left d b).trans hd
+  have hgb : Nat.gcd d b ∣ (i + 1) * b := (Nat.gcd_dvd_right d b).mul_left (i + 1)
+  have h1 : Nat.gcd d b ∣ 1 := by
+    have := Nat.dvd_sub hgd hgb
+    simpa [modulus] using this
+  exact Nat.dvd_one.mp h1
+
+/-- Distinct moduli are coprime, provided the spacing is divisible by the index gap. -/
+private theorem coprime_modulus {b i j : ℕ} (hij : i < j)
+    (hdvd : (j - i) ∣ b) : Nat.Coprime (modulus b i) (modulus b j) := by
+  set d := Nat.gcd (modulus b i) (modulus b j) with hd
+  have hdi : d ∣ modulus b i := Nat.gcd_dvd_left _ _
+  have hdj : d ∣ modulus b j := Nat.gcd_dvd_right _ _
+  have hcop : Nat.Coprime d b := coprime_of_dvd_modulus hdi
+  -- `d` divides the difference of the moduli, which is `(j - i) * b`
+  have hdiff : d ∣ (j - i) * b := by
+    have := Nat.dvd_sub hdj hdi
+    have heq : modulus b j - modulus b i = (j - i) * b := by
+      simp only [modulus]
+      have : (j + 1) * b - (i + 1) * b = (j - i) * b := by
+        rw [← Nat.sub_mul]
+        congr 1
+        omega
+      omega
+    rwa [heq] at this
+  -- coprimality with `b` promotes that to dividing `j - i`, hence dividing `b`
+  have hdji : d ∣ j - i := (Nat.Coprime.dvd_of_dvd_mul_right hcop hdiff)
+  have hdb : d ∣ b := hdji.trans hdvd
+  exact hcop.eq_one_of_dvd hdb
 
 end Hilbert10Experimental
