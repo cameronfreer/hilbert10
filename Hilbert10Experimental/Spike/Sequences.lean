@@ -307,6 +307,39 @@ extraction theorem (#33, or an alternative)
 
 Defining the semantic product, as done here, advances the *reduction* but not the
 representation. The representation is the obligation, and it remains open.
+
+### The residual theorem, stated properly
+
+Two constraints on how it may be stated, both of which prevent a vacuous claim.
+
+**Index by an `ExpTerm`, not a semantic function.** Written with an arbitrary `h : ℕ → ℕ`
+the statement would silently assume `h` representable, which is most of the difficulty. So:
+
+```lean
+theorem expDioph_bounded_product_eq_one
+    (bound : ExpTerm α) (h : ExpTerm (α ⊕ Unit)) :
+    ExpDioph { v | ∏ i ∈ Finset.range (bound.eval v),
+                     h.eval (Sum.elim v fun _ => i) = 1 }
+```
+
+**Prove only what the endpoint needs.** Equality to `1`, not a general graph with arbitrary
+output; the stronger theorem is not required unless it falls out free.
+
+### The circularity trap
+
+Coding the successive partial products with `beta` and requiring
+
+```
+p (i + 1) = p i * h i
+```
+
+does **not** discharge this. That trace-validity condition is itself a variable bounded
+conjunction of step equations — the very thing being eliminated — so the construction merely
+reproduces the problem one level down. It counts only if that condition is aggregated by an
+*independently proved* theorem.
+
+Attribution therefore belongs at the **deepest non-circular representation theorem**, not at
+whichever lemma happens to sit closest to the endpoint.
 -/
 
 /-- The gap term: zero exactly when the two sides agree. -/
