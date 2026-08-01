@@ -6,6 +6,7 @@ Authors: Cameron Freer
 import Hilbert10Experimental.ExpDioph
 import Mathlib.Data.Nat.ChineseRemainder
 import Mathlib.Data.Nat.Factorial.Basic
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
 # Route spike, direct route: sequence coding
@@ -234,5 +235,97 @@ example {α : Type} (a b i x : α) (v : α → ℕ) :
     ((substLookup a b i (.add (.var (Sum.inr 0)) (.const 1))).eval v = v x) ↔
       beta (v a) (v b) (v i) + 1 = v x := by
   simp [ExpTerm.eval]
+
+/-! ### Gate 2, step one: eliminating the per-step witnesses
+
+Before attacking the bounded universal itself, separate out the *witness* half. Coding one
+sequence per witness variable turns
+
+```
+∀ i < N, ∃ w : Fin m → ℕ, P i w
+```
+
+into a statement with no inner existential at all, at the cost of `2 * m` outer variables.
+This direction is cheap — it is exactly what gate 1 bought — and isolating it means the
+residual cost is attributable to the bounded universal *alone*.
+
+Note which way the two halves of gate 1 are used: completeness (`exists_beta_code`, and so
+CRT) proves the forward direction, while the backward direction needs only that every
+`(a, b)` denotes *some* sequence, i.e. the totality of `beta`. -/
+theorem bounded_forall_witness_iff {m : ℕ} (N : ℕ) (P : ℕ → (Fin m → ℕ) → Prop) :
+    (∀ i < N, ∃ w : Fin m → ℕ, P i w) ↔
+      ∃ a b : Fin m → ℕ, ∀ i < N, P i fun j => beta (a j) (b j) i := by
+  classical
+  constructor
+  · intro h
+    -- pick a witness tuple at each index, then code each component as a sequence
+    let W : Fin N → (Fin m → ℕ) := fun i => Classical.choose (h i i.isLt)
+    have hW : ∀ i : Fin N, P i (W i) := fun i => Classical.choose_spec (h i i.isLt)
+    choose a b hab using fun j : Fin m => exists_beta_code fun i : Fin N => W i j
+    refine ⟨a, b, fun i hi => ?_⟩
+    have hfun : (fun j => beta (a j) (b j) i) = W ⟨i, hi⟩ := by
+      funext j
+      exact hab j ⟨i, hi⟩
+    rw [hfun]
+    exact hW ⟨i, hi⟩
+  · rintro ⟨a, b, h⟩ i hi
+    exact ⟨_, h i hi⟩
+
+/-- The residual obligation, stated so the accounting is unmistakable: after
+`bounded_forall_witness_iff`, what remains is a bounded universal over a **witness-free**
+condition. Gate 2's entire mathematical cost lives here. -/
+def BoundedForall (N : ℕ) (Q : ℕ → Prop) : Prop := ∀ i < N, Q i
+
+theorem bounded_forall_witness_iff' {m : ℕ} (N : ℕ) (P : ℕ → (Fin m → ℕ) → Prop) :
+    (∀ i < N, ∃ w : Fin m → ℕ, P i w) ↔
+      ∃ a b : Fin m → ℕ, BoundedForall N fun i => P i fun j => beta (a j) (b j) i :=
+  bounded_forall_witness_iff N P
+
+/-! ### Gate 2, step two: the bounded universal becomes a bounded product
+
+With the witnesses eliminated, what remains is `∀ i < N, f i = g i` for exponential-polynomial
+`f, g`. Over `ℕ` this collapses to a single **bounded product** equalling one, since each
+factor is at least one and a product of naturals is one exactly when every factor is:
+
+```
+(∀ i < N, f i = g i)  ↔  ∏ i < N, (1 + (f i ∸ g i) + (g i ∸ f i)) = 1
+```
+
+The reduction itself is elementary arithmetic — proved below. What it does **not** do is
+discharge gate 2: it relocates the obligation onto the exponential-Diophantine representation
+of the bounded product, which is where the mathematical cost actually sits.
+
+Naming that residual obligation explicitly, per the method-neutrality guardrail, so the
+dependency chain stays legible rather than being absorbed into the endpoint:
+
+```
+extraction theorem (#33, or an alternative)
+  ↓  expDioph_bounded_product     -- the graph of ∏ i < N, h i
+  ↓  bounded witnessed conjunction
+  ↓  expDioph_bounded_forall_eq
+```
+
+Defining the semantic product, as done here, advances the *reduction* but not the
+representation. The representation is the obligation, and it remains open.
+-/
+
+/-- The gap term: zero exactly when the two sides agree. -/
+def gap (f g : ℕ → ℕ) (i : ℕ) : ℕ := 1 + (f i - g i) + (g i - f i)
+
+theorem one_le_gap (f g : ℕ → ℕ) (i : ℕ) : 1 ≤ gap f g i := by simp only [gap]; omega
+
+theorem gap_eq_one_iff {f g : ℕ → ℕ} {i : ℕ} : gap f g i = 1 ↔ f i = g i := by
+  simp only [gap]; omega
+
+/-- **The reduction.** A bounded universal over an equation is a single bounded product
+equalling one. Elementary; the cost is in representing the product, not in this step. -/
+theorem boundedForall_eq_iff_prod (f g : ℕ → ℕ) (N : ℕ) :
+    BoundedForall N (fun i => f i = g i) ↔ ∏ i ∈ Finset.range N, gap f g i = 1 := by
+  rw [Finset.prod_eq_one_iff]
+  constructor
+  · intro h i hi
+    exact gap_eq_one_iff.mpr (h i (Finset.mem_range.mp hi))
+  · intro h i hi
+    exact gap_eq_one_iff.mp (h i (Finset.mem_range.mpr hi))
 
 end Hilbert10Experimental
