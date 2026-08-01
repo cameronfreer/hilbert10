@@ -56,6 +56,26 @@ finite local witness block, and one witness tuple per index. Lifting this to arb
 `ExpDioph` relations is a finite-witness normalisation theorem, charged separately as
 representation plumbing rather than as gate 2's number theory.
 
+**The endpoint stays method-neutral.** No `product` in its statement, and no bounded-product
+or bounded-forall constructor added to `ExpTerm` — either would relocate the missing proof
+into new syntax rather than supply it. If the classical route is taken, its crucial
+intermediate step is exposed *separately*, as `expDioph_bounded_product`, so the dependency
+chain is visible:
+
+```
+#33 (or an alternative extraction theorem)
+  ↓
+bounded-product graph
+  ↓
+bounded witnessed conjunction
+  ↓
+expDioph_bounded_forall_eq
+```
+
+A cheaper non-product construction, if one exists, still fits the method-neutral endpoint.
+And defining the semantic bounded product without proving its `ExpDioph` representation does
+not advance gate 2 at all — the representation *is* the obligation.
+
 ## Gate 1, first half: the lookup graph
 
 `beta a b i = a % (1 + (i + 1) * b)` is the Gödel β-function. Its graph is `ExpDioph` for
