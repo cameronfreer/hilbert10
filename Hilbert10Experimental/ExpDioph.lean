@@ -118,6 +118,23 @@ def map (f : α → β) : ExpTerm α → ExpTerm β
     (t.map f).eval x = t.eval (x ∘ f) := by
   induction t <;> simp_all [map, eval]
 
+/-- Substitute a term for each variable. Unlike `map`, which only renames variables, this
+replaces them by arbitrary terms — which is what an arithmetisation needs when a local
+witness variable has to become a lookup into a coded sequence. -/
+def subst (f : α → ExpTerm β) : ExpTerm α → ExpTerm β
+  | var i => f i
+  | const n => const n
+  | add s t => add (s.subst f) (t.subst f)
+  | mul s t => mul (s.subst f) (t.subst f)
+  | pow s t => pow (s.subst f) (t.subst f)
+  | div s t => div (s.subst f) (t.subst f)
+  | mod s t => mod (s.subst f) (t.subst f)
+  | sub s t => sub (s.subst f) (t.subst f)
+
+@[simp] theorem eval_subst (f : α → ExpTerm β) (t : ExpTerm α) (v : β → ℕ) :
+    (t.subst f).eval v = t.eval fun i => (f i).eval v := by
+  induction t <;> simp_all [subst, eval]
+
 end ExpTerm
 
 /-- A set is exponential Diophantine when it is the projection of an equality between two

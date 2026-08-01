@@ -179,4 +179,40 @@ theorem exists_beta_code {n : ℕ} (x : Fin n → ℕ) : ∃ a b, ∀ i : Fin n,
   have hmod : a % modulus b i = x i % modulus b i := ha i (Finset.mem_univ i)
   rw [beta, ← modulus, hmod, Nat.mod_eq_of_lt (hlt i)]
 
+/-! ### Substituting a lookup for a local witness
+
+The plumbing gate 2 needs, demonstrated at `m = 1` on an equation the witness genuinely
+affects — so the instance cannot degenerate to the witness-free case. `ExpTerm.map` cannot
+express this, since it only renames variables; `ExpTerm.subst` replaces a variable by a term.
+-/
+
+/-- Replace the single local witness variable by a lookup into the sequence coded by
+`(a, b)` at index `i`, leaving the outer variables alone. -/
+def substLookup {α : Type} (a b i : α) : ExpTerm (α ⊕ Fin 1) → ExpTerm α :=
+  ExpTerm.subst (Sum.elim ExpTerm.var fun _ => betaTerm a b i)
+
+@[simp] theorem eval_substLookup {α : Type} (a b i : α) (s : ExpTerm (α ⊕ Fin 1))
+    (v : α → ℕ) :
+    (substLookup a b i s).eval v =
+      s.eval (Sum.elim v fun _ => beta (v a) (v b) (v i)) := by
+  simp only [substLookup, ExpTerm.eval_subst]
+  congr 1
+  funext z
+  cases z <;> simp [ExpTerm.eval]
+
+/-- Acceptance instance: the local witness occurs on both sides of a nontrivial equation, so
+substituting a lookup for it cannot collapse to a witness-free statement. -/
+example {α : Type} (a b i : α) (v : α → ℕ) :
+    (substLookup a b i (.add (.var (Sum.inr 0)) (.var (Sum.inr 0)))).eval v =
+      2 * beta (v a) (v b) (v i) := by
+  simp [ExpTerm.eval]
+  ring
+
+/-- And the witness really is load-bearing: the substituted equation constrains the coded
+value, rather than holding for every sequence. -/
+example {α : Type} (a b i x : α) (v : α → ℕ) :
+    ((substLookup a b i (.add (.var (Sum.inr 0)) (.const 1))).eval v = v x) ↔
+      beta (v a) (v b) (v i) + 1 = v x := by
+  simp [ExpTerm.eval]
+
 end Hilbert10Experimental
