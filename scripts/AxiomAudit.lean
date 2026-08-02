@@ -3,6 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
+import Lean
 import Hilbert10
 
 /-!
@@ -19,12 +20,13 @@ Two layers:
   names defeat any namespace-prefix filter) and compiler-generated auxiliaries — so a
   `native_decide`/`ofReduceBool` (or any custom axiom) anywhere in the library fails the
   gate, whether or not the declaration is listed below.
-* **Headline regression list**: `headlineDecls` is extended in every milestone; because
-  the double-backtick names resolve at elaboration, a deletion or rename of a headline
-  declaration also fails the gate.
+* **Headline regression list**: `headlineDecls` names the results the library exists to
+  provide, and grows as they are promoted. It is a rename/deletion tripwire rather than
+  the main guarantee — the double-backtick names resolve at elaboration, so removing a
+  headline result fails the gate instead of silently shrinking it.
 
 The sweep only sees modules reachable from `Hilbert10`, i.e. the root import spine.
-`Hilbert10.Experimental.*` is deliberately outside it (see
+`Hilbert10Experimental.*` is deliberately outside it (see
 `scripts/check_sorry_boundary.py`), so work in progress is not audited until it is
 promoted.
 -/
@@ -33,10 +35,8 @@ open Lean
 
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
-/-- Headline declarations to audit; extended with each milestone. -/
-def headlineDecls : List Name :=
-  [-- Scaffold
-   ``Hilbert10.exists_sq_add_sq_eq_25]
+/-- Headline declarations to audit; extended as results are promoted into the spine. -/
+def headlineDecls : List Name := []
 
 #eval show CoreM Unit from do
   for t in headlineDecls do
