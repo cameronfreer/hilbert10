@@ -22,6 +22,7 @@ import Hilbert10Experimental.ExpDiophChoose
 import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.RegisterMachine
 import Hilbert10Experimental.RegisterMachineComp
+import Hilbert10Experimental.RegisterMachineRealises
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
 import Hilbert10Experimental.Spike.Sequences
