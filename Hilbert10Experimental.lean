@@ -5,6 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ForMathlib.BinarySubmask
 import Hilbert10Experimental.ForMathlib.PrimrecInt
+import Hilbert10Experimental.ForMathlib.ChooseDigit
 import Hilbert10Experimental.ForMathlib.SubmaskChoose
 import Hilbert10Experimental.ForMathlib.PrimrecNat
 import Hilbert10Experimental.HaltingComplete
