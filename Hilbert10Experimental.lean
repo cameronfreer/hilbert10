@@ -12,13 +12,9 @@ import Hilbert10Experimental.HaltingComplete
 import Hilbert10Experimental.RightRename
 import Hilbert10Experimental.PolyBridge
 import Hilbert10Experimental.NormalForm
-import Hilbert10Experimental.PolynomialCode
 import Hilbert10Experimental.PolynomialCodeComp
-import Hilbert10Experimental.PolynomialCodeDenote
-import Hilbert10Experimental.ExistsCode
 import Hilbert10Experimental.ExistsCodeRepresents
 import Hilbert10Experimental.Instantiate
-import Hilbert10Experimental.NatSolvable
 import Hilbert10Experimental.Specialization
 import Hilbert10Experimental.DiophToRE
 import Hilbert10Experimental.ExpDioph

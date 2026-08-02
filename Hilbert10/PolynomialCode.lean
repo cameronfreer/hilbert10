@@ -29,7 +29,7 @@ Deliberately absent: any `MvPolynomial` connection (that is #10), any `+`/`*` AP
 substitution beyond #12, systems of equations, or fresh-variable allocation.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 /-- The exponent vector of a monomial: the `i`-th entry is the exponent of variable `i`. -/
 abbrev MonomialCode := List ℕ
@@ -154,4 +154,4 @@ example : (⟨[(1, [1, 0, 0])]⟩ : PolynomialCode).eval [4] = 4 := by decide
 
 end PolynomialCode
 
-end Hilbert10Experimental
+end Hilbert10

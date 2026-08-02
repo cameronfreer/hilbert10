@@ -31,7 +31,7 @@ term's exponent vector, where the vector is entirely consumed and `drop` leaves 
 That is a consequence of the zero-extension convention from #8, not an extra hypothesis.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -155,4 +155,4 @@ example :
 
 end PolynomialCode
 
-end Hilbert10Experimental
+end Hilbert10

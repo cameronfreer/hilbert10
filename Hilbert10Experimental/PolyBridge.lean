@@ -30,7 +30,7 @@ needs.
 and `C` by `map_add` / `map_mul` / `map_intCast` instead of bespoke induction.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open MvPolynomial
 
@@ -113,4 +113,4 @@ theorem RepresentsNat.congr {p : MvPolynomial (α ⊕ β) ℤ} {R S : (α → �
     (h : RepresentsNat p R) (hRS : ∀ x, R x ↔ S x) : RepresentsNat p S :=
   fun x => (hRS x).symm.trans (h x)
 
-end Hilbert10Experimental
+end Hilbert10

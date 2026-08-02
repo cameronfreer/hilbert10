@@ -36,7 +36,14 @@ open Lean
 def allowedAxioms : List Name := [``propext, ``Classical.choice, ``Quot.sound]
 
 /-- Headline declarations to audit; extended as results are promoted into the spine. -/
-def headlineDecls : List Name := []
+def headlineDecls : List Name :=
+  [-- The wire format: encoding contract, semantics, and the decision problem (#50)
+   ``Hilbert10.PolynomialCode.eval_denote,
+   ``Hilbert10.PolynomialCode.exists_code,
+   ``Hilbert10.PolynomialCode.eval_exists_code,
+   ``Hilbert10.PolynomialCode.hasNatRoot_iff,
+   ``Hilbert10.NatSolvable,
+   ``Hilbert10.natSolvable_iff_arity]
 
 #eval show CoreM Unit from do
   for t in headlineDecls do

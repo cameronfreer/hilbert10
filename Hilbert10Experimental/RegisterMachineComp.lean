@@ -37,7 +37,7 @@ completeness side separately.
 * `halts_append_of_exits` — sequencing, given that the prefix exits at exactly `P.length`
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace RegisterMachine
 
@@ -256,4 +256,4 @@ theorem halts_append_of_exits {P Q : Program k} {c : Config k} {n : ℕ}
 
 end RegisterMachine
 
-end Hilbert10Experimental
+end Hilbert10

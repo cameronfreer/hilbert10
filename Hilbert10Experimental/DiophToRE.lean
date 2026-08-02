@@ -38,7 +38,7 @@ strengthening soundness or completeness. Completeness here is exactly
 `Encodable.encodek : decode (encode b) = some b`.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open MvPolynomial PolynomialCode
 
@@ -103,4 +103,4 @@ private theorem computablePred_eval : ComputablePred fun z : PolynomialCode × L
 theorem rePred_natSolvable : REPred NatSolvable :=
   (ComputablePred.rePred_exists computablePred_eval).of_eq fun _ => Iff.rfl
 
-end Hilbert10Experimental
+end Hilbert10

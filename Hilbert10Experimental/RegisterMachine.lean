@@ -40,7 +40,7 @@ width are chosen together with the run packing they have to fit.
 * `RegisterMachine.step`, `run`, `Halted`, `Halts`
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace RegisterMachine
 
@@ -172,4 +172,4 @@ theorem halts_decLoop (n : ℕ) : Halts decLoop ⟨0, fun _ => n⟩ := by
 
 end RegisterMachine
 
-end Hilbert10Experimental
+end Hilbert10

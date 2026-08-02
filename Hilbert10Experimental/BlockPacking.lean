@@ -36,7 +36,7 @@ local name for readability. What is worth keeping is `geom_unique`, the subtract
 uniqueness statement, which is stated against that sum.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open Finset
 
@@ -161,4 +161,4 @@ theorem isBinarySubmask_guardMask_iff {k t R : ℕ} :
         rwa [Nat.div_div_eq_div_mul, ← pow_succ']
 
 
-end Hilbert10Experimental
+end Hilbert10

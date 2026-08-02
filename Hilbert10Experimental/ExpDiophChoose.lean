@@ -22,7 +22,7 @@ new `ExpTerm` constructor: `pow`, `div` and `mod` already exist, which is precis
 Kept in its own file so `ExpDioph` stays importable without the `Choose` hierarchy.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 variable {α : Type}
 
@@ -60,4 +60,4 @@ theorem of_isBinarySubmask (a b : ExpTerm α) :
 
 end ExpDioph
 
-end Hilbert10Experimental
+end Hilbert10

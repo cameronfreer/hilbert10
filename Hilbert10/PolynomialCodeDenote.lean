@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.PolynomialCode
+import Hilbert10.PolynomialCode
 import Mathlib.Algebra.MvPolynomial.Variables
 import Mathlib.Data.List.GetD
 
@@ -39,7 +39,7 @@ does the combining.
 No computability results: that is #9, and it deliberately does not depend on this file.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -252,4 +252,4 @@ end
 
 end PolynomialCode
 
-end Hilbert10Experimental
+end Hilbert10

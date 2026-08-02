@@ -24,7 +24,7 @@ combined with `ExpDioph.and` and projected with `ExpDioph.ex`. No new syntax is 
 guard-mask term `(2 ^ k - 1) * G` uses truncated subtraction, an `ExpTerm` constructor.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace DecLoop
 
@@ -81,4 +81,4 @@ theorem dioph_haltsIn : Dioph {v : Fin 2 → ℕ | HaltsIn (v 0) (v 1)} :=
 
 end DecLoop
 
-end Hilbert10Experimental
+end Hilbert10

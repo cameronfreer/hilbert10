@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.ExistsCode
+import Hilbert10.ExistsCode
 import Hilbert10Experimental.PolyBridge
 
 /-!
@@ -14,7 +14,7 @@ in its own module so that `Hilbert10Experimental.ExistsCode` genuinely does not 
 the `Poly`/`MvPolynomial` bridge — a fact about the import graph, not a claim in prose.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -35,4 +35,4 @@ theorem exists_code_representsNat {R : (Fin n → ℕ) → Prop}
 
 end PolynomialCode
 
-end Hilbert10Experimental
+end Hilbert10

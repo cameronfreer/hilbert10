@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.PolynomialCodeDenote
+import Hilbert10.PolynomialCodeDenote
 import Mathlib.Logic.Equiv.Fin.Basic
 
 /-!
@@ -37,7 +37,7 @@ Codes are built by induction on the polynomial with every exponent vector of len
 a no-op, which would be a soundness bug rather than an inconvenience.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -186,4 +186,4 @@ theorem eval_exists_code {p : MvPolynomial (Fin n ⊕ Fin m) ℤ} {q : Polynomia
 
 end PolynomialCode
 
-end Hilbert10Experimental
+end Hilbert10

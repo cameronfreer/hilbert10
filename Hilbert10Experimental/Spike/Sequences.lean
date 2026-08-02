@@ -84,7 +84,7 @@ free, because `mod`, `mul` and `add` are `ExpTerm` constructors — a direct con
 #16's design decision to make `div` and `mod` constructors rather than closure lemmas.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 /-- The Gödel β-function: the `i`-th entry of the sequence coded by `(a, b)`. -/
 def beta (a b i : ℕ) : ℕ := a % (1 + (i + 1) * b)
@@ -361,4 +361,4 @@ theorem boundedForall_eq_iff_prod (f g : ℕ → ℕ) (N : ℕ) :
   · intro h i hi
     exact gap_eq_one_iff.mp (h i (Finset.mem_range.mpr hi))
 
-end Hilbert10Experimental
+end Hilbert10

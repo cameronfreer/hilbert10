@@ -60,7 +60,7 @@ This syntax stays internal to the DPRM core; it is not the DSL of #29, having no
 fresh-variable discipline, no gadget calls and no extraction.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 variable {α β : Type}
 
@@ -298,4 +298,4 @@ theorem dioph_mixed {α : Type} (i j : α) :
       (.add (.mod (.var j) (.const 3)) (.const 1)))
     (t := .var i)).dioph
 
-end Hilbert10Experimental
+end Hilbert10

@@ -29,7 +29,7 @@ failure is instructive: the counterexample's digits are all below the base, so w
 is a no-borrow *guard bit*, not a digit bound. See `not_sound_without_guard_bits` below.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace DecLoop
 
@@ -315,4 +315,4 @@ example : ∃ k R G, Guarded 3 k 3 R G :=
 
 end DecLoop
 
-end Hilbert10Experimental
+end Hilbert10

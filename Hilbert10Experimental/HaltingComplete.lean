@@ -20,7 +20,7 @@ recorded in issue #1 it is what turns Diophantineness of the *single* universal 
 predicate into RE-completeness of `HilbertTenth.NatSolvable`.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open Nat.Partrec (Code)
 
@@ -83,4 +83,4 @@ theorem haltsOn_manyOneReducible_halts : HaltsOn ≤₀ Halts := by
   rw [Halts, this]
   rfl
 
-end Hilbert10Experimental
+end Hilbert10

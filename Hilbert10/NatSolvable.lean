@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.PolynomialCode
+import Hilbert10.PolynomialCode
 
 /-!
 # Hilbert's tenth problem as a decision problem
@@ -27,9 +27,21 @@ produce or preserve a length invariant.
 The name says `Nat` because the development is over natural-number assignments, matching
 `Dioph`. Hilbert's original integer formulation is #28 and gets `IntSolvable`; nothing here
 is called `H10` unqualified.
+
+## What this module does not yet claim
+
+`NatSolvable` is a predicate on `PolynomialCode`, which carries a `Primcodable` instance
+(`Hilbert10.PolynomialCodePrimcodable`), so it is a decision problem in the sense the
+computability library expects. But `REPred NatSolvable` is *not* provable from this module's
+imports: it needs computability of `eval`, which needs `Primrec` lemmas about `ℤ` that the
+pinned mathlib lacks (#36).
+
+So the definition and its semantics are settled here, and the statement that it is
+recursively enumerable is a separate theorem with a separate dependency. Do not read the
+public `NatSolvable` as already carrying that content.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -79,4 +91,4 @@ example (p : PolynomialCode) : NatSolvable p ↔ p.HasNatRoot := Iff.rfl
 /-- A solvable instance: `x₀ ^ 2 + x₁ ^ 2 - 25` has the root `[3, 4]`. -/
 example : NatSolvable ⟨[(1, [2]), (1, [0, 2]), (-25, [])]⟩ := ⟨[3, 4], by decide⟩
 
-end Hilbert10Experimental
+end Hilbert10

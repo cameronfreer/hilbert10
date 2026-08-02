@@ -5,10 +5,10 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-Active development. None of the endpoint theorems below is proved yet; what exists is the
-infrastructure they are assembled from, listed under [library layers](#library-layers). Finished
-work is promoted into the `Hilbert10` spine, everything else lives in `Hilbert10Experimental`,
-and the difference between them is a guarantee rather than a build setting — see
+Active development. The public spine carries reviewed results; further completed work stays in
+staging until promotion. The endpoint below is a target API rather than a status table, and
+[issue #1](https://github.com/cameronfreer/hilbert10/issues/1) records current progress. The
+difference between the two libraries is a guarantee, not a build setting — see
 [verification](#verification).
 
 ## Intended endpoint

@@ -5,7 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ExistsCodeRepresents
 import Hilbert10Experimental.Instantiate
-import Hilbert10Experimental.NatSolvable
+import Hilbert10.NatSolvable
 import Mathlib.Computability.Reduce
 
 /-!
@@ -34,7 +34,7 @@ the way to a many-one reduction, exercising #5, #10, #11, #12 and #13 end to end
 of M4's cost is incurred.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 namespace PolynomialCode
 
@@ -134,4 +134,4 @@ theorem sumTwoSquares_manyOneReducible_natSolvable :
     (fun n : ℕ => ∃ a b : ℕ, n = a ^ 2 + b ^ 2) ≤₀ NatSolvable :=
   representsNat_manyOneReducible_natSolvable ⟨2, _, representsNat_sumTwoSquares⟩
 
-end Hilbert10Experimental
+end Hilbert10

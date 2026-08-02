@@ -28,7 +28,7 @@ Witnesses outside the range of the compacting injection are unused, so the rever
 inclusion extends a `Fin m`-tuple back to a `β`-tuple with `Function.extend`.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open MvPolynomial
 
@@ -79,4 +79,4 @@ theorem dioph_iff_exists_fin_mvPolynomial (R : (Fin n → ℕ) → Prop) :
     rw [hp x]
     exact exists_congr fun y => by rw [toDiophPoly_apply, ← sum_elim_cast]
 
-end Hilbert10Experimental
+end Hilbert10

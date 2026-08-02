@@ -20,7 +20,7 @@ What is needed instead is a *right-only* compaction: the `Fin n` block is fixed 
 and only `β` is compacted to its finite support.
 -/
 
-namespace Hilbert10Experimental
+namespace Hilbert10
 
 open MvPolynomial
 
@@ -79,4 +79,4 @@ theorem eval_of_exists_fin_right_rename {σ : Type*} (p : MvPolynomial (σ ⊕ �
     cases i <;> rfl
   rw [eval_rename, hassign]
 
-end Hilbert10Experimental
+end Hilbert10
