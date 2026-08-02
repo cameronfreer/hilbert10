@@ -1,0 +1,108 @@
+/-
+Copyright (c) 2026 Cameron Freer. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Cameron Freer
+-/
+import Mathlib.Data.Nat.Pairing
+import Mathlib.Logic.Function.Iterate
+import Mathlib.Tactic.Ring
+
+/-!
+# The pairing enumeration has a successor function
+
+A spike for #51, run before building any machine.
+
+`Nat.pair` and `Nat.unpair` are stated with multiplication and `Nat.sqrt`, and taking those
+definitions at face value makes #51 a verified-arithmetic project: a multiplier, a square root,
+and their correctness proofs. This file checks a cheaper reading.
+
+The pairing is an *enumeration* of `ℕ × ℕ`, and enumerations have successors. `pairNext` is that
+successor, and the two theorems below say it is correct:
+
+```lean
+Nat.pair (pairNext p).1 (pairNext p).2 = Nat.pair p.1 p.2 + 1
+pairNext^[n] (0, 0) = Nat.unpair n
+```
+
+Neither statement mentions a square root, and neither proof needs one — `pairNext` is built from
+comparison, increment and zeroing alone.
+
+## What this means for #51
+
+`unpair n` is `pairNext` iterated `n` times from `(0, 0)`: a counted loop.
+
+`pair a b` is the enumeration run until the state is `(a, b)`, counting steps. It terminates,
+and `iterate_pairNext_pair` is the certificate — after exactly `Nat.pair a b` steps the state
+*is* `(a, b)`. So the loop's termination is proved directly and does not go through a general
+unbounded search, which would make #51 depend on the `rfind'` compiler it is supposed to precede.
+
+So #51 is an enumeration-and-comparison library, not a multiplication-and-square-root one.
+
+## The enumeration
+
+Values `s ^ 2 .. s ^ 2 + 2 * s` form the shell `max a b = s`: first `(a, s)` for `a < s`, then
+`(s, b)` for `b ≤ s`. `pairNext` walks that, and rolls over from `(s, s)` to `(0, s + 1)`.
+-/
+
+namespace Hilbert10
+
+namespace Spike
+
+/-- The successor in the pairing enumeration: the unique step from `p` to the pair whose code is
+one greater. -/
+def pairNext : ℕ × ℕ → ℕ × ℕ
+  | (a, b) =>
+      if a < b then (if a + 1 < b then (a + 1, b) else (b, 0))
+      else if a = b then (0, a + 1)
+      else (a, b + 1)
+
+/-- **`pairNext` is the successor.** Proved by four cases on the shell position; no square root
+and no reasoning about `Nat.sqrt` appears. -/
+theorem pair_pairNext (p : ℕ × ℕ) :
+    Nat.pair (pairNext p).1 (pairNext p).2 = Nat.pair p.1 p.2 + 1 := by
+  obtain ⟨a, b⟩ := p
+  rcases lt_trichotomy a b with h | h | h
+  · by_cases h2 : a + 1 < b
+    · rw [show pairNext (a, b) = (a + 1, b) by simp [pairNext, h, h2]]
+      simp only [Nat.pair, if_pos h, if_pos h2]
+      ring
+    · have hb : b = a + 1 := by omega
+      subst hb
+      rw [show pairNext (a, a + 1) = (a + 1, 0) by simp [pairNext]]
+      simp only [Nat.pair, if_pos h, if_neg (by omega : ¬ a + 1 < 0)]
+      ring
+  · subst h
+    rw [show pairNext (a, a) = (0, a + 1) by simp [pairNext]]
+    simp only [Nat.pair, if_pos (by omega : (0 : ℕ) < a + 1), if_neg (by omega : ¬ a < a)]
+    ring
+  · have hnlt : ¬ a < b := by omega
+    have hne : ¬ a = b := by omega
+    rw [show pairNext (a, b) = (a, b + 1) by simp [pairNext, hnlt, hne]]
+    simp only [Nat.pair, if_neg (by omega : ¬ a < b + 1), if_neg (by omega : ¬ a < b)]
+    ring
+
+/-- Iterating from the origin enumerates the pairs in code order. -/
+theorem iterate_pairNext (n : ℕ) : pairNext^[n] (0, 0) = Nat.unpair n := by
+  have key : ∀ m, Nat.pair (pairNext^[m] (0, 0)).1 (pairNext^[m] (0, 0)).2 = m := by
+    intro m
+    induction m with
+    | zero => rfl
+    | succ m ih => rw [Function.iterate_succ_apply', pair_pairNext, ih]
+  conv_rhs => rw [← key n]
+  rw [Nat.unpair_pair]
+
+/-- **The termination certificate for the `pair` direction.** Enumerating from the origin reaches
+`(a, b)` after exactly `Nat.pair a b` steps, so a machine that walks the enumeration until its
+state matches halts, and does so without an unbounded search. -/
+theorem iterate_pairNext_pair (a b : ℕ) : pairNext^[Nat.pair a b] (0, 0) = (a, b) := by
+  rw [iterate_pairNext, Nat.unpair_pair]
+
+/-! ## Sanity checks against the definitions -/
+
+example : pairNext^[5] (0, 0) = (1, 2) := by decide
+example : Nat.pair 1 2 = 5 := by decide
+example : pairNext (2, 2) = (0, 3) := by decide
+
+end Spike
+
+end Hilbert10

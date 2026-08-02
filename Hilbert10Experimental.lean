@@ -16,6 +16,7 @@ import Hilbert10Experimental.PolynomialCodeComp
 import Hilbert10Experimental.ExistsCodeRepresents
 import Hilbert10Experimental.Instantiate
 import Hilbert10Experimental.Specialization
+import Hilbert10Experimental.CleanScratch
 import Hilbert10Experimental.CodeComp
 import Hilbert10Experimental.DiophToRE
 import Hilbert10Experimental.ExpDioph
@@ -26,6 +27,7 @@ import Hilbert10Experimental.RegisterMachineComp
 import Hilbert10Experimental.RegisterMachineRealises
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
+import Hilbert10Experimental.Spike.PairNext
 import Hilbert10Experimental.Spike.Sequences
 
 /-!
