@@ -22,6 +22,7 @@ import Hilbert10Experimental.NatSolvable
 import Hilbert10Experimental.Specialization
 import Hilbert10Experimental.DiophToRE
 import Hilbert10Experimental.ExpDioph
+import Hilbert10Experimental.ExpDiophChoose
 import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.Sequences
