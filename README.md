@@ -5,13 +5,16 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-Active development. None of the target theorems below is proved yet; what exists is the
+Active development. None of the endpoint theorems below is proved yet; what exists is the
 infrastructure they are assembled from, listed under [library layers](#library-layers). Finished
 work is promoted into the `Hilbert10` spine, everything else lives in `Hilbert10Experimental`,
 and the difference between them is a guarantee rather than a build setting — see
 [verification](#verification).
 
-## Target
+## Intended endpoint
+
+The statements this development is aimed at — a target list, not an inventory of what the
+library currently provides:
 
 ```lean
 theorem dioph_iff_rePred {n : ℕ} (R : (Fin n → ℕ) → Prop) : Dioph {x | R x} ↔ REPred R
@@ -21,9 +24,10 @@ theorem rePred_manyOneReducible_natSolvable {R : ℕ → Prop} : REPred R → R 
 theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable
 ```
 
-`NatSolvable` is solvability over `ℕ` of a finitely encoded polynomial — the decision problem
-itself, as a predicate on a natural number. Hilbert asked about integer solutions; that
-equivalence is a separate layer on top of this one.
+`NatSolvable` is solvability over `ℕ` of a finitely encoded polynomial: a predicate on
+`PolynomialCode`, which carries a `Primcodable` instance, so `REPred` and `≤₀` apply to it
+directly and it is a decision problem in the ordinary sense. Hilbert asked about integer
+solutions; that equivalence is a separate layer on top of this one.
 
 ## Scope
 
@@ -47,8 +51,9 @@ of this development.
 
 ```
    REPred R  ──────────────────────────►  Dioph {x | R x}
-       ▲          register machines,              │
-       │          arithmetised runs               │
+       ▲      DPRM core — in progress:            │
+       │      register machines,                  │
+       │      arithmetised runs                   │
        └──────────────────────────────────────────┘
                    the easy direction
 
