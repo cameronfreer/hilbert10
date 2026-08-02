@@ -33,9 +33,10 @@ is called `H10` unqualified.
 `NatSolvable` is a predicate on `PolynomialCode`, which carries a `Primcodable` instance, so
 it is a decision problem in the sense the computability library expects. That instance is
 imported here rather than merely referenced, so this module alone supplies what it advertises
-instead of relying on the root bundle to pull it in. But `REPred NatSolvable` is *not* provable from this module's
-imports: it needs computability of `eval`, which needs `Primrec` lemmas about `ℤ` that the
-pinned mathlib lacks (#36).
+instead of relying on the root bundle to pull it in.
+
+But `REPred NatSolvable` is *not* provable from this module's imports: it needs computability
+of `eval`, which needs `Primrec` lemmas about `ℤ` that the pinned mathlib lacks (#36).
 
 So the definition and its semantics are settled here, and the statement that it is
 recursively enumerable is a separate theorem with a separate dependency. Do not read the
