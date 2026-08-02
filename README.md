@@ -3,6 +3,14 @@
 A Lean 4 / [mathlib](https://github.com/leanprover-community/mathlib4) development of the DPRM
 theorem and the computability-theoretic form of Hilbert's tenth problem.
 
+## Status
+
+Active development. None of the target theorems below is proved yet; what exists is the
+infrastructure they are assembled from, listed under [library layers](#library-layers). Finished
+work is promoted into the `Hilbert10` spine, everything else lives in `Hilbert10Experimental`,
+and the difference between them is a guarantee rather than a build setting — see
+[verification](#verification).
+
 ## Target
 
 ```lean
@@ -83,9 +91,22 @@ The remaining DPRM work scales the register-machine encoding to arbitrary comput
 
 "Experimental" describes promotion status, not a weaker logic or an unchecked target: both
 libraries are default build targets, so everything here typechecks. What differs is the
-guarantee. CI keeps staging modules out of the public import closure and audits every promoted
-declaration for nonstandard axioms, so a module entering the spine is a reviewable claim that it
+guarantee, and promotion is the reviewable event — a module entering the spine is a claim that it
 is finished.
+
+## Verification
+
+Three CI gates:
+
+* both libraries build, the spine additionally under `warningAsError`;
+* `scripts/check_sorry_boundary.py` — the spine is free of `sorry` and imports nothing from
+  staging;
+* `scripts/AxiomAudit.lean` — an environment sweep over every declaration owned by a spine
+  module, private and compiler-generated ones included, rejecting anything beyond `propext`,
+  `Classical.choice` and `Quot.sound`.
+
+The last two gate the spine only. Staged work is audited when it is promoted, which is what makes
+promotion mean something.
 
 ## Building
 
@@ -101,6 +122,12 @@ lake build
 The milestone plan and dependency graph live in
 [issue #1](https://github.com/cameronfreer/hilbert10/issues/1). Design decisions and the
 reasoning behind them are recorded in the module docstrings and in the issues they cite.
+
+## References
+
+* Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
+* `Mathlib/NumberTheory/Dioph.lean` — the `Dioph`, `DiophFn` and `Poly` API this builds on, and
+  the source of the two TODOs this project aims to close.
 
 ## License
 
