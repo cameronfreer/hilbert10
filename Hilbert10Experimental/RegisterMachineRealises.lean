@@ -268,6 +268,25 @@ theorem realises_clear (r : Fin k) :
   · rw [run_succ, run_clear r regs _ (Nat.le_refl _), step_of_getElem? (i := .dec r 0 1) rfl]
     simp [Instr.exec, clear]
 
+/-- A machine that never halts: increment and jump back to the start. Needed to exercise the
+partial contract, since a diverging component is not otherwise constructible here. -/
+def loopMachine (r : Fin k) : Program k := [.inc r 0]
+
+private theorem pc_run_loopMachine (r : Fin k) (regs : Fin k → ℕ) :
+    ∀ n, (run (loopMachine r) ⟨0, regs⟩ n).pc = 0 := by
+  intro n
+  induction n with
+  | zero => rfl
+  | succ n ih =>
+    rw [run_succ, step_of_getElem? (i := .inc r 0) (by rw [ih]; rfl)]
+    rfl
+
+theorem not_halts_loopMachine (r : Fin k) (regs : Fin k → ℕ) :
+    ¬ Halts (loopMachine r) ⟨0, regs⟩ := by
+  rintro ⟨n, hn⟩
+  rw [Halted, pc_run_loopMachine] at hn
+  simp [loopMachine] at hn
+
 /-! ## The constructors
 
 `Nat.Partrec.Code` denotes unary functions, so a compiled machine reads its input from and
@@ -298,6 +317,58 @@ def PartComputesUnary (P : Program (k + 1)) (f : ℕ →. ℕ) : Prop :=
 theorem ComputesUnary.toPart {P : Program (k + 1)} {f : ℕ → ℕ} (h : ComputesUnary P f) :
     PartComputesUnary P fun n => Part.some (f n) :=
   h.toPartRealises.congr fun regs => by simp
+
+theorem PartComputesUnary.congr {P : Program (k + 1)} {f g : ℕ →. ℕ} (h : PartComputesUnary P f)
+    (hfg : ∀ x, f x = g x) : PartComputesUnary P g :=
+  PartRealises.congr h fun regs => by rw [hfg]
+
+/-- **Width lifting.** Renaming a compiled machine into a larger register file along an injection
+that fixes register `0` preserves what it computes.
+
+This is where #39 is consumed. `Renamed` pins the image and `regs_run_renameRegs_of_ne` pins the
+complement, so the lifted machine still disturbs nothing but register `0` — with no allocator,
+because the injection is supplied by the caller rather than chosen here. -/
+theorem PartComputesUnary.renameRegs {k' : ℕ} {P : Program (k + 1)} {f : ℕ →. ℕ}
+    (h : PartComputesUnary P f) {σ : Fin (k + 1) → Fin (k' + 1)} (hσ : Function.Injective σ)
+    (hσ0 : σ 0 = 0) : PartComputesUnary (RegisterMachine.renameRegs σ P) f := by
+  classical
+  intro regs'
+  have hren : Renamed σ ⟨0, regs' ∘ σ⟩ ⟨0, regs'⟩ := ⟨rfl, fun _ => rfl⟩
+  have h0 : (regs' ∘ σ) 0 = regs' 0 := by simp [hσ0]
+  refine ⟨fun out' hout' => ?_, fun hh => ?_⟩
+  · obtain ⟨z, hz, rfl⟩ := (Part.mem_map_iff _).mp hout'
+    obtain ⟨n, hin, hex⟩ := h.exit (Part.mem_map _ (show z ∈ f ((regs' ∘ σ) 0) from h0 ▸ hz))
+    have hr := hren.run (P := P) hσ n
+    refine ⟨n, fun m hm => ?_, ?_⟩
+    · rw [(hren.run (P := P) hσ m).pc, length_renameRegs]
+      exact hin m hm
+    · have hpc : (run (RegisterMachine.renameRegs σ P) ⟨0, regs'⟩ n).pc =
+          (RegisterMachine.renameRegs σ P).length := by rw [hr.pc, hex, length_renameRegs]
+      have hregs : (run (RegisterMachine.renameRegs σ P) ⟨0, regs'⟩ n).regs =
+          Function.update regs' 0 z := by
+        have hexr : (run P ⟨0, regs' ∘ σ⟩ n).regs = Function.update (regs' ∘ σ) 0 z := by
+          rw [hex]
+        funext r
+        by_cases hrng : ∃ i, r = σ i
+        · obtain ⟨i, rfl⟩ := hrng
+          rw [hr.regs i, hexr]
+          by_cases hi : i = 0
+          · subst hi; simp [hσ0]
+          · rw [Function.update_of_ne hi,
+              Function.update_of_ne (fun hc => hi (hσ (hc.trans hσ0.symm)))]
+            rfl
+        · push Not at hrng
+          rw [regs_run_renameRegs_of_ne hrng n,
+            Function.update_of_ne (by rintro rfl; exact hrng 0 hσ0.symm)]
+      rw [← hpc, ← hregs]
+  · have hd : (f ((regs' ∘ σ) 0)).Dom := h.dom ((halts_renameRegs_iff hσ hren).mp hh)
+    rw [h0] at hd
+    exact hd
+
+/-- The diverging machine computes the everywhere-undefined function. -/
+theorem partComputesUnary_loopMachine (r : Fin (k + 1)) :
+    PartComputesUnary (loopMachine r) fun _ => Part.none := fun regs =>
+  ⟨fun _ hout => absurd hout (by simp), fun hh => absurd hh (not_halts_loopMachine r regs)⟩
 
 /-! ## A composite
 
