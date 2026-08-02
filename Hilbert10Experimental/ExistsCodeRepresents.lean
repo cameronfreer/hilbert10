@@ -10,8 +10,10 @@ import Hilbert10Experimental.PolyBridge
 # Coding a polynomial that represents a relation
 
 Issue #11, compatibility half: the one statement that needs `RepresentsNat` from #5, kept
-in its own module so that `Hilbert10Experimental.ExistsCode` genuinely does not depend on
-the `Poly`/`MvPolynomial` bridge — a fact about the import graph, not a claim in prose.
+in its own module so that `Hilbert10.ExistsCode` genuinely does not depend on the
+`Poly`/`MvPolynomial` bridge — a fact about the import graph, not a claim in prose. That
+separation is why `ExistsCode` could be promoted (#50) while this module, which needs the
+staged `PolyBridge`, could not.
 -/
 
 namespace Hilbert10

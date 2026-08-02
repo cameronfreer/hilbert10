@@ -17,7 +17,7 @@ at the pinned revision, `Halting.lean` and `RE.lean` contain no occurrence of `â
 This file supplies the missing lemma. It is not imported by the `Hilbert10` root spine: it
 is an independent upstream contribution, and in the fallback endpoint factorization
 recorded in issue #1 it is what turns Diophantineness of the *single* universal halting
-predicate into RE-completeness of `HilbertTenth.NatSolvable`.
+predicate into RE-completeness of `Hilbert10.NatSolvable`.
 -/
 
 namespace Hilbert10

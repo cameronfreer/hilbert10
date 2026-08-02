@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10.PolynomialCode
+import Hilbert10.PolynomialCodePrimcodable
 
 /-!
 # Hilbert's tenth problem as a decision problem
@@ -30,9 +30,10 @@ is called `H10` unqualified.
 
 ## What this module does not yet claim
 
-`NatSolvable` is a predicate on `PolynomialCode`, which carries a `Primcodable` instance
-(`Hilbert10.PolynomialCodePrimcodable`), so it is a decision problem in the sense the
-computability library expects. But `REPred NatSolvable` is *not* provable from this module's
+`NatSolvable` is a predicate on `PolynomialCode`, which carries a `Primcodable` instance, so
+it is a decision problem in the sense the computability library expects. That instance is
+imported here rather than merely referenced, so this module alone supplies what it advertises
+instead of relying on the root bundle to pull it in. But `REPred NatSolvable` is *not* provable from this module's
 imports: it needs computability of `eval`, which needs `Primrec` lemmas about `ℤ` that the
 pinned mathlib lacks (#36).
 
