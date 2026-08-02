@@ -3,3 +3,4 @@
 /.agents/
 /.claude/
 /.codex/
+__pycache__/
