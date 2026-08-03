@@ -373,6 +373,44 @@ theorem realises_compare {a b lo hi tmp : Fin k} (hlh : lo ≠ hi) (hlt : lo ≠
   funext i
   split_ifs <;> simp_all
 
+
+/-! ## Draining in place
+
+A `dec` whose positive branch targets its own position is a loop that empties one register and
+falls through. It is the shape every branch of a hand-laid-out program uses to clean up, and
+unlike `clear` it is not a standalone program: it sits at a fixed position inside a larger one,
+so it is stated against an arbitrary `P` and position. -/
+
+/-- Partway through draining: after `m` turns the register is down by `m` and control has not
+moved. -/
+theorem run_drain_partial {P : Program k} {r : Fin k} {p e : ℕ}
+    (hp : P[p]? = some (.dec r p e)) (regs : Fin k → ℕ) :
+    ∀ m ≤ regs r, run P ⟨p, regs⟩ m = ⟨p, Function.update regs r (regs r - m)⟩ := by
+  intro m
+  induction m with
+  | zero =>
+    intro _
+    refine congrArg _ (funext fun i => ?_)
+    simp only [Function.update_apply]
+    split_ifs <;> simp_all
+  | succ m ih =>
+    intro hm
+    rw [show m + 1 = m + 1 from rfl, run_add, ih (by omega), run_one,
+      step_dec_pos (P := P) hp (by rw [Function.update_self]; omega)]
+    refine congrArg _ (funext fun i => ?_)
+    simp only [Function.update_apply]
+    split_ifs <;> omega
+
+/-- Draining takes one turn per unit plus the turn that finds zero, then falls through to `e`. -/
+theorem run_drain {P : Program k} {r : Fin k} {p e : ℕ} (hp : P[p]? = some (.dec r p e))
+    (regs : Fin k → ℕ) :
+    run P ⟨p, regs⟩ (regs r + 1) = ⟨e, Function.update regs r 0⟩ := by
+  rw [run_add, run_drain_partial hp regs _ (Nat.le_refl _), run_one,
+    step_dec_zero (P := P) hp (by rw [Function.update_self]; omega)]
+  refine congrArg _ (funext fun i => ?_)
+  simp only [Function.update_apply]
+  split_ifs <;> simp_all
+
 end RegisterMachine
 
 end Hilbert10
