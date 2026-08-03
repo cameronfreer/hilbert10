@@ -231,6 +231,148 @@ theorem realises_copy {r s t : Fin k} (hrs : r ≠ s) (hrt : r ≠ t) (hst : s �
   simp only [Function.update_apply]
   split_ifs <;> simp_all
 
+
+/-! ## Comparison
+
+The synchronised-decrement loop returns **both** residuals rather than a Boolean or an encoded
+ordering:
+
+```
+lo := regs b - regs a      hi := regs a - regs b
+```
+
+That is what the implementation naturally produces, and it is exactly what `pairNext` needs: one
+call settles all four of its branches. `lo > 0` says `a < b`; under that, `lo = 1` distinguishes
+the shell rollover from an ordinary increment; and if `lo = 0` then `hi` distinguishes equality
+from `a > b`. A Boolean would have thrown away the information and forced a second comparison.
+
+`lo` and `hi` are *owned outputs*: they overwrite whatever they held. Only `tmp` is borrowed, and
+it comes back at zero. -/
+
+/-- Decrement `hi` and `lo` together until one runs out.
+
+Both exits land at exactly `length`. The `inc hi` at position 2 undoes the decrement taken on the
+turn that discovered `lo = 0`, which is why the loop tests `hi` first: the register whose test
+can fail mid-turn has to be the one that is cheap to restore. -/
+def syncDec (hi lo : Fin k) : Program k := [.dec hi 1 3, .dec lo 0 2, .inc hi 3]
+
+/-- The register file after `j` synchronised decrements. -/
+private def syncDecState (hi lo : Fin k) (regs : Fin k → ℕ) (j : ℕ) : Fin k → ℕ :=
+  fun i => if i = hi then regs hi - j else if i = lo then regs lo - j else regs i
+
+private theorem run_syncDec_body {hi lo : Fin k} (hne : hi ≠ lo) (R : Fin k → ℕ)
+    (hH : R hi ≠ 0) (hL : R lo ≠ 0) :
+    run (syncDec hi lo) ⟨0, R⟩ 2 =
+      ⟨0, fun i => if i = hi then R hi - 1 else if i = lo then R lo - 1 else R i⟩ := by
+  rw [show (2 : ℕ) = 1 + 1 from rfl, run_add, run_one, run_one,
+    step_dec_pos (P := syncDec hi lo) (b := 3) rfl hH,
+    step_dec_pos (P := syncDec hi lo) (p := 1) (a := 0) (b := 2) rfl
+      (by rwa [Function.update_of_ne hne.symm])]
+  refine congrArg _ (funext fun i => ?_)
+  simp only [Function.update_apply]
+  split_ifs <;> simp_all
+
+private theorem run_syncDec {hi lo : Fin k} (hne : hi ≠ lo) (regs : Fin k → ℕ) :
+    ∀ j ≤ min (regs hi) (regs lo),
+      run (syncDec hi lo) ⟨0, regs⟩ (2 * j) = ⟨0, syncDecState hi lo regs j⟩ := by
+  intro j
+  induction j with
+  | zero =>
+    intro _
+    refine congrArg _ (funext fun i => ?_)
+    simp only [syncDecState]
+    split_ifs <;> simp_all
+  | succ j ih =>
+    intro hj
+    have hvH : syncDecState hi lo regs j hi = regs hi - j := by simp [syncDecState]
+    have hvL : syncDecState hi lo regs j lo = regs lo - j := by simp [syncDecState, hne.symm]
+    rw [show 2 * (j + 1) = 2 * j + 2 by omega, run_add, ih (by omega),
+      run_syncDec_body hne _ (by rw [hvH]; omega) (by rw [hvL]; omega)]
+    refine congrArg _ (funext fun i => ?_)
+    simp only [syncDecState]
+    split_ifs <;> simp_all <;> omega
+
+theorem realises_syncDec {hi lo : Fin k} (hne : hi ≠ lo) :
+    Realises (syncDec hi lo) fun regs i =>
+      if i = hi then regs hi - regs lo else if i = lo then regs lo - regs hi else regs i := by
+  intro regs
+  have hstate : ∀ j, syncDecState hi lo regs j hi = regs hi - j := by
+    intro j; simp [syncDecState]
+  have hstateL : ∀ j, syncDecState hi lo regs j lo = regs lo - j := by
+    intro j; simp [syncDecState, hne.symm]
+  by_cases hle : regs hi ≤ regs lo
+  · -- `hi` runs out first: the loop exits on its own zero test.
+    refine ⟨2 * regs hi + 1, fun m hm => ?_, ?_⟩
+    · obtain ⟨j, c, hc, rfl⟩ : ∃ j c, c < 2 ∧ m = 2 * j + c :=
+        ⟨m / 2, m % 2, Nat.mod_lt _ (by omega), by omega⟩
+      rcases (show c = 0 ∨ c = 1 by omega) with rfl | rfl
+      · rw [Nat.add_zero, run_syncDec hne regs j (by omega)]
+        simp [syncDec]
+      · rw [run_add, run_syncDec hne regs j (by omega), run_one,
+          step_dec_pos (P := syncDec hi lo) (b := 3) rfl (by rw [hstate]; omega)]
+        simp [syncDec]
+    · rw [run_add, run_syncDec hne regs (regs hi) (by omega), run_one,
+        step_dec_zero (P := syncDec hi lo) (a := 1) rfl (by rw [hstate]; omega),
+        show (syncDec hi lo).length = 3 from rfl]
+      refine congrArg _ (funext fun i => ?_)
+      simp only [syncDecState]
+      split_ifs <;> simp_all
+  · -- `lo` runs out first: the turn that discovers it must give `hi` its decrement back.
+    refine ⟨2 * regs lo + 3, fun m hm => ?_, ?_⟩
+    · obtain ⟨j, c, hc, rfl⟩ : ∃ j c, c < 2 ∧ m = 2 * j + c :=
+        ⟨m / 2, m % 2, Nat.mod_lt _ (by omega), by omega⟩
+      rcases (show j ≤ regs lo ∨ j = regs lo + 1 by omega) with hjL | rfl
+      · rcases (show c = 0 ∨ c = 1 by omega) with rfl | rfl
+        · rw [Nat.add_zero, run_syncDec hne regs j (by omega)]
+          simp [syncDec]
+        · rw [run_add, run_syncDec hne regs j (by omega), run_one,
+            step_dec_pos (P := syncDec hi lo) (b := 3) rfl (by rw [hstate]; omega)]
+          simp [syncDec]
+      · have hc0 : c = 0 := by omega
+        subst hc0
+        rw [show 2 * (regs lo + 1) + 0 = 2 * regs lo + 1 + 1 by omega, run_add, run_add,
+          run_syncDec hne regs (regs lo) (by omega), run_one, run_one,
+          step_dec_pos (P := syncDec hi lo) (regs := syncDecState hi lo regs (regs lo))
+            (b := 3) rfl
+            (by rw [hstate]; omega),
+          step_dec_zero (P := syncDec hi lo) (p := 1) (a := 0) (b := 2) rfl
+            (by rw [Function.update_of_ne hne.symm, hstateL]; omega)]
+        simp [syncDec]
+    · rw [show 2 * regs lo + 3 = 2 * regs lo + 1 + 1 + 1 by omega, run_add, run_add, run_add,
+        run_syncDec hne regs (regs lo) (by omega), run_one, run_one, run_one,
+        step_dec_pos (P := syncDec hi lo) (regs := syncDecState hi lo regs (regs lo)) (b := 3)
+          rfl (by rw [hstate]; omega),
+        step_dec_zero (P := syncDec hi lo) (p := 1) (a := 0) (b := 2) rfl
+          (by rw [Function.update_of_ne hne.symm, hstateL]; omega),
+        step_inc (P := syncDec hi lo) (p := 2) (a := 3) rfl,
+        show (syncDec hi lo).length = 3 from rfl]
+      refine congrArg _ (funext fun i => ?_)
+      simp only [Function.update_apply, syncDecState]
+      split_ifs <;> simp_all <;> omega
+
+/-- Compare `a` and `b`, leaving both residuals: `lo = b - a` and `hi = a - b`.
+
+`a` and `b` are untouched, `lo` and `hi` are overwritten, and `tmp` is returned at zero.
+
+Note the absence of a `b ≠ hi` hypothesis, which the other eight distinctness conditions might
+lead one to expect. It is genuinely unnecessary: `b` is read into `lo` before `hi` is written, so
+if `b` and `hi` coincide the statement's `i = hi` branch describes what happens and the `regs b`
+on the right still refers to the original contents. `a ≠ lo` is *not* similarly droppable — there
+the overwrite happens before the read. -/
+def compare (a b lo hi tmp : Fin k) : Program k :=
+  seq (copy b lo tmp) (seq (copy a hi tmp) (syncDec hi lo))
+
+theorem realises_compare {a b lo hi tmp : Fin k} (hlh : lo ≠ hi) (hlt : lo ≠ tmp)
+    (hht : hi ≠ tmp) (hal : a ≠ lo) (hah : a ≠ hi) (hat : a ≠ tmp) (hbl : b ≠ lo)
+    (hbt : b ≠ tmp) :
+    Realises (compare a b lo hi tmp) fun regs i =>
+      if i = lo then regs b - regs a else if i = hi then regs a - regs b
+        else if i = tmp then 0 else regs i := by
+  refine (((realises_copy hbl hbt hlt).seq
+    ((realises_copy hah hat hht).seq (realises_syncDec hlh.symm))).congr fun regs => ?_)
+  funext i
+  split_ifs <;> simp_all
+
 end RegisterMachine
 
 end Hilbert10
