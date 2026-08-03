@@ -224,6 +224,38 @@ theorem PartRealises.append {P Q : Program k} {F G : (Fin k → ℕ) →. (Fin k
     have hGd := hQ.dom hQh
     exact Part.dom_iff_mem.mpr ⟨_, Part.mem_bind hmid (Part.get_mem hGd)⟩
 
+
+/-- **Width lifting for total machines.** The caller supplies the lifted transformation `G` and
+says how it behaves on the image of `σ` and off it; nothing here chooses registers.
+
+The partial companion `PartComputesUnary.renameRegs` cannot be derived from this and vice versa,
+so both exist. -/
+theorem Realises.renameRegs {k' : ℕ} {σ : Fin k → Fin k'} (hσ : Function.Injective σ)
+    {P : Program k} {F : (Fin k → ℕ) → Fin k → ℕ} {G : (Fin k' → ℕ) → Fin k' → ℕ}
+    (h : Realises P F) (hon : ∀ regs i, G regs (σ i) = F (regs ∘ σ) i)
+    (hoff : ∀ regs r, (∀ i, r ≠ σ i) → G regs r = regs r) :
+    Realises (RegisterMachine.renameRegs σ P) G := by
+  classical
+  intro regs
+  have hren : Renamed σ ⟨0, regs ∘ σ⟩ ⟨0, regs⟩ := ⟨rfl, fun _ => rfl⟩
+  obtain ⟨n, hin, hex⟩ := h (regs ∘ σ)
+  have hr := hren.run (P := P) hσ n
+  have hexr : (run P ⟨0, regs ∘ σ⟩ n).regs = F (regs ∘ σ) := by rw [hex]
+  refine ⟨n, fun m hm => ?_, ?_⟩
+  · rw [(hren.run (P := P) hσ m).pc, length_renameRegs]
+    exact hin m hm
+  · have hpc : (run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ n).pc =
+        (RegisterMachine.renameRegs σ P).length := by
+      rw [hr.pc, hex, length_renameRegs]
+    have hregs : (run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ n).regs = G regs := by
+      funext r
+      by_cases hrng : ∃ i, r = σ i
+      · obtain ⟨i, rfl⟩ := hrng
+        rw [hr.regs i, hexr, hon]
+      · push Not at hrng
+        rw [regs_run_renameRegs_of_ne hrng n, hoff regs r hrng]
+    rw [← hpc, ← hregs]
+
 /-! ## Primitive machines
 
 The two one-instruction programs. `incr` exercises the exit contract on a straight-line

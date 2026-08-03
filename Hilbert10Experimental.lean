@@ -28,6 +28,7 @@ import Hilbert10Experimental.RegisterMachineComp
 import Hilbert10Experimental.RegisterMachineMacros
 import Hilbert10Experimental.RegisterMachinePairing
 import Hilbert10Experimental.RegisterMachineRealises
+import Hilbert10Experimental.RegisterMachineUnpair
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
 import Hilbert10Experimental.Spike.Sequences
