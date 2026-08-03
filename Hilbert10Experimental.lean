@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ForMathlib.BinarySubmask
+import Hilbert10Experimental.ForMathlib.PairingEnumeration
 import Hilbert10Experimental.ForMathlib.PrimrecInt
 import Hilbert10Experimental.ForMathlib.ChooseDigit
 import Hilbert10Experimental.ForMathlib.SubmaskChoose
@@ -28,7 +29,6 @@ import Hilbert10Experimental.RegisterMachineMacros
 import Hilbert10Experimental.RegisterMachineRealises
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
-import Hilbert10Experimental.Spike.PairNext
 import Hilbert10Experimental.Spike.Sequences
 
 /-!

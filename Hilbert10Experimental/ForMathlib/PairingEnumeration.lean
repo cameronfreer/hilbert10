@@ -10,14 +10,12 @@ import Mathlib.Tactic.Ring
 /-!
 # The pairing enumeration has a successor function
 
-A spike for #51, run before building any machine.
+`Nat.pair` and `Nat.unpair` are stated with multiplication and `Nat.sqrt`. Taking those
+definitions at face value would make a register-machine implementation a verified-arithmetic
+project: a multiplier, a square root, and their correctness proofs.
 
-`Nat.pair` and `Nat.unpair` are stated with multiplication and `Nat.sqrt`, and taking those
-definitions at face value makes #51 a verified-arithmetic project: a multiplier, a square root,
-and their correctness proofs. This file checks a cheaper reading.
-
-The pairing is an *enumeration* of `ℕ × ℕ`, and enumerations have successors. `pairNext` is that
-successor, and the two theorems below say it is correct:
+But the pairing is an *enumeration* of `ℕ × ℕ`, and enumerations have successors. `pairNext` is
+that successor, and the theorems below say it is correct:
 
 ```lean
 Nat.pair (pairNext p).1 (pairNext p).2 = Nat.pair p.1 p.2 + 1
@@ -27,16 +25,19 @@ pairNext^[n] (0, 0) = Nat.unpair n
 Neither statement mentions a square root, and neither proof needs one — `pairNext` is built from
 comparison, increment and zeroing alone.
 
-## What this means for #51
+## Why this shape
 
-`unpair n` is `pairNext` iterated `n` times from `(0, 0)`: a counted loop.
+The consumer is #51, which compiles `Nat.unpair` and `Nat.pair` into register machines.
 
-`pair a b` is the enumeration run until the state is `(a, b)`, counting steps. It terminates,
-and `iterate_pairNext_pair` is the certificate — after exactly `Nat.pair a b` steps the state
-*is* `(a, b)`. So the loop's termination is proved directly and does not go through a general
-unbounded search, which would make #51 depend on the `rfind'` compiler it is supposed to precede.
+`unpair n` becomes `pairNext` iterated `n` times from `(0, 0)`: a counted loop.
 
-So #51 is an enumeration-and-comparison library, not a multiplication-and-square-root one.
+`pair a b` becomes the enumeration run until the state is `(a, b)`, counting steps.
+`iterate_pairNext_pair` is what makes that terminate — after exactly `Nat.pair a b` steps the
+state *is* `(a, b)` — so termination is proved directly rather than through a general unbounded
+search, which would make #51 depend on the `rfind'` compiler it is supposed to precede.
+
+Self-contained, and a plausible mathlib addition: nothing here depends on the rest of this
+development. Tracked for upstreaming in #37.
 
 ## The enumeration
 
@@ -44,9 +45,7 @@ Values `s ^ 2 .. s ^ 2 + 2 * s` form the shell `max a b = s`: first `(a, s)` for
 `(s, b)` for `b ≤ s`. `pairNext` walks that, and rolls over from `(s, s)` to `(0, s + 1)`.
 -/
 
-namespace Hilbert10
-
-namespace Spike
+namespace Nat
 
 /-- The successor in the pairing enumeration: the unique step from `p` to the pair whose code is
 one greater. -/
@@ -97,12 +96,10 @@ state matches halts, and does so without an unbounded search. -/
 theorem iterate_pairNext_pair (a b : ℕ) : pairNext^[Nat.pair a b] (0, 0) = (a, b) := by
   rw [iterate_pairNext, Nat.unpair_pair]
 
-/-! ## Sanity checks against the definitions -/
+/-! ## Regression checks against the definitions -/
 
 example : pairNext^[5] (0, 0) = (1, 2) := by decide
 example : Nat.pair 1 2 = 5 := by decide
 example : pairNext (2, 2) = (0, 3) := by decide
 
-end Spike
-
-end Hilbert10
+end Nat
