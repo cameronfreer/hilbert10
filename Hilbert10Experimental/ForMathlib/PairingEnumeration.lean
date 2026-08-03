@@ -80,15 +80,27 @@ theorem pair_pairNext (p : ℕ × ℕ) :
     simp only [Nat.pair, if_neg (by omega : ¬ a < b + 1), if_neg (by omega : ¬ a < b)]
     ring
 
+/-- **The `q`th pair of the enumeration has code `q`.** The counted-loop and
+terminating-enumeration machines both need this, the second in the contrapositive form
+`iterate_pairNext_ne_of_lt`. -/
+theorem pair_iterate_pairNext (q : ℕ) :
+    Nat.pair (pairNext^[q] (0, 0)).1 (pairNext^[q] (0, 0)).2 = q := by
+  induction q with
+  | zero => rfl
+  | succ q ih => rw [Function.iterate_succ_apply', pair_pairNext, ih]
+
 /-- Iterating from the origin enumerates the pairs in code order. -/
 theorem iterate_pairNext (n : ℕ) : pairNext^[n] (0, 0) = Nat.unpair n := by
-  have key : ∀ m, Nat.pair (pairNext^[m] (0, 0)).1 (pairNext^[m] (0, 0)).2 = m := by
-    intro m
-    induction m with
-    | zero => rfl
-    | succ m ih => rw [Function.iterate_succ_apply', pair_pairNext, ih]
-  conv_rhs => rw [← key n]
+  conv_rhs => rw [← pair_iterate_pairNext n]
   rw [Nat.unpair_pair]
+
+/-- **No early match.** Before step `Nat.pair a b` the enumeration has not reached `(a, b)`, so a
+machine that walks it until its state matches stops exactly there. -/
+theorem iterate_pairNext_ne_of_lt {q a b : ℕ} (h : q < Nat.pair a b) :
+    pairNext^[q] (0, 0) ≠ (a, b) := by
+  intro hq
+  rw [← pair_iterate_pairNext q, hq] at h
+  exact Nat.lt_irrefl _ h
 
 /-- **The termination certificate for the `pair` direction.** Enumerating from the origin reaches
 `(a, b)` after exactly `Nat.pair a b` steps, so a machine that walks the enumeration until its

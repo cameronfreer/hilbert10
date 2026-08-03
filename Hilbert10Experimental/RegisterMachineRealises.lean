@@ -111,6 +111,24 @@ theorem join_exit {P Q : Program k} {regs mid out : Fin k → ℕ} {nP nQ : ℕ}
   · rw [run_join hPin hPex nQ, hQex, hlen]
     simp [Nat.add_comm]
 
+
+/-- **A relocated segment with programs on both sides.** `run_append_shiftJumps` covers a
+relocated suffix; a loop body has an instruction after it as well.
+
+Validated by both loop shapes in #51: the counted loop of `unpair` and the
+terminating-enumeration loop of `pair`. -/
+theorem run_middle {A B C : Program k} {regs : Fin k → ℕ} {n : ℕ}
+    (hin : ∀ m < n, (run B ⟨0, regs⟩ m).pc < B.length) (m : ℕ) (hm : m ≤ n) :
+    run (A ++ shiftJumps A.length B ++ C) ⟨0 + A.length, regs⟩ m =
+      ⟨(run B ⟨0, regs⟩ m).pc + A.length, (run B ⟨0, regs⟩ m).regs⟩ := by
+  have hpre : ∀ j < m, (run (A ++ shiftJumps A.length B) ⟨0 + A.length, regs⟩ j).pc <
+      (A ++ shiftJumps A.length B).length := by
+    intro j hj
+    rw [run_append_shiftJumps, length_append_shiftJumps]
+    have hj' := hin j (by omega)
+    exact show (run B ⟨0, regs⟩ j).pc + A.length < A.length + B.length by omega
+  rw [run_append_of_lt hpre, run_append_shiftJumps]
+
 /-- **Sequencing.** Composing realised machines needs no reasoning about program counters at
 the call site. -/
 theorem Realises.append {P Q : Program k} {F G : (Fin k → ℕ) → Fin k → ℕ}

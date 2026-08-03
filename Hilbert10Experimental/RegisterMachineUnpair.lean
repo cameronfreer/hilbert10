@@ -52,25 +52,6 @@ namespace RegisterMachine
 
 variable {k : ℕ}
 
-/-! ## Splicing a relocated segment in the middle
-
-`run_append_shiftJumps` covers a relocated *suffix*. A loop body has an instruction after it, so
-what is needed is the same fact for a segment with something on both sides. Kept local: if #42's
-primitive-recursion loop wants the same shape, that second consumer is what would justify moving
-it into the register-machine API. -/
-
-private theorem run_middle {A B C : Program k} {regs : Fin k → ℕ} {n : ℕ}
-    (hin : ∀ m < n, (run B ⟨0, regs⟩ m).pc < B.length) (m : ℕ) (hm : m ≤ n) :
-    run (A ++ shiftJumps A.length B ++ C) ⟨0 + A.length, regs⟩ m =
-      ⟨(run B ⟨0, regs⟩ m).pc + A.length, (run B ⟨0, regs⟩ m).regs⟩ := by
-  have hpre : ∀ j < m, (run (A ++ shiftJumps A.length B) ⟨0 + A.length, regs⟩ j).pc <
-      (A ++ shiftJumps A.length B).length := by
-    intro j hj
-    rw [run_append_shiftJumps, length_append_shiftJumps]
-    have hj' := hin j (by omega)
-    exact show (run B ⟨0, regs⟩ j).pc + A.length < A.length + B.length by omega
-  rw [run_append_of_lt hpre, run_append_shiftJumps]
-
 /-! ## The loop -/
 
 /-- `pairNextMachine` moved off register `0`, which the loop keeps for its counter. -/
