@@ -160,6 +160,67 @@ theorem CleanPartComputesUnary.call {k' : ℕ} {P : Program (k + 1)} {f : ℕ �
   · rw [(hren.run (P := P) hσ n).regs i, hexr, unaryConfig_of_ne hi]
   · exact regs_run_renameRegs_of_ne hr n
 
+
+/-! ## The register file a call produces
+
+`call` gives the image and the complement as separate pointwise clauses. Every controller that
+makes a call would then repeat the same `funext` split into the image of `σ` and its complement,
+so the two clauses are packaged here into one function equality instead. -/
+
+/-- The register file after calling a clean machine through `σ` and getting `y`: the block along
+`σ` holds `unaryConfig _ y`, and everything outside it is untouched. -/
+noncomputable def callState {k k' : ℕ} (σ : Fin (k + 1) → Fin (k' + 1))
+    (regs : Fin (k' + 1) → ℕ) (y : ℕ) : Fin (k' + 1) → ℕ :=
+  Function.extend σ (unaryConfig k y) regs
+
+variable {k' : ℕ} {σ : Fin (k + 1) → Fin (k' + 1)}
+
+@[simp] theorem callState_apply (hσ : Function.Injective σ) (regs : Fin (k' + 1) → ℕ) (y : ℕ)
+    (i : Fin (k + 1)) : callState σ regs y (σ i) = unaryConfig k y i :=
+  hσ.extend_apply _ _ _
+
+theorem callState_zero (hσ : Function.Injective σ) (regs : Fin (k' + 1) → ℕ) (y : ℕ) :
+    callState σ regs y (σ 0) = y := by rw [callState_apply hσ, unaryConfig_zero]
+
+theorem callState_of_ne (hσ : Function.Injective σ) (regs : Fin (k' + 1) → ℕ) (y : ℕ)
+    {i : Fin (k + 1)} (hi : i ≠ 0) : callState σ regs y (σ i) = 0 := by
+  rw [callState_apply hσ, unaryConfig_of_ne hi]
+
+theorem callState_of_not_mem (regs : Fin (k' + 1) → ℕ) (y : ℕ) {r : Fin (k' + 1)}
+    (hr : ∀ i, r ≠ σ i) : callState σ regs y r = regs r :=
+  Function.extend_apply' _ _ _ (by rintro ⟨i, rfl⟩; exact hr i rfl)
+
+/-- **The exit of a call, as one register file.** -/
+theorem CleanPartComputesUnary.call_exit {P : Program (k + 1)} {f : ℕ →. ℕ}
+    (h : CleanPartComputesUnary P f) (hσ : Function.Injective σ) {regs : Fin (k' + 1) → ℕ}
+    {x : ℕ} (hx : regs (σ 0) = x) (hclean : ∀ i, i ≠ 0 → regs (σ i) = 0) {y : ℕ}
+    (hy : y ∈ f x) :
+    ∃ n, (∀ m < n, (run (renameRegs σ P) ⟨0, regs⟩ m).pc < (renameRegs σ P).length) ∧
+      run (renameRegs σ P) ⟨0, regs⟩ n =
+        ⟨(renameRegs σ P).length, callState σ regs y⟩ := by
+  classical
+  obtain ⟨n, out, hin, hex, h0, hne, hoff⟩ := (h.call hσ hx hclean).1 y hy
+  refine ⟨n, hin, ?_⟩
+  rw [hex]
+  refine congrArg _ (funext fun r => ?_)
+  by_cases hrng : ∃ i, r = σ i
+  · obtain ⟨i, rfl⟩ := hrng
+    rw [callState_apply hσ]
+    by_cases hi : i = 0
+    · subst hi; rw [h0, unaryConfig_zero]
+    · rw [hne i hi, unaryConfig_of_ne hi]
+  · push Not at hrng
+    rw [callState_of_not_mem regs y hrng, hoff r hrng]
+
+/-- **Halting of a call.** -/
+theorem CleanPartComputesUnary.call_halts_iff {P : Program (k + 1)} {f : ℕ →. ℕ}
+    (h : CleanPartComputesUnary P f) (hσ : Function.Injective σ) {regs : Fin (k' + 1) → ℕ}
+    {x : ℕ} (hx : regs (σ 0) = x) (hclean : ∀ i, i ≠ 0 → regs (σ i) = 0) :
+    Halts (renameRegs σ P) ⟨0, regs⟩ ↔ (f x).Dom := by
+  refine ⟨(h.call hσ hx hclean).2, fun hd => ?_⟩
+  obtain ⟨n, _, hn⟩ := h.call_exit hσ hx hclean (Part.get_mem hd)
+  exact ⟨n, by rw [hn]; exact Nat.le_refl _⟩
+
 end RegisterMachine
 
 end Hilbert10
