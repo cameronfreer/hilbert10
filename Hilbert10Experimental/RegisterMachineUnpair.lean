@@ -144,13 +144,8 @@ private theorem run_loop (n : ℕ) : ∀ q ≤ n, ∃ steps,
     obtain ⟨steps, hin, hex⟩ := ih (by omega)
     have hne : loopState n q 0 ≠ 0 := by simp [loopState]; omega
     obtain ⟨nt, htin, htex⟩ := run_turn (loopState n q) hne
-    refine ⟨steps + nt, fun m hm => ?_, ?_⟩
-    · by_cases hms : m < steps
-      · exact hin m hms
-      · obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le (Nat.not_lt.mp hms)
-        rw [run_add, hex]
-        exact htin j (by omega)
-    · rw [run_add, hex, htex]
+    refine ⟨steps + nt, (run_segment_trans hin hex htin htex).1, ?_⟩
+    · rw [(run_segment_trans hin hex htin htex).2]
       have hiter : Nat.pairNext^[q + 1] (0, 0) = Nat.pairNext (Nat.pairNext^[q] (0, 0)) :=
         Function.iterate_succ_apply' _ _ _
       refine congrArg _ (funext fun i => ?_)

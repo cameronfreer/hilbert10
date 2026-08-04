@@ -112,6 +112,21 @@ theorem join_exit {P Q : Program k} {regs mid out : Fin k → ℕ} {nP nQ : ℕ}
     simp [Nat.add_comm]
 
 
+
+/-- **Two in-range segments of one program compose.** Both loops in #51 chain segments this way:
+the counted loop over its turns, and the terminating enumeration within a single turn. -/
+theorem run_segment_trans {P : Program k} {c d e : Config k} {n₁ n₂ : ℕ}
+    (h1in : ∀ m < n₁, (run P c m).pc < P.length) (h1ex : run P c n₁ = d)
+    (h2in : ∀ m < n₂, (run P d m).pc < P.length) (h2ex : run P d n₂ = e) :
+    (∀ m < n₁ + n₂, (run P c m).pc < P.length) ∧ run P c (n₁ + n₂) = e := by
+  refine ⟨fun m hm => ?_, ?_⟩
+  · by_cases hms : m < n₁
+    · exact h1in m hms
+    · obtain ⟨j, rfl⟩ := Nat.exists_eq_add_of_le (Nat.not_lt.mp hms)
+      rw [run_add, h1ex]
+      exact h2in j (by omega)
+  · rw [run_add, h1ex, h2ex]
+
 /-- **A relocated segment with programs on both sides.** `run_append_shiftJumps` covers a
 relocated suffix; a loop body has an instruction after it as well.
 
