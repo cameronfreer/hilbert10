@@ -44,6 +44,103 @@ theorem mem_eval_code_pair {cf cg : Nat.Partrec.Code} {n y : ℕ} :
       ∃ a ∈ cf.eval n, ∃ b ∈ cg.eval n, y = Nat.pair a b :=
   mem_eval_pair
 
+
+/-! ## The controller's register layout
+
+One explicit layout, over `Fin (k + k' + 13)`:
+
+| register | role |
+|---|---|
+| `0` | the original input, preserved across both calls, then the output |
+| `1`, `2` | the two subresults, and `pairMachine`'s targets |
+| `3` | `pairMachine`'s answer |
+| `4`–`9` | `pairMachine`'s candidate, accumulator and scratch |
+| `10` | the temporary `copy` borrows |
+| `11 …` | `cf`'s block, then `cg`'s block |
+
+The facts below are arithmetic about *this* layout, nothing more: three embeddings are
+injective, their images are pairwise disjoint, and the fixed registers `0` and `10` lie outside
+all of them. They are proved once so that `Fin` index juggling stays out of the semantic proof.
+
+This is not an allocator. The embeddings are three explicit offsets, written down here and
+supplied to `CleanPartComputesUnary.call` by hand. -/
+
+variable (k k' : ℕ)
+
+/-- `cf`'s block, starting at register `11`. -/
+def embedF (i : Fin (k + 1)) : Fin (k + k' + 13) := ⟨11 + i.val, by omega⟩
+
+/-- `cg`'s block, immediately after `cf`'s. -/
+def embedG (j : Fin (k' + 1)) : Fin (k + k' + 13) := ⟨12 + k + j.val, by omega⟩
+
+/-- `pairMachine`'s nine registers, onto `1`–`9`. -/
+def embedP (i : Fin 9) : Fin (k + k' + 13) := ⟨1 + i.val, by omega⟩
+
+variable {k k'}
+
+@[simp] theorem embedF_val (i : Fin (k + 1)) : (embedF k k' i).val = 11 + i.val := rfl
+@[simp] theorem embedG_val (j : Fin (k' + 1)) : (embedG k k' j).val = 12 + k + j.val := rfl
+@[simp] theorem embedP_val (i : Fin 9) : (embedP k k' i).val = 1 + i.val := rfl
+
+theorem embedF_injective : Function.Injective (embedF k k') := by
+  intro i j h
+  exact Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
+
+theorem embedG_injective : Function.Injective (embedG k k') := by
+  intro i j h
+  exact Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
+
+theorem embedP_injective : Function.Injective (embedP k k') := by
+  intro i j h
+  exact Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
+
+/-! ### Register `0` and the borrowed temporary lie outside every block -/
+
+theorem zero_ne_embedF (i : Fin (k + 1)) : (0 : Fin (k + k' + 13)) ≠ embedF k k' i := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem zero_ne_embedG (j : Fin (k' + 1)) : (0 : Fin (k + k' + 13)) ≠ embedG k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem ten_ne_embedF (i : Fin (k + 1)) : (⟨10, by omega⟩ : Fin (k + k' + 13)) ≠ embedF k k' i := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem ten_ne_embedG (j : Fin (k' + 1)) :
+    (⟨10, by omega⟩ : Fin (k + k' + 13)) ≠ embedG k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+/-! ### The three blocks are pairwise disjoint -/
+
+theorem embedF_ne_embedG (i : Fin (k + 1)) (j : Fin (k' + 1)) :
+    embedF k k' i ≠ embedG k k' j := by
+  intro h
+  have := congrArg Fin.val h
+  simp at this
+  omega
+
+theorem embedP_ne_embedF (i : Fin 9) (j : Fin (k + 1)) : embedP k k' i ≠ embedF k k' j := by
+  intro h
+  have := congrArg Fin.val h
+  simp at this
+  omega
+
+theorem embedP_ne_embedG (i : Fin 9) (j : Fin (k' + 1)) : embedP k k' i ≠ embedG k k' j := by
+  intro h
+  have := congrArg Fin.val h
+  simp at this
+  omega
+
+/-- `pairMachine`'s block is exactly registers `1`–`9`, so the controller's fixed registers `0`
+and `10` are outside it too. -/
+theorem embedP_ne_zero (i : Fin 9) : embedP k k' i ≠ 0 := by
+  intro h; have := congrArg Fin.val h; simp at this
+
+theorem embedP_ne_ten (i : Fin 9) : embedP k k' i ≠ (⟨10, by omega⟩ : Fin (k + k' + 13)) := by
+  intro h
+  have := congrArg Fin.val h
+  simp at this
+  omega
+
 end RegisterMachine
 
 end Hilbert10
