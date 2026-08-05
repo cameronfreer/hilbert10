@@ -185,12 +185,17 @@ def saveFSeedG : Program (k + k' + 13) :=
   seq (move (embedF k k' 0) (embedP k k' 0)) (copy 0 (embedG k k' 0) ten)
 
 /-- Unit 5: save `cg`'s answer into register `2`, pair the two, and return the answer in `0`. -/
+def saveGPair : Program (k + k' + 13) :=
+  seq (move (embedG k k' 0) (embedP k k' 1)) (renameRegs (embedP k k') pairMachine)
+
+/-- Unit 5b: discard the two operands and return the answer in register `0`. -/
+def finishPair : Program (k + k' + 13) :=
+  seq (clear (embedP k k' 0))
+    (seq (clear (embedP k k' 1)) (seq (clear 0) (move (embedP k k' 2) 0)))
+
+/-- Unit 5. -/
 def saveGFinish : Program (k + k' + 13) :=
-  seq (move (embedG k k' 0) (embedP k k' 1))
-    (seq (renameRegs (embedP k k') pairMachine)
-      (seq (clear (embedP k k' 0))
-        (seq (clear (embedP k k' 1))
-          (seq (clear 0) (move (embedP k k' 2) 0)))))
+  seq (saveGPair (k := k) (k' := k')) (finishPair (k := k) (k' := k'))
 
 /-- The whole controller. -/
 def pairController : Program (k + k' + 13) :=
@@ -333,6 +338,130 @@ theorem callState_state3 (n a b : ℕ) :
   · push Not at hrng
     rw [callState_of_not_mem _ _ hrng]
     simp only [state3, state4, if_neg (hrng 0)]
+
+
+/-! ### Unit 5, in two halves
+
+Six blocks in one splice made the goals unmanageable — the composite unfolds at every register
+class at once. Splitting at `state5`, with `pairMachine` on one side and the cleanup on the
+other, is the same interface discipline the earlier units use.
+
+`pairMachine` goes through `blockState`, the *total* renaming API, which is what keeps it from
+becoming a fourth partiality case: it is a call in the layout sense but not in the semantic one. -/
+
+/-- After `pairMachine`: both operands still present, the answer beside them. -/
+def state5 (n a b : ℕ) : Fin (k + k' + 13) → ℕ :=
+  fun r => if r = 0 then n else if r = embedP k k' 0 then a
+    else if r = embedP k k' 1 then b
+    else if r = embedP k k' 2 then Nat.pair a b else 0
+
+theorem run_saveGPair (n a b : ℕ) :
+    ∃ N, (∀ m < N, (run (saveGPair (k := k) (k' := k')) ⟨0, state4 n a b⟩ m).pc <
+        (saveGPair (k := k) (k' := k')).length) ∧
+      run (saveGPair (k := k) (k' := k')) ⟨0, state4 n a b⟩ N =
+        ⟨(saveGPair (k := k) (k' := k')).length, state5 n a b⟩ := by
+  obtain ⟨f0, g0, p0, p1, p2, t0, fg, fp0, fp1, ft, gp0, gp1, gt, p0t, p1t, p01⟩ := entry_ne k k'
+  have f0' := f0.symm; have g0' := g0.symm; have p0' := p0.symm; have p1' := p1.symm
+  have p2' := p2.symm; have t0' := t0.symm; have fg' := fg.symm; have fp0' := fp0.symm
+  have fp1' := fp1.symm; have ft' := ft.symm; have gp0' := gp0.symm; have gp1' := gp1.symm
+  have gt' := gt.symm; have p0t' := p0t.symm; have p1t' := p1t.symm; have p01' := p01.symm
+  have pz : ∀ i : Fin 9, embedP k k' i ≠ 0 := embedP_ne_zero
+  have pz' : ∀ i : Fin 9, (0 : Fin (k + k' + 13)) ≠ embedP k k' i :=
+    fun i => (embedP_ne_zero i).symm
+  have pt : ∀ i : Fin 9, embedP k k' i ≠ ten := embedP_ne_ten
+  have pt' : ∀ i : Fin 9, (ten : Fin (k + k' + 13)) ≠ embedP k k' i :=
+    fun i => (embedP_ne_ten i).symm
+  have pf : ∀ (i : Fin 9) (j : Fin (k + 1)), embedP k k' i ≠ embedF k k' j := embedP_ne_embedF
+  have pf' : ∀ (j : Fin (k + 1)) (i : Fin 9), embedF k k' j ≠ embedP k k' i :=
+    fun j i => (embedP_ne_embedF i j).symm
+  have pg : ∀ (i : Fin 9) (j : Fin (k' + 1)), embedP k k' i ≠ embedG k k' j := embedP_ne_embedG
+  have pg' : ∀ (j : Fin (k' + 1)) (i : Fin 9), embedG k k' j ≠ embedP k k' i :=
+    fun j i => (embedP_ne_embedG i j).symm
+  have fz : ∀ i : Fin (k + 1), embedF k k' i ≠ 0 := fun i => (zero_ne_embedF i).symm
+  have gz : ∀ j : Fin (k' + 1), embedG k k' j ≠ 0 := fun j => (zero_ne_embedG j).symm
+  have hblock : (fun i => if i = embedG k k' 0 then 0
+      else if i = embedP k k' 1 then
+        state4 (k := k) (k' := k') n a b (embedP k k' 1) +
+          state4 (k := k) (k' := k') n a b (embedG k k' 0)
+      else state4 (k := k) (k' := k') n a b i) ∘ embedP k k' =
+      fun j => if j = 0 then a else if j = 1 then b else 0 := by
+    funext j
+    fin_cases j <;>
+      simp_all [state4, embedP_injective.eq_iff, embedP_ne_zero, embedP_ne_embedG]
+  rw [saveGPair]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_move gp1).seq
+      (realises_pairMachine.renameRegs_blockState embedP_injective)) (state4 n a b)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  dsimp only
+  rcases layout_cases r with rfl | ⟨i, rfl⟩ | rfl | ⟨i, rfl⟩ | ⟨j, rfl⟩
+  · rw [blockState_of_not_mem _ _ (fun i => (embedP_ne_zero i).symm)]
+    simp_all [state4, state5]
+  · rw [blockState_apply embedP_injective, hblock]
+    simp only [state5]
+    fin_cases i <;> simp_all [state4, embedP_injective.eq_iff]
+  · rw [blockState_of_not_mem _ _ (fun i => (embedP_ne_ten i).symm)]
+    simp_all [state4, state5]
+  · rw [blockState_of_not_mem _ _ (fun j => (embedP_ne_embedF j i).symm)]
+    simp_all [state4, state5]
+  · rw [blockState_of_not_mem _ _ (fun i => (embedP_ne_embedG i j).symm)]
+    simp_all [state4, state5, embedG_injective.eq_iff]
+
+theorem run_finishPair (n a b : ℕ) :
+    ∃ N, (∀ m < N, (run (finishPair (k := k) (k' := k')) ⟨0, state5 n a b⟩ m).pc <
+        (finishPair (k := k) (k' := k')).length) ∧
+      run (finishPair (k := k) (k' := k')) ⟨0, state5 n a b⟩ N =
+        ⟨(finishPair (k := k) (k' := k')).length,
+          unaryConfig (k + k' + 12) (Nat.pair a b)⟩ := by
+  obtain ⟨f0, g0, p0, p1, p2, t0, fg, fp0, fp1, ft, gp0, gp1, gt, p0t, p1t, p01⟩ := entry_ne k k'
+  have f0' := f0.symm; have g0' := g0.symm; have p0' := p0.symm; have p1' := p1.symm
+  have p2' := p2.symm; have t0' := t0.symm; have p01' := p01.symm
+  have pz : ∀ i : Fin 9, embedP k k' i ≠ 0 := embedP_ne_zero
+  have pz' : ∀ i : Fin 9, (0 : Fin (k + k' + 13)) ≠ embedP k k' i :=
+    fun i => (embedP_ne_zero i).symm
+  have pt : ∀ i : Fin 9, embedP k k' i ≠ ten := embedP_ne_ten
+  have pt' : ∀ i : Fin 9, (ten : Fin (k + k' + 13)) ≠ embedP k k' i :=
+    fun i => (embedP_ne_ten i).symm
+  have pf : ∀ (i : Fin 9) (j : Fin (k + 1)), embedP k k' i ≠ embedF k k' j := embedP_ne_embedF
+  have pf' : ∀ (j : Fin (k + 1)) (i : Fin 9), embedF k k' j ≠ embedP k k' i :=
+    fun j i => (embedP_ne_embedF i j).symm
+  have pg : ∀ (i : Fin 9) (j : Fin (k' + 1)), embedP k k' i ≠ embedG k k' j := embedP_ne_embedG
+  have pg' : ∀ (j : Fin (k' + 1)) (i : Fin 9), embedG k k' j ≠ embedP k k' i :=
+    fun j i => (embedP_ne_embedG i j).symm
+  have fz : ∀ i : Fin (k + 1), embedF k k' i ≠ 0 := fun i => (zero_ne_embedF i).symm
+  have gz : ∀ j : Fin (k' + 1), embedG k k' j ≠ 0 := fun j => (zero_ne_embedG j).symm
+  rw [finishPair]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_clear (embedP k k' 0)).seq
+      ((realises_clear (embedP k k' 1)).seq
+        ((realises_clear (0 : Fin (k + k' + 13))).seq (realises_move p2)))) (state5 n a b)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  dsimp only
+  rcases layout_cases r with rfl | ⟨i, rfl⟩ | rfl | ⟨i, rfl⟩ | ⟨j, rfl⟩
+  · simp_all [state5, unaryConfig, embedP_injective.eq_iff]
+  · simp only [Function.update_apply]
+    fin_cases i <;>
+      simp_all [state5, unaryConfig, embedP_injective.eq_iff]
+  · simp_all [state5, unaryConfig]
+  · simp_all [state5, unaryConfig]
+  · simp_all [state5, unaryConfig]
+
+/-- Unit 5, the two halves spliced. -/
+theorem run_saveGFinish (n a b : ℕ) :
+    ∃ N, (∀ m < N, (run (saveGFinish (k := k) (k' := k')) ⟨0, state4 n a b⟩ m).pc <
+        (saveGFinish (k := k) (k' := k')).length) ∧
+      run (saveGFinish (k := k) (k' := k')) ⟨0, state4 n a b⟩ N =
+        ⟨(saveGFinish (k := k) (k' := k')).length,
+          unaryConfig (k + k' + 12) (Nat.pair a b)⟩ := by
+  obtain ⟨N1, h1in, h1ex⟩ := run_saveGPair (k := k) (k' := k') n a b
+  obtain ⟨N2, h2in, h2ex⟩ := run_finishPair (k := k) (k' := k') n a b
+  exact ⟨N1 + N2, join_exit h1in h1ex h2in h2ex⟩
 
 end RegisterMachine
 
