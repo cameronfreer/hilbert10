@@ -82,6 +82,9 @@ variable {k k'}
 @[simp] theorem embedG_val (j : Fin (k' + 1)) : (embedG k k' j).val = 12 + k + j.val := rfl
 @[simp] theorem embedP_val (i : Fin 9) : (embedP k k' i).val = 1 + i.val := rfl
 
+/-- The temporary that `copy` borrows: the one fixed controller register outside `0`–`9`. -/
+def ten : Fin (k + k' + 13) := ⟨10, by omega⟩
+
 theorem embedF_injective : Function.Injective (embedF k k') := by
   intro i j h
   exact Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
@@ -102,12 +105,12 @@ theorem zero_ne_embedF (i : Fin (k + 1)) : (0 : Fin (k + k' + 13)) ≠ embedF k 
 theorem zero_ne_embedG (j : Fin (k' + 1)) : (0 : Fin (k + k' + 13)) ≠ embedG k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
-theorem ten_ne_embedF (i : Fin (k + 1)) : (⟨10, by omega⟩ : Fin (k + k' + 13)) ≠ embedF k k' i := by
-  intro h; have := congrArg Fin.val h; simp at this; omega
+theorem ten_ne_embedF (i : Fin (k + 1)) : (ten : Fin (k + k' + 13)) ≠ embedF k k' i := by
+  intro h; have := congrArg Fin.val h; simp [ten] at this; omega
 
 theorem ten_ne_embedG (j : Fin (k' + 1)) :
-    (⟨10, by omega⟩ : Fin (k + k' + 13)) ≠ embedG k k' j := by
-  intro h; have := congrArg Fin.val h; simp at this; omega
+    (ten : Fin (k + k' + 13)) ≠ embedG k k' j := by
+  intro h; have := congrArg Fin.val h; simp [ten] at this; omega
 
 /-! ### The three blocks are pairwise disjoint -/
 
@@ -135,10 +138,10 @@ and `10` are outside it too. -/
 theorem embedP_ne_zero (i : Fin 9) : embedP k k' i ≠ 0 := by
   intro h; have := congrArg Fin.val h; simp at this
 
-theorem embedP_ne_ten (i : Fin 9) : embedP k k' i ≠ (⟨10, by omega⟩ : Fin (k + k' + 13)) := by
+theorem embedP_ne_ten (i : Fin 9) : embedP k k' i ≠ (ten : Fin (k + k' + 13)) := by
   intro h
   have := congrArg Fin.val h
-  simp at this
+  simp [ten] at this
   omega
 
 /-! ### The layout is exhaustive
@@ -150,18 +153,186 @@ It is the eliminator for the final `funext` — showing the controller returns a
 configuration means saying something about *every* register, and without this the proof would
 rediscover the offset arithmetic one register at a time. -/
 theorem layout_cases (r : Fin (k + k' + 13)) :
-    r = 0 ∨ (∃ i, r = embedP k k' i) ∨ r = ⟨10, by omega⟩ ∨
+    r = 0 ∨ (∃ i, r = embedP k k' i) ∨ r = ten ∨
       (∃ i, r = embedF k k' i) ∨ ∃ j, r = embedG k k' j := by
   have hr := r.isLt
   rcases (show r.val = 0 ∨ (1 ≤ r.val ∧ r.val ≤ 9) ∨ r.val = 10 ∨
       (11 ≤ r.val ∧ r.val ≤ 11 + k) ∨ 12 + k ≤ r.val by omega) with h | h | h | h | h
   · exact Or.inl (Fin.ext (by simpa using h))
   · exact Or.inr (Or.inl ⟨⟨r.val - 1, by omega⟩, Fin.ext (by simp [embedP]; omega)⟩)
-  · exact Or.inr (Or.inr (Or.inl (Fin.ext (by simpa using h))))
+  · exact Or.inr (Or.inr (Or.inl (Fin.ext (by simpa [ten] using h))))
   · exact Or.inr (Or.inr (Or.inr (Or.inl
       ⟨⟨r.val - 11, by omega⟩, Fin.ext (by simp [embedF]; omega)⟩)))
   · exact Or.inr (Or.inr (Or.inr (Or.inr
       ⟨⟨r.val - 12 - k, by omega⟩, Fin.ext (by simp [embedG]; omega)⟩)))
+
+/-! ## The controller
+
+Eight named blocks, grouped into five units so that adjacent total blocks splice once instead of
+four times. The two partial units are the calls; everything else is a `Realises` macro. -/
+
+variable (P : Program (k + 1)) (Q : Program (k' + 1))
+
+/-- Unit 1: put the input where `cf` will read it. -/
+def seedF : Program (k + k' + 13) := copy 0 (embedF k k' 0) ten
+
+/-- Unit 3: save `cf`'s answer into register `1`, then seed `cg` from the untouched input.
+
+Registers `1`, `2`, `3` are written as `embedP 0`, `embedP 1`, `embedP 2` throughout. They *are*
+`pairMachine`'s two targets and its answer, so naming them that way records the connection and
+keeps `Fin` numerals — whose `OfNat` goes through `%` — out of every proof. -/
+def saveFSeedG : Program (k + k' + 13) :=
+  seq (move (embedF k k' 0) (embedP k k' 0)) (copy 0 (embedG k k' 0) ten)
+
+/-- Unit 5: save `cg`'s answer into register `2`, pair the two, and return the answer in `0`. -/
+def saveGFinish : Program (k + k' + 13) :=
+  seq (move (embedG k k' 0) (embedP k k' 1))
+    (seq (renameRegs (embedP k k') pairMachine)
+      (seq (clear (embedP k k' 0))
+        (seq (clear (embedP k k' 1))
+          (seq (clear 0) (move (embedP k k' 2) 0)))))
+
+/-- The whole controller. -/
+def pairController : Program (k + k' + 13) :=
+  seq (seedF (k := k) (k' := k'))
+    (seq (renameRegs (embedF k k') P)
+      (seq (saveFSeedG (k := k) (k' := k'))
+        (seq (renameRegs (embedG k k') Q) (saveGFinish (k := k) (k' := k')))))
+
+/-! ### The fixed registers are distinct from the blocks -/
+
+theorem zero_ne_ten : (0 : Fin (k + k' + 13)) ≠ ten := by
+  intro h; have := congrArg Fin.val h; simp [ten] at this
+
+/-! ### Interface states
+
+The register file expected between units, written down before the transition lemmas so that each
+splice has a small stated interface and no proof accumulates an unfolded register function. -/
+
+/-- After unit 1: the input, and a copy of it where `cf` will read it. -/
+def state1 (n : ℕ) : Fin (k + k' + 13) → ℕ :=
+  fun r => if r = 0 then n else if r = embedF k k' 0 then n else 0
+
+/-- After calling `cf`: its answer sits in its own input register, the input is untouched. -/
+def state2 (n a : ℕ) : Fin (k + k' + 13) → ℕ :=
+  fun r => if r = 0 then n else if r = embedF k k' 0 then a else 0
+
+/-- After unit 3: `cf`'s answer saved, `cg` seeded from the still-untouched input. -/
+def state3 (n a : ℕ) : Fin (k + k' + 13) → ℕ :=
+  fun r => if r = 0 then n else if r = embedP k k' 0 then a
+    else if r = embedG k k' 0 then n else 0
+
+/-- After calling `cg`. -/
+def state4 (n a b : ℕ) : Fin (k + k' + 13) → ℕ :=
+  fun r => if r = 0 then n else if r = embedP k k' 0 then a
+    else if r = embedG k k' 0 then b else 0
+
+/-! ### The three total units -/
+
+theorem run_seedF (n : ℕ) :
+    ∃ N, (∀ m < N, (run (seedF (k := k) (k' := k')) ⟨0, unaryConfig (k + k' + 12) n⟩ m).pc <
+        (seedF (k := k) (k' := k')).length) ∧
+      run (seedF (k := k) (k' := k')) ⟨0, unaryConfig (k + k' + 12) n⟩ N =
+        ⟨(seedF (k := k) (k' := k')).length, state1 n⟩ := by
+  rw [seedF]
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := (0 : Fin (k + k' + 13))) (s := embedF k k' 0) (t := ten)
+      (zero_ne_embedF 0) zero_ne_ten (Ne.symm (ten_ne_embedF 0)) (unaryConfig (k + k' + 12) n)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  refine congrArg _ (funext fun r => ?_)
+  simp only [state1, unaryConfig, Function.update_apply]
+  by_cases h1 : r = embedF k k' 0
+  · subst h1; simp [(zero_ne_embedF 0).symm]
+  · by_cases h2 : r = ten
+    · subst h2; simp [h1, zero_ne_ten.symm]
+    · simp [h1, h2]
+
+/-- The disequalities among the controller's fixed registers and the two block entry points.
+Collected once; every state transition below simplifies with the whole set. -/
+theorem entry_ne (k k' : ℕ) :
+    embedF k k' 0 ≠ 0 ∧ embedG k k' 0 ≠ 0 ∧ embedP k k' 0 ≠ 0 ∧ embedP k k' 1 ≠ 0 ∧
+      embedP k k' 2 ≠ 0 ∧ (ten : Fin (k + k' + 13)) ≠ 0 ∧
+      embedF k k' 0 ≠ embedG k k' 0 ∧ embedF k k' 0 ≠ embedP k k' 0 ∧
+      embedF k k' 0 ≠ embedP k k' 1 ∧ embedF k k' 0 ≠ ten ∧
+      embedG k k' 0 ≠ embedP k k' 0 ∧ embedG k k' 0 ≠ embedP k k' 1 ∧
+      embedG k k' 0 ≠ ten ∧ embedP k k' 0 ≠ ten ∧ embedP k k' 1 ≠ ten ∧
+      embedP k k' 0 ≠ embedP k k' 1 :=
+  ⟨(zero_ne_embedF 0).symm, (zero_ne_embedG 0).symm, embedP_ne_zero 0, embedP_ne_zero 1,
+    embedP_ne_zero 2, zero_ne_ten.symm, embedF_ne_embedG 0 0, (embedP_ne_embedF 0 0).symm,
+    (embedP_ne_embedF 1 0).symm, (ten_ne_embedF 0).symm, (embedP_ne_embedG 0 0).symm,
+    (embedP_ne_embedG 1 0).symm, (ten_ne_embedG 0).symm, embedP_ne_ten 0, embedP_ne_ten 1,
+    fun h => absurd (embedP_injective h) (by decide)⟩
+
+theorem run_saveFSeedG (n a : ℕ) :
+    ∃ N, (∀ m < N, (run (saveFSeedG (k := k) (k' := k')) ⟨0, state2 n a⟩ m).pc <
+        (saveFSeedG (k := k) (k' := k')).length) ∧
+      run (saveFSeedG (k := k) (k' := k')) ⟨0, state2 n a⟩ N =
+        ⟨(saveFSeedG (k := k) (k' := k')).length, state3 n a⟩ := by
+  obtain ⟨f0, g0, p0, p1, p2, t0, fg, fp0, fp1, ft, gp0, gp1, gt, p0t, p1t, p01⟩ := entry_ne k k'
+  have f0' := f0.symm; have g0' := g0.symm; have p0' := p0.symm; have p1' := p1.symm
+  have p2' := p2.symm; have t0' := t0.symm; have fg' := fg.symm; have fp0' := fp0.symm
+  have fp1' := fp1.symm; have ft' := ft.symm; have gp0' := gp0.symm; have gp1' := gp1.symm
+  have gt' := gt.symm; have p0t' := p0t.symm; have p1t' := p1t.symm; have p01' := p01.symm
+  rw [saveFSeedG]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_move (Ne.symm (embedP_ne_embedF 0 0))).seq
+      (realises_copy (r := (0 : Fin (k + k' + 13))) (s := embedG k k' 0) (t := ten)
+        (zero_ne_embedG 0) zero_ne_ten (Ne.symm (ten_ne_embedG 0)))) (state2 n a)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  refine congrArg _ (funext fun r => ?_)
+  simp only [state2, state3]
+  by_cases h1 : r = embedG k k' 0
+  · subst h1
+    simp_all
+  · by_cases h2 : r = ten
+    · subst h2
+      simp_all
+    · by_cases h3 : r = embedF k k' 0
+      · subst h3
+        simp_all
+      · by_cases h4 : r = embedP k k' 0
+        · subst h4
+          simp_all
+        · simp_all
+
+
+/-! ### The two calls, as state transitions
+
+`callState` is never expanded; only its two accessors are used, and only at the handful of
+registers the controller cares about. -/
+
+theorem callState_state1 (n a : ℕ) :
+    callState (embedF k k') (state1 (k := k) (k' := k') n) a = state2 n a := by
+  classical
+  funext r
+  by_cases hrng : ∃ i, r = embedF k k' i
+  · obtain ⟨i, rfl⟩ := hrng
+    rw [callState_apply embedF_injective]
+    simp only [state2, if_neg (Ne.symm (zero_ne_embedF i))]
+    by_cases hi : i = 0
+    · subst hi; simp
+    · rw [if_neg fun h => hi (embedF_injective h), unaryConfig_of_ne hi]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng]
+    simp only [state1, state2, if_neg (hrng 0)]
+
+theorem callState_state3 (n a b : ℕ) :
+    callState (embedG k k') (state3 (k := k) (k' := k') n a) b = state4 n a b := by
+  classical
+  funext r
+  by_cases hrng : ∃ j, r = embedG k k' j
+  · obtain ⟨j, rfl⟩ := hrng
+    rw [callState_apply embedG_injective]
+    simp only [state4, if_neg (Ne.symm (zero_ne_embedG j)),
+      if_neg (embedP_ne_embedG 0 j).symm]
+    by_cases hj : j = 0
+    · subst hj; simp
+    · rw [if_neg fun h => hj (embedG_injective h), unaryConfig_of_ne hj]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng]
+    simp only [state3, state4, if_neg (hrng 0)]
 
 end RegisterMachine
 

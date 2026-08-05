@@ -289,6 +289,34 @@ theorem Realises.renameRegs {k' : ℕ} {σ : Fin k → Fin k'} (hσ : Function.I
         rw [regs_run_renameRegs_of_ne hrng n, hoff regs r hrng]
     rw [← hpc, ← hregs]
 
+
+/-! ### The register file a total block produces
+
+`Realises.renameRegs` lets the caller name the lifted transformation, which is right when there
+is something specific to say. When there is not — when the answer is just "`F` on the block,
+identity off it" — this packages it, so a renamed total machine is as opaque a state transition
+as a call is. It is the total counterpart of `callState` in `CleanScratch`. -/
+
+/-- `F` applied inside the block along `σ`, with everything outside it untouched. -/
+noncomputable def blockState {k' : ℕ} (σ : Fin k → Fin k')
+    (F : (Fin k → ℕ) → Fin k → ℕ) (regs : Fin k' → ℕ) : Fin k' → ℕ :=
+  Function.extend σ (F (regs ∘ σ)) regs
+
+theorem blockState_apply {k' : ℕ} {σ : Fin k → Fin k'} (hσ : Function.Injective σ)
+    (F : (Fin k → ℕ) → Fin k → ℕ) (regs : Fin k' → ℕ) (i : Fin k) :
+    blockState σ F regs (σ i) = F (regs ∘ σ) i :=
+  hσ.extend_apply _ _ _
+
+theorem blockState_of_not_mem {k' : ℕ} {σ : Fin k → Fin k'} (F : (Fin k → ℕ) → Fin k → ℕ)
+    (regs : Fin k' → ℕ) {r : Fin k'} (hr : ∀ i, r ≠ σ i) : blockState σ F regs r = regs r :=
+  Function.extend_apply' _ _ _ (by rintro ⟨i, rfl⟩; exact hr i rfl)
+
+theorem Realises.renameRegs_blockState {k' : ℕ} {σ : Fin k → Fin k'} (hσ : Function.Injective σ)
+    {P : Program k} {F : (Fin k → ℕ) → Fin k → ℕ} (h : Realises P F) :
+    Realises (RegisterMachine.renameRegs σ P) (blockState σ F) :=
+  h.renameRegs hσ (fun regs i => blockState_apply hσ F regs i)
+    (fun regs _ hr => blockState_of_not_mem F regs hr)
+
 /-! ## Primitive machines
 
 The two one-instruction programs. `incr` exercises the exit contract on a straight-line
