@@ -463,6 +463,73 @@ theorem run_saveGFinish (n a b : ℕ) :
   obtain ⟨N2, h2in, h2ex⟩ := run_finishPair (k := k) (k' := k') n a b
   exact ⟨N1 + N2, join_exit h1in h1ex h2in h2ex⟩
 
+/-! ## The closure theorem
+
+Neither clause needs a case split. The exit clause gets `a` and `b` from `mem_eval_pair` and
+splices the five exits; the halting clause peels the controller forwards, and the three
+operational cases — the first call cannot halt, the first does and the second cannot, both do —
+are where that argument can *stop*, not branches Lean has to enumerate. -/
+
+theorem CleanPartComputesUnary.pair {P : Program (k + 1)} {Q : Program (k' + 1)}
+    {f g : ℕ →. ℕ} (hf : CleanPartComputesUnary P f) (hg : CleanPartComputesUnary Q g) :
+    CleanPartComputesUnary (pairController P Q) fun n => Nat.pair <$> f n <*> g n := by
+  intro n
+  have hxF : state1 (k := k) (k' := k') n (embedF k k' 0) = n := by
+    simp [state1, (zero_ne_embedF 0).symm]
+  have hcF : ∀ i, i ≠ 0 → state1 (k := k) (k' := k') n (embedF k k' i) = 0 := by
+    intro i hi
+    have hne : embedF k k' i ≠ embedF k k' 0 := fun h => hi (embedF_injective h)
+    simp [state1, (zero_ne_embedF i).symm, hne]
+  have hxG : ∀ a, state3 (k := k) (k' := k') n a (embedG k k' 0) = n := by
+    intro a
+    simp [state3, (zero_ne_embedG 0).symm, (embedP_ne_embedG 0 0).symm]
+  have hcG : ∀ a j, j ≠ 0 → state3 (k := k) (k' := k') n a (embedG k k' j) = 0 := by
+    intro a j hj
+    have hne : embedG k k' j ≠ embedG k k' 0 := fun h => hj (embedG_injective h)
+    simp [state3, (zero_ne_embedG j).symm, (embedP_ne_embedG 0 j).symm, hne]
+  refine ⟨fun y hy => ?_, fun hh => ?_⟩
+  · obtain ⟨a, ha, b, hb, rfl⟩ := mem_eval_pair.mp hy
+    obtain ⟨N1, i1, e1⟩ := run_seedF (k := k) (k' := k') n
+    obtain ⟨N2, i2, e2⟩ := hf.call_exit embedF_injective hxF hcF ha
+    rw [callState_state1] at e2
+    obtain ⟨N3, i3, e3⟩ := run_saveFSeedG (k := k) (k' := k') n a
+    obtain ⟨N4, i4, e4⟩ := hg.call_exit embedG_injective (hxG a) (hcG a) hb
+    rw [callState_state3] at e4
+    obtain ⟨N5, i5, e5⟩ := run_saveGFinish (k := k) (k' := k') n a b
+    obtain ⟨j45, f45⟩ := join_exit i4 e4 i5 e5
+    obtain ⟨j345, f345⟩ := join_exit i3 e3 j45 f45
+    obtain ⟨j2345, f2345⟩ := join_exit i2 e2 j345 f345
+    exact ⟨N1 + (N2 + (N3 + (N4 + N5))), join_exit i1 e1 j2345 f2345⟩
+  · -- peel the seeding block, reaching the first call
+    obtain ⟨N1, i1, e1⟩ := run_seedF (k := k) (k' := k') n
+    have h1 := (halts_append_of_exits i1 (by rw [e1])).mp hh
+    rw [show (run (seedF (k := k) (k' := k')) ⟨0, unaryConfig (k + k' + 12) n⟩ N1).regs =
+      state1 n from by rw [e1]] at h1
+    -- the first call halts, so `f n` converges
+    have hdf := (hf.call_halts_iff embedF_injective hxF hcF).mp (halts_prefix_of_halts_append h1)
+    obtain ⟨N2, i2, e2⟩ := hf.call_exit embedF_injective hxF hcF (Part.get_mem hdf)
+    rw [callState_state1] at e2
+    have h2 := (halts_append_of_exits i2 (by rw [e2])).mp h1
+    rw [show (run (renameRegs (embedF k k') P) ⟨0, state1 n⟩ N2).regs =
+      state2 n ((f n).get hdf) from by rw [e2]] at h2
+    -- peel the saving-and-seeding block, reaching the second call
+    obtain ⟨N3, i3, e3⟩ := run_saveFSeedG (k := k) (k' := k') n ((f n).get hdf)
+    have h3 := (halts_append_of_exits i3 (by rw [e3])).mp h2
+    rw [show (run (saveFSeedG (k := k) (k' := k')) ⟨0, state2 n ((f n).get hdf)⟩ N3).regs =
+      state3 n ((f n).get hdf) from by rw [e3]] at h3
+    have hdg := (hg.call_halts_iff embedG_injective (hxG _) (hcG _)).mp
+      (halts_prefix_of_halts_append h3)
+    exact Part.dom_iff_mem.mpr ⟨Nat.pair ((f n).get hdf) ((g n).get hdg),
+      mem_eval_pair.mpr ⟨_, Part.get_mem hdf, _, Part.get_mem hdg, rfl⟩⟩
+
+/-- **`Code.pair`.** A corollary of the closure theorem and nothing else: the two `mem_` lemmas
+identify the applicative source semantics with the existential the machine proof used. -/
+theorem CleanPartComputesUnary.codePair {P : Program (k + 1)} {Q : Program (k' + 1)}
+    {cf cg : Nat.Partrec.Code} (hf : CleanPartComputesUnary P cf.eval)
+    (hg : CleanPartComputesUnary Q cg.eval) :
+    CleanPartComputesUnary (pairController P Q) (Nat.Partrec.Code.pair cf cg).eval :=
+  (hf.pair hg).congr fun n => Part.ext fun y => by rw [mem_eval_code_pair, mem_eval_pair]
+
 end RegisterMachine
 
 end Hilbert10
