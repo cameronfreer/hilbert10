@@ -141,6 +141,28 @@ theorem embedP_ne_ten (i : Fin 9) : embedP k k' i ≠ (⟨10, by omega⟩ : Fin 
   simp at this
   omega
 
+/-! ### The layout is exhaustive
+
+The lemmas above say the blocks are separated. This one says they cover: registers `0`, `1`–`9`,
+`10`, `cf`'s block and `cg`'s block account for every register, with nothing left over.
+
+It is the eliminator for the final `funext` — showing the controller returns a clean unary
+configuration means saying something about *every* register, and without this the proof would
+rediscover the offset arithmetic one register at a time. -/
+theorem layout_cases (r : Fin (k + k' + 13)) :
+    r = 0 ∨ (∃ i, r = embedP k k' i) ∨ r = ⟨10, by omega⟩ ∨
+      (∃ i, r = embedF k k' i) ∨ ∃ j, r = embedG k k' j := by
+  have hr := r.isLt
+  rcases (show r.val = 0 ∨ (1 ≤ r.val ∧ r.val ≤ 9) ∨ r.val = 10 ∨
+      (11 ≤ r.val ∧ r.val ≤ 11 + k) ∨ 12 + k ≤ r.val by omega) with h | h | h | h | h
+  · exact Or.inl (Fin.ext (by simpa using h))
+  · exact Or.inr (Or.inl ⟨⟨r.val - 1, by omega⟩, Fin.ext (by simp [embedP]; omega)⟩)
+  · exact Or.inr (Or.inr (Or.inl (Fin.ext (by simpa using h))))
+  · exact Or.inr (Or.inr (Or.inr (Or.inl
+      ⟨⟨r.val - 11, by omega⟩, Fin.ext (by simp [embedF]; omega)⟩)))
+  · exact Or.inr (Or.inr (Or.inr (Or.inr
+      ⟨⟨r.val - 12 - k, by omega⟩, Fin.ext (by simp [embedG]; omega)⟩)))
+
 end RegisterMachine
 
 end Hilbert10
