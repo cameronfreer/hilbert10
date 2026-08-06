@@ -384,6 +384,42 @@ theorem precFacts (k k' : ℕ) :
     precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.2.2⟩
 
 
+/-! ### `precInner`'s interior
+
+A unit that ends in a renamed block call needs its *own* interior named. `blockState` takes the
+incoming register file as an argument, so that argument has to be small — and after two `copy`
+transformations it is a composite several lines long. `precInnerA` and `precInnerB` name the two
+intermediate files, and the projection lemma is then stated about a name.
+
+The same will be true of `precOuter`, whose block call is also preceded by two copies. -/
+
+/-- After copying the index into the inner block's first target. -/
+def precInnerA (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx else 0
+
+/-- After copying the accumulator into the inner block's second target. -/
+def precInnerB (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx
+    else if r = embedPairA k k' 1 then acc else 0
+
+/-- What `pairMachine` sees inside the inner block. Domain `Fin 9`, so `fin_cases` settles it and
+no layout case split enters. -/
+theorem precInnerB_comp_embedPairA (a idx rem acc : ℕ) :
+    precInnerB (k := k) (k' := k') a idx rem acc ∘ embedPairA k k' =
+      fun i => if i = 0 then idx else if i = 1 then acc else 0 := by
+  have ha := fun j => (embedPairA_ne_fixed (k := k) (k' := k') j).2.1
+  have hk := fun j => (embedPairA_ne_fixed (k := k) (k' := k') j).2.2.1
+  have hr := fun j => (embedPairA_ne_fixed (k := k) (k' := k') j).2.2.2.1
+  have hacc := fun j => (embedPairA_ne_fixed (k := k) (k' := k') j).2.2.2.2.1
+  funext i
+  fin_cases i <;>
+    simp [precInnerB, embedPairA_injective.eq_iff, ha, hk, hr, hacc]
+
+
 end RegisterMachine
 
 end Hilbert10
