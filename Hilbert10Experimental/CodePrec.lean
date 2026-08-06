@@ -278,6 +278,112 @@ def precLoopState (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
   fun r => if r = rA k k' then a else if r = rK k k' then idx
     else if r = rR k k' then rem else if r = rAcc k k' then acc else 0
 
+/-! ## The turn body
+
+Five units, `B1`–`B5`, with an interface state after each. `B4` is the only partial one; the
+other four are `Realises` macros. -/
+
+variable (P : Program (k + 1)) (Q : Program (k' + 1))
+
+/-- `B1`: compute `Nat.pair k acc` in the inner block. -/
+def precInner : Program (k + k' + 32) :=
+  seq (copy (rK k k') (embedPairA k k' 0) (rTmp k k'))
+    (seq (copy (rAcc k k') (embedPairA k k' 1) (rTmp k k'))
+      (renameRegs (embedPairA k k') pairMachine))
+
+/-- `B2`: compute `Nat.pair a` of that in the outer block. -/
+def precOuter : Program (k + k' + 32) :=
+  seq (copy (rA k k') (embedPairB k k' 0) (rTmp k k'))
+    (seq (copy (embedPairA k k' 2) (embedPairB k k' 1) (rTmp k k'))
+      (renameRegs (embedPairB k k') pairMachine))
+
+/-- `B3`: hand the argument to the step callee and give both pairing blocks back clean. -/
+def precSeedStep : Program (k + k' + 32) :=
+  seq (copy (embedPairB k k' 2) (embedStep k k' 0) (rTmp k k'))
+    (seq (clear (embedPairA k k' 0))
+      (seq (clear (embedPairA k k' 1))
+        (seq (clear (embedPairA k k' 2))
+          (seq (clear (embedPairB k k' 0))
+            (seq (clear (embedPairB k k' 1)) (clear (embedPairB k k' 2)))))))
+
+/-- `B5`: replace the accumulator with the step callee's answer. -/
+def precSaveAcc : Program (k + k' + 32) :=
+  seq (clear (rAcc k k')) (move (embedStep k k' 0) (rAcc k k'))
+
+/-- The whole turn body: the four total units around the one call. -/
+def precBody : Program (k + k' + 32) :=
+  seq (precInner (k := k) (k' := k'))
+    (seq (precOuter (k := k) (k' := k'))
+      (seq (precSeedStep (k := k) (k' := k'))
+        (seq (renameRegs (embedStep k k') Q) (precSaveAcc (k := k) (k' := k')))))
+
+/-- The loop: test the remaining count, run a turn, increment the index, jump back.
+
+The `dec` at position `0` is the branch; there is no comparison and no stored target. The `inc`
+at the end both counts and jumps back, so no jump gadget is needed either. -/
+def precLoop : Program (k + k' + 32) :=
+  [Instr.dec (rR k k') 1 ((precBody (k := k) (k' := k') Q).length + 2)] ++
+    shiftJumps 1 (precBody (k := k) (k' := k') Q) ++ [Instr.inc (rK k k') 0]
+
+theorem length_precLoop :
+    (precLoop (k := k) (k' := k') Q).length = (precBody (k := k) (k' := k') Q).length + 2 := by
+  simp [precLoop]
+
+/-! ### The body's interface states -/
+
+/-- After `B1`: the inner pairing done. -/
+def precState2 (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx else if r = embedPairA k k' 1 then acc
+    else if r = embedPairA k k' 2 then Nat.pair idx acc else 0
+
+/-- After `B2`: the outer pairing done. -/
+def precState3 (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx else if r = embedPairA k k' 1 then acc
+    else if r = embedPairA k k' 2 then Nat.pair idx acc
+    else if r = embedPairB k k' 0 then a
+    else if r = embedPairB k k' 1 then Nat.pair idx acc
+    else if r = embedPairB k k' 2 then Nat.pair a (Nat.pair idx acc) else 0
+
+/-- After `B3`: the step callee seeded, both pairing blocks clean. -/
+def precState4 (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedStep k k' 0 then Nat.pair a (Nat.pair idx acc) else 0
+
+/-- After the call: the step callee's answer in its own input register. -/
+def precState5 (a idx rem acc acc' : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedStep k k' 0 then acc' else 0
+
+/-! ### Separation facts, regrouped
+
+The body's transitions each need the fixed-register disequalities in context so that `simp_all`
+can use them without an explicit argument list. Grouped rather than flat because a fifteen-way
+`obtain` pattern is unreadable at every use site. -/
+
+/-- The separation facts every body transition needs, in context. -/
+theorem precFacts (k k' : ℕ) :
+    ((0 : Fin (k + k' + 32)) ≠ rA k k' ∧ (0 : Fin (k + k' + 32)) ≠ rK k k' ∧
+      (0 : Fin (k + k' + 32)) ≠ rR k k' ∧ (0 : Fin (k + k' + 32)) ≠ rAcc k k' ∧
+      (0 : Fin (k + k' + 32)) ≠ rTmp k k') ∧
+    (rA k k' ≠ rK k k' ∧ rA k k' ≠ rR k k' ∧ rA k k' ≠ rAcc k k' ∧ rA k k' ≠ rTmp k k') ∧
+    (rK k k' ≠ rR k k' ∧ rK k k' ≠ rAcc k k' ∧ rK k k' ≠ rTmp k k') ∧
+    (rR k k' ≠ rAcc k k' ∧ rR k k' ≠ rTmp k k') ∧ rAcc k k' ≠ rTmp k k' :=
+  ⟨⟨precFixed_ne.1, precFixed_ne.2.1, precFixed_ne.2.2.1, precFixed_ne.2.2.2.1,
+      precFixed_ne.2.2.2.2.1⟩,
+    ⟨precFixed_ne.2.2.2.2.2.1, precFixed_ne.2.2.2.2.2.2.1, precFixed_ne.2.2.2.2.2.2.2.1,
+      precFixed_ne.2.2.2.2.2.2.2.2.1⟩,
+    ⟨precFixed_ne.2.2.2.2.2.2.2.2.2.1, precFixed_ne.2.2.2.2.2.2.2.2.2.2.1,
+      precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.1⟩,
+    ⟨precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.1, precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.2.1⟩,
+    precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.2.2⟩
+
+
 end RegisterMachine
 
 end Hilbert10
