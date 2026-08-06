@@ -264,6 +264,127 @@ theorem embedBase_ne_embedStep (i : Fin (k + 1)) (j : Fin (k' + 1)) :
     embedBase k k' i ≠ embedStep k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
+/- The same facts in the reverse orientation. `simp` writes a register condition as an
+equation, not as a `≠`, so `ne_comm` cannot flip it — the reversed form has to be available as a
+rewrite rule. Bundled the same way, so this is sixteen declarations rather than fifty-five. -/
+theorem precFixed_ne' :
+    rA k k' ≠ (0 : Fin (k + k' + 32)) ∧ rK k k' ≠ (0 : Fin (k + k' + 32)) ∧
+    rR k k' ≠ (0 : Fin (k + k' + 32)) ∧ rAcc k k' ≠ (0 : Fin (k + k' + 32)) ∧
+    rTmp k k' ≠ (0 : Fin (k + k' + 32)) ∧ rK k k' ≠ rA k k' ∧ rR k k' ≠ rA k k' ∧
+    rAcc k k' ≠ rA k k' ∧ rTmp k k' ≠ rA k k' ∧ rR k k' ≠ rK k k' ∧ rAcc k k' ≠ rK k k' ∧
+    rTmp k k' ≠ rK k k' ∧ rAcc k k' ≠ rR k k' ∧ rTmp k k' ≠ rR k k' ∧ rTmp k k' ≠ rAcc k k' :=
+  ⟨precFixed_ne.1.symm, precFixed_ne.2.1.symm, precFixed_ne.2.2.1.symm,
+    precFixed_ne.2.2.2.1.symm, precFixed_ne.2.2.2.2.1.symm, precFixed_ne.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.1.symm, precFixed_ne.2.2.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.2.2.1.symm, precFixed_ne.2.2.2.2.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.2.2.2.2.1.symm, precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.2.1.symm,
+    precFixed_ne.2.2.2.2.2.2.2.2.2.2.2.2.2.2.symm⟩
+
+theorem embedPairA_ne_fixed' (i : Fin 9) :
+    (0 : Fin (k + k' + 32)) ≠ embedPairA k k' i ∧ rA k k' ≠ embedPairA k k' i ∧
+    rK k k' ≠ embedPairA k k' i ∧
+    rR k k' ≠ embedPairA k k' i ∧ rAcc k k' ≠ embedPairA k k' i ∧ rTmp k k' ≠ embedPairA k k' i :=
+  ⟨(embedPairA_ne_fixed i).1.symm, (embedPairA_ne_fixed i).2.1.symm,
+    (embedPairA_ne_fixed i).2.2.1.symm,
+    (embedPairA_ne_fixed i).2.2.2.1.symm, (embedPairA_ne_fixed i).2.2.2.2.1.symm,
+    (embedPairA_ne_fixed i).2.2.2.2.2.symm⟩
+
+theorem embedPairB_ne_fixed' (i : Fin 9) :
+    (0 : Fin (k + k' + 32)) ≠ embedPairB k k' i ∧ rA k k' ≠ embedPairB k k' i ∧
+    rK k k' ≠ embedPairB k k' i ∧
+    rR k k' ≠ embedPairB k k' i ∧ rAcc k k' ≠ embedPairB k k' i ∧ rTmp k k' ≠ embedPairB k k' i :=
+  ⟨(embedPairB_ne_fixed i).1.symm, (embedPairB_ne_fixed i).2.1.symm,
+    (embedPairB_ne_fixed i).2.2.1.symm,
+    (embedPairB_ne_fixed i).2.2.2.1.symm, (embedPairB_ne_fixed i).2.2.2.2.1.symm,
+    (embedPairB_ne_fixed i).2.2.2.2.2.symm⟩
+
+theorem embedUnpair_ne_fixed' (i : Fin 6) :
+    (0 : Fin (k + k' + 32)) ≠ embedUnpair k k' i ∧ rA k k' ≠ embedUnpair k k' i ∧
+    rK k k' ≠ embedUnpair k k' i ∧
+    rR k k' ≠ embedUnpair k k' i ∧ rAcc k k' ≠ embedUnpair k k' i ∧
+    rTmp k k' ≠ embedUnpair k k' i :=
+  ⟨(embedUnpair_ne_fixed i).1.symm, (embedUnpair_ne_fixed i).2.1.symm,
+    (embedUnpair_ne_fixed i).2.2.1.symm,
+    (embedUnpair_ne_fixed i).2.2.2.1.symm, (embedUnpair_ne_fixed i).2.2.2.2.1.symm,
+    (embedUnpair_ne_fixed i).2.2.2.2.2.symm⟩
+
+theorem embedBase_ne_fixed' (i : Fin (k + 1)) :
+    (0 : Fin (k + k' + 32)) ≠ embedBase k k' i ∧ rA k k' ≠ embedBase k k' i ∧
+    rK k k' ≠ embedBase k k' i ∧
+    rR k k' ≠ embedBase k k' i ∧ rAcc k k' ≠ embedBase k k' i ∧ rTmp k k' ≠ embedBase k k' i :=
+  ⟨(embedBase_ne_fixed i).1.symm, (embedBase_ne_fixed i).2.1.symm,
+    (embedBase_ne_fixed i).2.2.1.symm,
+    (embedBase_ne_fixed i).2.2.2.1.symm, (embedBase_ne_fixed i).2.2.2.2.1.symm,
+    (embedBase_ne_fixed i).2.2.2.2.2.symm⟩
+
+theorem embedStep_ne_fixed' (i : Fin (k' + 1)) :
+    (0 : Fin (k + k' + 32)) ≠ embedStep k k' i ∧ rA k k' ≠ embedStep k k' i ∧
+    rK k k' ≠ embedStep k k' i ∧
+    rR k k' ≠ embedStep k k' i ∧ rAcc k k' ≠ embedStep k k' i ∧ rTmp k k' ≠ embedStep k k' i :=
+  ⟨(embedStep_ne_fixed i).1.symm, (embedStep_ne_fixed i).2.1.symm,
+    (embedStep_ne_fixed i).2.2.1.symm,
+    (embedStep_ne_fixed i).2.2.2.1.symm, (embedStep_ne_fixed i).2.2.2.2.1.symm,
+    (embedStep_ne_fixed i).2.2.2.2.2.symm⟩
+
+theorem embedPairB_ne_embedPairA (i : Fin 9) (j : Fin 9) : embedPairB k k' i ≠ embedPairA k k' j :=
+  (embedPairA_ne_embedPairB j i).symm
+
+theorem embedUnpair_ne_embedPairA (i : Fin 6) (j : Fin 9) :
+    embedUnpair k k' i ≠ embedPairA k k' j :=
+  (embedPairA_ne_embedUnpair j i).symm
+
+theorem embedBase_ne_embedPairA (i : Fin (k + 1)) (j : Fin 9) :
+    embedBase k k' i ≠ embedPairA k k' j :=
+  (embedPairA_ne_embedBase j i).symm
+
+theorem embedStep_ne_embedPairA (i : Fin (k' + 1)) (j : Fin 9) :
+    embedStep k k' i ≠ embedPairA k k' j :=
+  (embedPairA_ne_embedStep j i).symm
+
+theorem embedUnpair_ne_embedPairB (i : Fin 6) (j : Fin 9) :
+    embedUnpair k k' i ≠ embedPairB k k' j :=
+  (embedPairB_ne_embedUnpair j i).symm
+
+theorem embedBase_ne_embedPairB (i : Fin (k + 1)) (j : Fin 9) :
+    embedBase k k' i ≠ embedPairB k k' j :=
+  (embedPairB_ne_embedBase j i).symm
+
+theorem embedStep_ne_embedPairB (i : Fin (k' + 1)) (j : Fin 9) :
+    embedStep k k' i ≠ embedPairB k k' j :=
+  (embedPairB_ne_embedStep j i).symm
+
+theorem embedBase_ne_embedUnpair (i : Fin (k + 1)) (j : Fin 6) :
+    embedBase k k' i ≠ embedUnpair k k' j :=
+  (embedUnpair_ne_embedBase j i).symm
+
+theorem embedStep_ne_embedUnpair (i : Fin (k' + 1)) (j : Fin 6) :
+    embedStep k k' i ≠ embedUnpair k k' j :=
+  (embedUnpair_ne_embedStep j i).symm
+
+theorem embedStep_ne_embedBase (i : Fin (k' + 1)) (j : Fin (k + 1)) :
+    embedStep k k' i ≠ embedBase k k' j :=
+  (embedBase_ne_embedStep j i).symm
+
+/- Registering the separation theorems as *declarations* rather than passing them as
+hypotheses is what makes them usable: `simp` decomposes a conjunction on registration, but
+`simp_all` cannot decompose a local conjunction hypothesis into rewrite rules. `ne_comm` then
+covers the reverse orientation from the one canonical form. Kept file-local — this is arithmetic
+about one layout, not a fact anyone else should be simplifying with. -/
+attribute [local simp] precFixed_ne embedPairA_ne_fixed embedPairB_ne_fixed
+  embedUnpair_ne_fixed embedBase_ne_fixed embedStep_ne_fixed
+  embedPairA_ne_embedPairB embedPairA_ne_embedUnpair embedPairA_ne_embedBase
+  embedPairA_ne_embedStep embedPairB_ne_embedUnpair embedPairB_ne_embedBase
+  embedPairB_ne_embedStep embedUnpair_ne_embedBase embedUnpair_ne_embedStep
+  embedBase_ne_embedStep
+  precFixed_ne' embedPairA_ne_fixed' embedPairB_ne_fixed' embedUnpair_ne_fixed'
+  embedBase_ne_fixed' embedStep_ne_fixed'
+  embedPairB_ne_embedPairA embedUnpair_ne_embedPairA embedBase_ne_embedPairA
+  embedStep_ne_embedPairA embedUnpair_ne_embedPairB embedBase_ne_embedPairB
+  embedStep_ne_embedPairB embedBase_ne_embedUnpair embedStep_ne_embedUnpair
+  embedStep_ne_embedBase
+
 /-! ### The loop head
 
 The interface the whole loop is proved against, parameterised by the index and the accumulator
@@ -403,8 +524,8 @@ def precInnerA (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
 def precInnerB (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
   fun r => if r = rA k k' then a else if r = rK k k' then idx
     else if r = rR k k' then rem else if r = rAcc k k' then acc
-    else if r = embedPairA k k' 0 then idx
-    else if r = embedPairA k k' 1 then acc else 0
+    else if r = embedPairA k k' 1 then acc
+    else if r = embedPairA k k' 0 then idx else 0
 
 /-- What `pairMachine` sees inside the inner block. Domain `Fin 9`, so `fin_cases` settles it and
 no layout case split enters. -/
@@ -419,6 +540,108 @@ theorem precInnerB_comp_embedPairA (a idx rem acc : ℕ) :
   fin_cases i <;>
     simp [precInnerB, embedPairA_injective.eq_iff, ha, hk, hr, hacc]
 
+
+/-! ### `precInner`'s three stages
+
+Each is its own top-level lemma so that no earlier exit equation is in scope when its register
+case analysis runs. With the separation theorems registered above, every branch is `simp` against
+the state definitions — no argument list of disequalities and no `split_ifs`. -/
+
+/-- Stage 1: the index reaches the inner block's first target. -/
+theorem run_precInner_copyK (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (rK k k') (embedPairA k k' 0) (rTmp k k'))
+          ⟨0, precLoopState a idx rem acc⟩ m).pc <
+        (copy (rK k k') (embedPairA k k' 0) (rTmp k k')).length) ∧
+      run (copy (rK k k') (embedPairA k k' 0) (rTmp k k'))
+        ⟨0, precLoopState a idx rem acc⟩ N =
+        ⟨(copy (rK k k') (embedPairA k k' 0) (rTmp k k')).length,
+          precInnerA a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := rK k k') (s := embedPairA k k' 0) (t := rTmp k k')
+      (by simp) (by simp) (by simp)
+      (precLoopState (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [precLoopState, precInnerA, embedPairA_injective.eq_iff]
+
+/-- Stage 2: the accumulator reaches the second target. -/
+theorem run_precInner_copyAcc (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (rAcc k k') (embedPairA k k' 1) (rTmp k k'))
+          ⟨0, precInnerA a idx rem acc⟩ m).pc <
+        (copy (rAcc k k') (embedPairA k k' 1) (rTmp k k')).length) ∧
+      run (copy (rAcc k k') (embedPairA k k' 1) (rTmp k k'))
+        ⟨0, precInnerA a idx rem acc⟩ N =
+        ⟨(copy (rAcc k k') (embedPairA k k' 1) (rTmp k k')).length,
+          precInnerB a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := rAcc k k') (s := embedPairA k k' 1) (t := rTmp k k')
+      (by simp) (by simp) (by simp)
+      (precInnerA (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [precInnerA, precInnerB, embedPairA_injective.eq_iff]
+
+/-- Stage 3: the block call. Its argument is `precInnerB`, a name — which is the point of having
+named the interior at all. -/
+theorem run_precInner_pair (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (renameRegs (embedPairA k k') pairMachine)
+          ⟨0, precInnerB a idx rem acc⟩ m).pc <
+        (renameRegs (embedPairA k k') pairMachine).length) ∧
+      run (renameRegs (embedPairA k k') pairMachine) ⟨0, precInnerB a idx rem acc⟩ N =
+        ⟨(renameRegs (embedPairA k k') pairMachine).length, precState2 a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    (realises_pairMachine.renameRegs_blockState embedPairA_injective)
+      (precInnerB (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_apply embedPairA_injective, precInnerB_comp_embedPairA]
+    simp only [precState2]
+    fin_cases i <;> simp [embedPairA_injective.eq_iff]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]
+    simp [precInnerB, precState2]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]
+    simp [precInnerB, precState2]
+
+/-- `B1`, the three stages spliced. -/
+theorem run_precInner (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (precInner (k := k) (k' := k'))
+          ⟨0, precLoopState a idx rem acc⟩ m).pc < (precInner (k := k) (k' := k')).length) ∧
+      run (precInner (k := k) (k' := k')) ⟨0, precLoopState a idx rem acc⟩ N =
+        ⟨(precInner (k := k) (k' := k')).length, precState2 a idx rem acc⟩ := by
+  rw [precInner]
+  obtain ⟨N1, i1, e1⟩ := run_precInner_copyK (k := k) (k' := k') a idx rem acc
+  obtain ⟨N2, i2, e2⟩ := run_precInner_copyAcc (k := k) (k' := k') a idx rem acc
+  obtain ⟨N3, i3, e3⟩ := run_precInner_pair (k := k) (k' := k') a idx rem acc
+  obtain ⟨j23, f23⟩ := join_exit i2 e2 i3 e3
+  exact ⟨N1 + (N2 + N3), join_exit i1 e1 j23 f23⟩
 
 end RegisterMachine
 
