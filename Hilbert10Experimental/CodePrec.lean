@@ -376,8 +376,8 @@ theorem embedStep_ne_embedBase (i : Fin (k' + 1)) (j : Fin (k + 1)) :
 
 /- Registering the separation theorems as *declarations* rather than passing them as
 hypotheses is what makes them usable: `simp` decomposes a conjunction on registration, but
-`simp_all` cannot decompose a local conjunction hypothesis into rewrite rules. The reversed bundles above cover
-orientation. Kept file-local — this is arithmetic
+`simp_all` cannot decompose a local conjunction hypothesis into rewrite rules. The reversed
+bundles above cover orientation. Kept file-local — this is arithmetic
 about one layout, not a fact anyone else should be simplifying with. -/
 attribute [local simp] precFixed_ne embedPairA_ne_fixed embedPairB_ne_fixed
   embedUnpair_ne_fixed embedBase_ne_fixed embedStep_ne_fixed
