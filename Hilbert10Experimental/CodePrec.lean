@@ -264,9 +264,16 @@ theorem embedBase_ne_embedStep (i : Fin (k + 1)) (j : Fin (k' + 1)) :
     embedBase k k' i ≠ embedStep k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
-/- The same facts in the reverse orientation. `simp` writes a register condition as an
-equation, not as a `≠`, so `ne_comm` cannot flip it — the reversed form has to be available as a
-rewrite rule. Bundled the same way, so this is sixteen declarations rather than fifty-five. -/
+/- The same facts in the reverse orientation.
+
+A register condition reaches `simp` as an *equation*, so the canonical disequality bundle only
+fires if the equation is already the right way round. `ne_comm` cannot help — it acts on
+disequalities. `eq_comm` can, but only sometimes: it normalises by term order, which puts
+`rA k k' = embedPairA k k' i` the useful way round but leaves `0 = embedPairA k k' i` and
+`embedBase k k' i = embedPairA k k' j` untouched, because a numeral and a differently-named
+embedding order the other way. Rather than depend on which way `simp` happens to orient a given
+pair, both directions are stated. Bundled, so this is sixteen declarations rather than
+fifty-five. -/
 theorem precFixed_ne' :
     rA k k' ≠ (0 : Fin (k + k' + 32)) ∧ rK k k' ≠ (0 : Fin (k + k' + 32)) ∧
     rR k k' ≠ (0 : Fin (k + k' + 32)) ∧ rAcc k k' ≠ (0 : Fin (k + k' + 32)) ∧
@@ -369,8 +376,8 @@ theorem embedStep_ne_embedBase (i : Fin (k' + 1)) (j : Fin (k + 1)) :
 
 /- Registering the separation theorems as *declarations* rather than passing them as
 hypotheses is what makes them usable: `simp` decomposes a conjunction on registration, but
-`simp_all` cannot decompose a local conjunction hypothesis into rewrite rules. `ne_comm` then
-covers the reverse orientation from the one canonical form. Kept file-local — this is arithmetic
+`simp_all` cannot decompose a local conjunction hypothesis into rewrite rules. The reversed bundles above cover
+orientation. Kept file-local — this is arithmetic
 about one layout, not a fact anyone else should be simplifying with. -/
 attribute [local simp] precFixed_ne embedPairA_ne_fixed embedPairB_ne_fixed
   embedUnpair_ne_fixed embedBase_ne_fixed embedStep_ne_fixed
