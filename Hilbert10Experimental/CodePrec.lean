@@ -69,7 +69,7 @@ theorem mem_precSem_step {f g : ℕ →. ℕ} {a k acc acc' : ℕ} (h : acc ∈ 
 
 /-! ## The controller's register layout
 
-`Fin (k + k' + 23)`:
+`Fin (k + k' + 32)`:
 
 | register | role |
 |---|---|
@@ -79,39 +79,45 @@ theorem mem_precSem_step {f g : ℕ →. ℕ} {a k acc acc' : ℕ} (h : acc ∈ 
 | `3` | the remaining iterations `r` |
 | `4` | the accumulator |
 | `5` | the temporary `copy` borrows |
-| `6`–`14` | one `pairMachine` block |
-| `15`–`20` | one `unpairLoop` block |
-| `21 …` | the base callee's block, then the step callee's |
+| `6`–`14` | the inner `pairMachine` block, computing `Nat.pair k acc` |
+| `15`–`23` | the outer `pairMachine` block, computing `Nat.pair a` of that |
+| `24`–`29` | the `unpairLoop` block, used once on the way in |
+| `30 …` | the base callee's block, then the step callee's |
 
-**One pairing block, not two.** A turn pairs twice — `Nat.pair k acc`, then `Nat.pair a` of that
-— but the two are sequential and `pairMachine` returns its scratch clean, so the same nine
-registers serve both.
+**Two pairing blocks, not one.** Sharing a single block is safe — the two pairings are
+sequential and `pairMachine` returns its scratch clean — but reusing it costs a clear-and-move
+phase between them, which is four more blocks and two more interface states in the turn proof.
+Nine registers are cheaper than that.
 
-**The pairing writes to a register the step callee then reads, via `copy`.** Making
-`pairMachine`'s result register *be* the callee's input would save that copy, but the two
-embeddings would then overlap in one point, and every separation lemma below would acquire a case
-split. The layout arithmetic is the thing this section exists to keep flat; one `copy` is the
-cheaper side of that trade. -/
+**The outer pairing's result reaches the step callee by `copy`.** Making `pairMachine`'s result
+register *be* the callee's input would save the copy, but the two embeddings would then overlap
+in one point and every separation lemma below would acquire a case split. Keeping this section
+flat is what it is for.
+
+None of this is allocation: five explicit offsets, written down once. -/
 
 variable (k k')
 
-/-- The parameter `a`. -/ def rA : Fin (k + k' + 23) := ⟨1, by omega⟩
-/-- The current index. -/ def rK : Fin (k + k' + 23) := ⟨2, by omega⟩
-/-- The remaining iterations. -/ def rR : Fin (k + k' + 23) := ⟨3, by omega⟩
-/-- The accumulator. -/ def rAcc : Fin (k + k' + 23) := ⟨4, by omega⟩
-/-- The temporary `copy` borrows. -/ def rTmp : Fin (k + k' + 23) := ⟨5, by omega⟩
+/-- The parameter `a`. -/ def rA : Fin (k + k' + 32) := ⟨1, by omega⟩
+/-- The current index. -/ def rK : Fin (k + k' + 32) := ⟨2, by omega⟩
+/-- The remaining iterations. -/ def rR : Fin (k + k' + 32) := ⟨3, by omega⟩
+/-- The accumulator. -/ def rAcc : Fin (k + k' + 32) := ⟨4, by omega⟩
+/-- The temporary `copy` borrows. -/ def rTmp : Fin (k + k' + 32) := ⟨5, by omega⟩
 
-/-- The shared `pairMachine` block. -/
-def embedPair (i : Fin 9) : Fin (k + k' + 23) := ⟨6 + i.val, by omega⟩
+/-- The inner pairing block, for `Nat.pair k acc`. -/
+def embedPairA (i : Fin 9) : Fin (k + k' + 32) := ⟨6 + i.val, by omega⟩
 
-/-- The `unpairLoop` block, used once on the way in. -/
-def embedUnpair (i : Fin 6) : Fin (k + k' + 23) := ⟨15 + i.val, by omega⟩
+/-- The outer pairing block, for `Nat.pair a` of the inner result. -/
+def embedPairB (i : Fin 9) : Fin (k + k' + 32) := ⟨15 + i.val, by omega⟩
+
+/-- The `unpairLoop` block. -/
+def embedUnpair (i : Fin 6) : Fin (k + k' + 32) := ⟨24 + i.val, by omega⟩
 
 /-- The base callee's block. -/
-def embedBase (i : Fin (k + 1)) : Fin (k + k' + 23) := ⟨21 + i.val, by omega⟩
+def embedBase (i : Fin (k + 1)) : Fin (k + k' + 32) := ⟨30 + i.val, by omega⟩
 
 /-- The step callee's block. -/
-def embedStep (j : Fin (k' + 1)) : Fin (k + k' + 23) := ⟨22 + k + j.val, by omega⟩
+def embedStep (j : Fin (k' + 1)) : Fin (k + k' + 32) := ⟨31 + k + j.val, by omega⟩
 
 variable {k k'}
 
@@ -120,12 +126,17 @@ variable {k k'}
 @[simp] theorem rR_val : (rR k k').val = 3 := rfl
 @[simp] theorem rAcc_val : (rAcc k k').val = 4 := rfl
 @[simp] theorem rTmp_val : (rTmp k k').val = 5 := rfl
-@[simp] theorem embedPair_val (i : Fin 9) : (embedPair k k' i).val = 6 + i.val := rfl
-@[simp] theorem embedUnpair_val (i : Fin 6) : (embedUnpair k k' i).val = 15 + i.val := rfl
-@[simp] theorem embedBase_val (i : Fin (k + 1)) : (embedBase k k' i).val = 21 + i.val := rfl
-@[simp] theorem embedStep_val (j : Fin (k' + 1)) : (embedStep k k' j).val = 22 + k + j.val := rfl
+@[simp] theorem embedPairA_val (i : Fin 9) : (embedPairA k k' i).val = 6 + i.val := rfl
+@[simp] theorem embedPairB_val (i : Fin 9) : (embedPairB k k' i).val = 15 + i.val := rfl
+@[simp] theorem embedUnpair_val (i : Fin 6) : (embedUnpair k k' i).val = 24 + i.val := rfl
+@[simp] theorem embedBase_val (i : Fin (k + 1)) : (embedBase k k' i).val = 30 + i.val := rfl
+@[simp] theorem embedStep_val (j : Fin (k' + 1)) :
+    (embedStep k k' j).val = 31 + k + j.val := rfl
 
-theorem embedPair_injective : Function.Injective (embedPair k k') := fun i j h =>
+theorem embedPairA_injective : Function.Injective (embedPairA k k') := fun i j h =>
+  Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
+
+theorem embedPairB_injective : Function.Injective (embedPairB k k') := fun i j h =>
   Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
 
 theorem embedUnpair_injective : Function.Injective (embedUnpair k k') := fun i j h =>
@@ -137,17 +148,17 @@ theorem embedBase_injective : Function.Injective (embedBase k k') := fun i j h =
 theorem embedStep_injective : Function.Injective (embedStep k k') := fun i j h =>
   Fin.ext (by have := congrArg Fin.val h; simp at this; omega)
 
-/-- **The layout is exhaustive.** Registers `0`–`5`, the pairing block, the unpairing block and
-the two callee blocks account for every register: `6 + 9 + 6 + (k+1) + (k'+1) = k + k' + 23`. -/
-theorem precLayout_cases (r : Fin (k + k' + 23)) :
+/-- **The layout is exhaustive**: `6 + 9 + 9 + 6 + (k+1) + (k'+1) = k + k' + 32`. -/
+theorem precLayout_cases (r : Fin (k + k' + 32)) :
     r = 0 ∨ r = rA k k' ∨ r = rK k k' ∨ r = rR k k' ∨ r = rAcc k k' ∨ r = rTmp k k' ∨
-      (∃ i, r = embedPair k k' i) ∨ (∃ i, r = embedUnpair k k' i) ∨
-      (∃ i, r = embedBase k k' i) ∨ ∃ j, r = embedStep k k' j := by
+      (∃ i, r = embedPairA k k' i) ∨ (∃ i, r = embedPairB k k' i) ∨
+      (∃ i, r = embedUnpair k k' i) ∨ (∃ i, r = embedBase k k' i) ∨
+      ∃ j, r = embedStep k k' j := by
   have hr := r.isLt
   rcases (show r.val = 0 ∨ r.val = 1 ∨ r.val = 2 ∨ r.val = 3 ∨ r.val = 4 ∨ r.val = 5 ∨
-      (6 ≤ r.val ∧ r.val ≤ 14) ∨ (15 ≤ r.val ∧ r.val ≤ 20) ∨
-      (21 ≤ r.val ∧ r.val ≤ 21 + k) ∨ 22 + k ≤ r.val by omega)
-    with h | h | h | h | h | h | h | h | h | h
+      (6 ≤ r.val ∧ r.val ≤ 14) ∨ (15 ≤ r.val ∧ r.val ≤ 23) ∨ (24 ≤ r.val ∧ r.val ≤ 29) ∨
+      (30 ≤ r.val ∧ r.val ≤ 30 + k) ∨ 31 + k ≤ r.val by omega)
+    with h | h | h | h | h | h | h | h | h | h | h
   · exact Or.inl (Fin.ext (by simpa using h))
   · exact Or.inr (Or.inl (Fin.ext (by simpa using h)))
   · exact Or.inr (Or.inr (Or.inl (Fin.ext (by simpa using h))))
@@ -159,27 +170,37 @@ theorem precLayout_cases (r : Fin (k + k' + 23)) :
   · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
       ⟨⟨r.val - 15, by omega⟩, Fin.ext (by simp; omega)⟩)))))))
   · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
-      ⟨⟨r.val - 21, by omega⟩, Fin.ext (by simp; omega)⟩))))))))
-  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr
-      ⟨⟨r.val - 22 - k, by omega⟩, Fin.ext (by simp; omega)⟩))))))))
+      ⟨⟨r.val - 24, by omega⟩, Fin.ext (by simp; omega)⟩))))))))
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
+      ⟨⟨r.val - 30, by omega⟩, Fin.ext (by simp; omega)⟩)))))))))
+  · exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr
+      ⟨⟨r.val - 31 - k, by omega⟩, Fin.ext (by simp; omega)⟩)))))))))
 
 /-! ### Separation
 
-Bundled the way #51's `entry_ne` was, one bundle per block rather than one lemma per pair: the
-register case analysis quantifies over whole blocks, so that is the shape the proofs consume. -/
+Bundled per block rather than per pair: the register case analysis quantifies over whole blocks,
+so that is the shape the proofs consume. -/
 
 theorem precFixed_ne :
-    (0 : Fin (k + k' + 23)) ≠ rA k k' ∧ (0 : Fin (k + k' + 23)) ≠ rK k k' ∧
-    (0 : Fin (k + k' + 23)) ≠ rR k k' ∧ (0 : Fin (k + k' + 23)) ≠ rAcc k k' ∧
-    (0 : Fin (k + k' + 23)) ≠ rTmp k k' ∧ rA k k' ≠ rK k k' ∧ rA k k' ≠ rR k k' ∧
+    (0 : Fin (k + k' + 32)) ≠ rA k k' ∧ (0 : Fin (k + k' + 32)) ≠ rK k k' ∧
+    (0 : Fin (k + k' + 32)) ≠ rR k k' ∧ (0 : Fin (k + k' + 32)) ≠ rAcc k k' ∧
+    (0 : Fin (k + k' + 32)) ≠ rTmp k k' ∧ rA k k' ≠ rK k k' ∧ rA k k' ≠ rR k k' ∧
     rA k k' ≠ rAcc k k' ∧ rA k k' ≠ rTmp k k' ∧ rK k k' ≠ rR k k' ∧ rK k k' ≠ rAcc k k' ∧
     rK k k' ≠ rTmp k k' ∧ rR k k' ≠ rAcc k k' ∧ rR k k' ≠ rTmp k k' ∧ rAcc k k' ≠ rTmp k k' := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     (intro h; have := congrArg Fin.val h; simp at this)
 
-theorem embedPair_ne_fixed (i : Fin 9) :
-    embedPair k k' i ≠ 0 ∧ embedPair k k' i ≠ rA k k' ∧ embedPair k k' i ≠ rK k k' ∧
-    embedPair k k' i ≠ rR k k' ∧ embedPair k k' i ≠ rAcc k k' ∧ embedPair k k' i ≠ rTmp k k' := by
+theorem embedPairA_ne_fixed (i : Fin 9) :
+    embedPairA k k' i ≠ 0 ∧ embedPairA k k' i ≠ rA k k' ∧ embedPairA k k' i ≠ rK k k' ∧
+    embedPairA k k' i ≠ rR k k' ∧ embedPairA k k' i ≠ rAcc k k' ∧
+    embedPairA k k' i ≠ rTmp k k' := by
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
+    (intro h; have := congrArg Fin.val h; simp at this; all_goals omega)
+
+theorem embedPairB_ne_fixed (i : Fin 9) :
+    embedPairB k k' i ≠ 0 ∧ embedPairB k k' i ≠ rA k k' ∧ embedPairB k k' i ≠ rK k k' ∧
+    embedPairB k k' i ≠ rR k k' ∧ embedPairB k k' i ≠ rAcc k k' ∧
+    embedPairB k k' i ≠ rTmp k k' := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     (intro h; have := congrArg Fin.val h; simp at this; all_goals omega)
 
@@ -204,16 +225,31 @@ theorem embedStep_ne_fixed (j : Fin (k' + 1)) :
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
     (intro h; have := congrArg Fin.val h; simp at this; all_goals omega)
 
-theorem embedPair_ne_embedUnpair (i : Fin 9) (j : Fin 6) :
-    embedPair k k' i ≠ embedUnpair k k' j := by
+theorem embedPairA_ne_embedPairB (i j : Fin 9) : embedPairA k k' i ≠ embedPairB k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
-theorem embedPair_ne_embedBase (i : Fin 9) (j : Fin (k + 1)) :
-    embedPair k k' i ≠ embedBase k k' j := by
+theorem embedPairA_ne_embedUnpair (i : Fin 9) (j : Fin 6) :
+    embedPairA k k' i ≠ embedUnpair k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
-theorem embedPair_ne_embedStep (i : Fin 9) (j : Fin (k' + 1)) :
-    embedPair k k' i ≠ embedStep k k' j := by
+theorem embedPairA_ne_embedBase (i : Fin 9) (j : Fin (k + 1)) :
+    embedPairA k k' i ≠ embedBase k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem embedPairA_ne_embedStep (i : Fin 9) (j : Fin (k' + 1)) :
+    embedPairA k k' i ≠ embedStep k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem embedPairB_ne_embedUnpair (i : Fin 9) (j : Fin 6) :
+    embedPairB k k' i ≠ embedUnpair k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem embedPairB_ne_embedBase (i : Fin 9) (j : Fin (k + 1)) :
+    embedPairB k k' i ≠ embedBase k k' j := by
+  intro h; have := congrArg Fin.val h; simp at this; omega
+
+theorem embedPairB_ne_embedStep (i : Fin 9) (j : Fin (k' + 1)) :
+    embedPairB k k' i ≠ embedStep k k' j := by
   intro h; have := congrArg Fin.val h; simp at this; omega
 
 theorem embedUnpair_ne_embedBase (i : Fin 6) (j : Fin (k + 1)) :
@@ -238,7 +274,7 @@ comparison: the `dec` that tests `rem` *is* the branch, so `idx ≤ n` never has
 and no residual has to be related back to the run length. -/
 
 /-- The register file at a loop head. -/
-def precLoopState (a idx rem acc : ℕ) : Fin (k + k' + 23) → ℕ :=
+def precLoopState (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
   fun r => if r = rA k k' then a else if r = rK k k' then idx
     else if r = rR k k' then rem else if r = rAcc k k' then acc else 0
 
