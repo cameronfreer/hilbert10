@@ -650,6 +650,217 @@ theorem run_precInner (a idx rem acc : ℕ) :
   obtain ⟨j23, f23⟩ := join_exit i2 e2 i3 e3
   exact ⟨N1 + (N2 + N3), join_exit i1 e1 j23 f23⟩
 
+/-! ### `precOuter`'s interior and three stages
+
+The same shape as `precInner`: two named interior states, a projection lemma over `Fin 9`, three
+top-level stage lemmas, spliced. -/
+
+/-- After copying the parameter into the outer block's first target. -/
+def precOuterA (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedPairB k k' 0 then a
+    else if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx else if r = embedPairA k k' 1 then acc
+    else if r = embedPairA k k' 2 then Nat.pair idx acc else 0
+
+/-- After copying the inner pairing's result into the outer block's second target. -/
+def precOuterB (a idx rem acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedPairB k k' 1 then Nat.pair idx acc
+    else if r = embedPairB k k' 0 then a
+    else if r = rA k k' then a else if r = rK k k' then idx
+    else if r = rR k k' then rem else if r = rAcc k k' then acc
+    else if r = embedPairA k k' 0 then idx else if r = embedPairA k k' 1 then acc
+    else if r = embedPairA k k' 2 then Nat.pair idx acc else 0
+
+/-- What `pairMachine` sees inside the outer block. -/
+theorem precOuterB_comp_embedPairB (a idx rem acc : ℕ) :
+    precOuterB (k := k) (k' := k') a idx rem acc ∘ embedPairB k k' =
+      fun i => if i = 0 then a else if i = 1 then Nat.pair idx acc else 0 := by
+  funext i
+  fin_cases i <;> simp [precOuterB, embedPairB_injective.eq_iff]
+
+/-- Stage 1: the parameter reaches the outer block's first target. -/
+theorem run_precOuter_copyA (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (rA k k') (embedPairB k k' 0) (rTmp k k'))
+          ⟨0, precState2 a idx rem acc⟩ m).pc <
+        (copy (rA k k') (embedPairB k k' 0) (rTmp k k')).length) ∧
+      run (copy (rA k k') (embedPairB k k' 0) (rTmp k k'))
+        ⟨0, precState2 a idx rem acc⟩ N =
+        ⟨(copy (rA k k') (embedPairB k k' 0) (rTmp k k')).length,
+          precOuterA a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := rA k k') (s := embedPairB k k' 0) (t := rTmp k k')
+      (by simp) (by simp) (by simp) (precState2 (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [precState2, precOuterA, embedPairA_injective.eq_iff, embedPairB_injective.eq_iff]
+
+/-- Stage 2: the inner result reaches the second target. -/
+theorem run_precOuter_copyInner (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (embedPairA k k' 2) (embedPairB k k' 1) (rTmp k k'))
+          ⟨0, precOuterA a idx rem acc⟩ m).pc <
+        (copy (embedPairA k k' 2) (embedPairB k k' 1) (rTmp k k')).length) ∧
+      run (copy (embedPairA k k' 2) (embedPairB k k' 1) (rTmp k k'))
+        ⟨0, precOuterA a idx rem acc⟩ N =
+        ⟨(copy (embedPairA k k' 2) (embedPairB k k' 1) (rTmp k k')).length,
+          precOuterB a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := embedPairA k k' 2) (s := embedPairB k k' 1) (t := rTmp k k')
+      (by simp) (by simp) (by simp) (precOuterA (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [precOuterA, precOuterB, embedPairA_injective.eq_iff, embedPairB_injective.eq_iff]
+
+/-- Stage 3: the block call. -/
+theorem run_precOuter_pair (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (renameRegs (embedPairB k k') pairMachine)
+          ⟨0, precOuterB a idx rem acc⟩ m).pc <
+        (renameRegs (embedPairB k k') pairMachine).length) ∧
+      run (renameRegs (embedPairB k k') pairMachine) ⟨0, precOuterB a idx rem acc⟩ N =
+        ⟨(renameRegs (embedPairB k k') pairMachine).length, precState3 a idx rem acc⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    (realises_pairMachine.renameRegs_blockState embedPairB_injective)
+      (precOuterB (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]
+    simp [precOuterB, precState3, embedPairA_injective.eq_iff]
+  · rw [blockState_apply embedPairB_injective, precOuterB_comp_embedPairB]
+    simp only [precState3]
+    fin_cases i <;> simp [embedPairB_injective.eq_iff]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]; simp [precOuterB, precState3]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]; simp [precOuterB, precState3]
+
+/-- `B2`, the three stages spliced. -/
+theorem run_precOuter (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (precOuter (k := k) (k' := k'))
+          ⟨0, precState2 a idx rem acc⟩ m).pc < (precOuter (k := k) (k' := k')).length) ∧
+      run (precOuter (k := k) (k' := k')) ⟨0, precState2 a idx rem acc⟩ N =
+        ⟨(precOuter (k := k) (k' := k')).length, precState3 a idx rem acc⟩ := by
+  rw [precOuter]
+  obtain ⟨N1, i1, e1⟩ := run_precOuter_copyA (k := k) (k' := k') a idx rem acc
+  obtain ⟨N2, i2, e2⟩ := run_precOuter_copyInner (k := k) (k' := k') a idx rem acc
+  obtain ⟨N3, i3, e3⟩ := run_precOuter_pair (k := k) (k' := k') a idx rem acc
+  obtain ⟨j23, f23⟩ := join_exit i2 e2 i3 e3
+  exact ⟨N1 + (N2 + N3), join_exit i1 e1 j23 f23⟩
+
+/-! ### `B3`, the call, and `B5`
+
+These are simpler: `B3` and `B5` end in ordinary total macros rather than a block call, so they
+need no interior states, and the call transition is a `callState` equality. -/
+
+/-- `B3`: the argument reaches the step callee and both pairing blocks come back clean. -/
+theorem run_precSeedStep (a idx rem acc : ℕ) :
+    ∃ N, (∀ m < N, (run (precSeedStep (k := k) (k' := k'))
+          ⟨0, precState3 a idx rem acc⟩ m).pc <
+        (precSeedStep (k := k) (k' := k')).length) ∧
+      run (precSeedStep (k := k) (k' := k')) ⟨0, precState3 a idx rem acc⟩ N =
+        ⟨(precSeedStep (k := k) (k' := k')).length, precState4 a idx rem acc⟩ := by
+  rw [precSeedStep]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_copy (r := embedPairB k k' 2) (s := embedStep k k' 0) (t := rTmp k k')
+        (by simp) (by simp) (by simp)).seq
+      ((realises_clear (embedPairA k k' 0)).seq
+        ((realises_clear (embedPairA k k' 1)).seq
+          ((realises_clear (embedPairA k k' 2)).seq
+            ((realises_clear (embedPairB k k' 0)).seq
+              ((realises_clear (embedPairB k k' 1)).seq
+                (realises_clear (embedPairB k k' 2))))))))
+      (precState3 (k := k) (k' := k') a idx rem acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  have sset : ∀ i : Fin (k' + 1), i ≠ 0 → precState4 (k := k) (k' := k') a idx rem acc
+      (embedStep k k' i) = 0 := by
+    intro i hi
+    simp [precState4, embedStep_injective.eq_iff, hi]
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · fin_cases i <;>
+      simp [precState3, precState4, embedPairA_injective.eq_iff]
+  · fin_cases i <;>
+      simp [precState3, precState4, embedPairB_injective.eq_iff]
+  · simp [precState3, precState4]
+  · simp [precState3, precState4]
+  · by_cases hi : i = 0
+    · subst hi; simp [precState3, precState4, embedPairB_injective.eq_iff]
+    · simp [precState3, precState4, embedStep_injective.eq_iff, hi]
+
+/-- The call's exit, as one register file. -/
+theorem callState_precState4 (a idx rem acc acc' : ℕ) :
+    callState (embedStep k k') (precState4 (k := k) (k' := k') a idx rem acc) acc' =
+      precState5 a idx rem acc acc' := by
+  classical
+  funext r
+  by_cases hrng : ∃ j, r = embedStep k k' j
+  · obtain ⟨j, rfl⟩ := hrng
+    rw [callState_apply embedStep_injective]
+    by_cases hj : j = 0
+    · subst hj; simp [precState5]
+    · rw [unaryConfig_of_ne hj]
+      simp [precState5, embedStep_injective.eq_iff, hj]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng]
+    simp [precState4, precState5, hrng 0]
+
+/-- `B5`: the callee's answer becomes the accumulator, and the loop head is restored. -/
+theorem run_precSaveAcc (a idx rem acc acc' : ℕ) :
+    ∃ N, (∀ m < N, (run (precSaveAcc (k := k) (k' := k'))
+          ⟨0, precState5 a idx rem acc acc'⟩ m).pc <
+        (precSaveAcc (k := k) (k' := k')).length) ∧
+      run (precSaveAcc (k := k) (k' := k')) ⟨0, precState5 a idx rem acc acc'⟩ N =
+        ⟨(precSaveAcc (k := k) (k' := k')).length, precLoopState a idx rem acc'⟩ := by
+  rw [precSaveAcc]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_clear (rAcc k k')).seq
+      (realises_move (r := embedStep k k' 0) (s := rAcc k k') (by simp)))
+      (precState5 (k := k) (k' := k') a idx rem acc acc')
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · simp [precState5, precLoopState]
+  · by_cases hi : i = 0
+    · subst hi; simp [precLoopState]
+    · simp [precState5, precLoopState, embedStep_injective.eq_iff, hi]
+
 end RegisterMachine
 
 end Hilbert10
