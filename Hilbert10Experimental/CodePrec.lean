@@ -956,6 +956,92 @@ theorem run_precTurn_succ {g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g)
       ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
       simp [precLoopState]
 
+/-! ## Halting inversion
+
+The direction that makes the operational semantics exact. Stated as an equivalence: the reverse
+is cheap from the positive turn, and having it gives the later induction the theorem in its
+natural form. -/
+
+/-- A halting run through a relocated middle segment forces that segment to halt. Kept local
+until a second controller wants it. -/
+private theorem halts_middle {A B C : Program (k + k' + 32)} {regs : Fin (k + k' + 32) → ℕ}
+    (h : Halts (A ++ shiftJumps A.length B ++ C) ⟨0 + A.length, regs⟩) : Halts B ⟨0, regs⟩ := by
+  by_contra hn
+  simp only [Halts, not_exists] at hn
+  have hlt : ∀ m, (run B ⟨0, regs⟩ m).pc < B.length := fun m => Nat.lt_of_not_le (hn m)
+  obtain ⟨M, hM⟩ := h
+  rw [run_middle (n := M) (fun j _ => hlt j) M (Nat.le_refl _)] at hM
+  have hle : (A ++ shiftJumps A.length B ++ C).length ≤ (run B ⟨0, regs⟩ M).pc + A.length := hM
+  simp only [List.length_append, length_shiftJumps] at hle
+  have := hlt M
+  omega
+
+/-- **Halting inversion.** A turn halts exactly when the step call converges and the next loop
+head halts. -/
+theorem precTurn_halts_iff {g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g)
+    (a idx rem acc : ℕ) :
+    Halts (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx (rem + 1) acc⟩ ↔
+      ∃ acc' ∈ g (Nat.pair a (Nat.pair idx acc)),
+        Halts (precLoop (k := k) (k' := k') Q)
+          ⟨0, precLoopState a (idx + 1) rem acc'⟩ := by
+  constructor
+  · intro hh
+    -- the branch fires, so the run continues into the body
+    have hstep : step (precLoop (k := k) (k' := k') Q)
+        ⟨0, precLoopState a idx (rem + 1) acc⟩ = ⟨1, precLoopState a idx rem acc⟩ := by
+      rw [step_dec_pos (getElem?_precTest Q) (by simp [precLoopState])]
+      refine congrArg _ (funext fun r => ?_)
+      rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+        ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+        simp [precLoopState]
+    have hnh : ¬ Halted (precLoop (k := k) (k' := k') Q)
+        ⟨0, precLoopState a idx (rem + 1) acc⟩ := by
+      intro hc
+      have hle : (precLoop (k := k) (k' := k') Q).length ≤ 0 := hc
+      rw [length_precLoop] at hle
+      omega
+    have h1 : Halts (precLoop (k := k) (k' := k') Q) ⟨1, precLoopState a idx rem acc⟩ := by
+      rw [← hstep]
+      exact (halts_iff_step.mp hh).resolve_left hnh
+    -- and the body itself must halt
+    have hbody : Halts (precBody (k := k) (k' := k') Q) ⟨0, precLoopState a idx rem acc⟩ :=
+      halts_middle (A := [Instr.dec (rR k k') 1 ((precBody (k := k) (k' := k') Q).length + 2)])
+        (C := [Instr.inc (rK k k') 0]) h1
+    -- peel the three total prefixes, then read off the call
+    rw [precBody] at hbody
+    obtain ⟨N1, i1, e1⟩ := run_precInner (k := k) (k' := k') a idx rem acc
+    have hb1 := (halts_append_of_exits i1 (by rw [e1])).mp hbody
+    rw [show (run (precInner (k := k) (k' := k')) ⟨0, precLoopState a idx rem acc⟩ N1).regs =
+      precState2 a idx rem acc from by rw [e1]] at hb1
+    obtain ⟨N2, i2, e2⟩ := run_precOuter (k := k) (k' := k') a idx rem acc
+    have hb2 := (halts_append_of_exits i2 (by rw [e2])).mp hb1
+    rw [show (run (precOuter (k := k) (k' := k')) ⟨0, precState2 a idx rem acc⟩ N2).regs =
+      precState3 a idx rem acc from by rw [e2]] at hb2
+    obtain ⟨N3, i3, e3⟩ := run_precSeedStep (k := k) (k' := k') a idx rem acc
+    have hb3 := (halts_append_of_exits i3 (by rw [e3])).mp hb2
+    rw [show (run (precSeedStep (k := k) (k' := k')) ⟨0, precState3 a idx rem acc⟩ N3).regs =
+      precState4 a idx rem acc from by rw [e3]] at hb3
+    have hdom := (hg.call_halts_iff embedStep_injective
+      (regs := precState4 (k := k) (k' := k') a idx rem acc)
+      (x := Nat.pair a (Nat.pair idx acc)) (by simp [precState4])
+      (fun j hj => by simp [precState4, embedStep_injective.eq_iff, hj])).mp
+      (halts_prefix_of_halts_append hb3)
+    refine ⟨_, Part.get_mem hdom, ?_⟩
+    -- replay the exact turn and transfer what is left of the halting run
+    obtain ⟨N, hin, hex⟩ := run_precTurn_succ (k := k) (k' := k') Q hg a idx rem acc _
+      (Part.get_mem hdom)
+    obtain ⟨M, hM⟩ := hh
+    have hMN : N ≤ M := by
+      by_contra hlt
+      exact absurd hM (Nat.not_le.mpr (hin M (Nat.not_le.mp hlt)))
+    obtain ⟨d, rfl⟩ := Nat.exists_eq_add_of_le hMN
+    rw [run_add, hex] at hM
+    exact ⟨d, hM⟩
+  · rintro ⟨acc', hacc', hnext⟩
+    obtain ⟨N, hin, hex⟩ := run_precTurn_succ (k := k) (k' := k') Q hg a idx rem acc acc' hacc'
+    obtain ⟨M, hM⟩ := hnext
+    exact ⟨N + M, by rw [run_add, hex]; exact hM⟩
+
 end RegisterMachine
 
 end Hilbert10
