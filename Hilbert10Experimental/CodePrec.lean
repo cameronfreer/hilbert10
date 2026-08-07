@@ -861,6 +861,101 @@ theorem run_precSaveAcc (a idx rem acc acc' : ℕ) :
     · subst hi; simp [precLoopState]
     · simp [precState5, precLoopState, embedStep_injective.eq_iff, hi]
 
+/-! ## The turn
+
+`run_precBody` packages the five transitions once, so the loop contracts below never mention a
+body unit. -/
+
+theorem run_precBody {g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g)
+    (a idx rem acc acc' : ℕ) (hacc' : acc' ∈ g (Nat.pair a (Nat.pair idx acc))) :
+    ∃ N, (∀ m < N, (run (precBody (k := k) (k' := k') Q)
+          ⟨0, precLoopState a idx rem acc⟩ m).pc < (precBody (k := k) (k' := k') Q).length) ∧
+      run (precBody (k := k) (k' := k') Q) ⟨0, precLoopState a idx rem acc⟩ N =
+        ⟨(precBody (k := k) (k' := k') Q).length, precLoopState a idx rem acc'⟩ := by
+  rw [precBody]
+  obtain ⟨N1, i1, e1⟩ := run_precInner (k := k) (k' := k') a idx rem acc
+  obtain ⟨N2, i2, e2⟩ := run_precOuter (k := k) (k' := k') a idx rem acc
+  obtain ⟨N3, i3, e3⟩ := run_precSeedStep (k := k) (k' := k') a idx rem acc
+  obtain ⟨N4, i4, e4⟩ :=
+    hg.call_exit embedStep_injective (regs := precState4 (k := k) (k' := k') a idx rem acc)
+      (by simp [precState4])
+      (fun j hj => by simp [precState4, embedStep_injective.eq_iff, hj]) hacc'
+  rw [callState_precState4] at e4
+  obtain ⟨N5, i5, e5⟩ := run_precSaveAcc (k := k) (k' := k') a idx rem acc acc'
+  obtain ⟨j45, f45⟩ := join_exit i4 e4 i5 e5
+  obtain ⟨j345, f345⟩ := join_exit i3 e3 j45 f45
+  obtain ⟨j2345, f2345⟩ := join_exit i2 e2 j345 f345
+  exact ⟨N1 + (N2 + (N3 + (N4 + N5))), join_exit i1 e1 j2345 f2345⟩
+
+private theorem getElem?_precTest :
+    (precLoop (k := k) (k' := k') Q)[0]? =
+      some (Instr.dec (rR k k') 1 ((precBody (k := k) (k' := k') Q).length + 2)) := rfl
+
+private theorem getElem?_precInc :
+    (precLoop (k := k) (k' := k') Q)[(precBody (k := k) (k' := k') Q).length + 1]? =
+      some (Instr.inc (rK k k') 0) := by
+  rw [precLoop, List.getElem?_append_right (by simp)]
+  simp only [List.length_append, List.length_cons, List.length_nil, length_shiftJumps]
+  rw [show (precBody (k := k) (k' := k') Q).length + 1 -
+    (0 + 1 + (precBody (k := k) (k' := k') Q).length) = 0 by omega]
+  rfl
+
+/-- **Zero exit.** With nothing left to do the branch leaves the loop at once. -/
+theorem run_precTurn_zero (a idx acc : ℕ) :
+    ∃ N, (∀ m < N, (run (precLoop (k := k) (k' := k') Q)
+          ⟨0, precLoopState a idx 0 acc⟩ m).pc < (precLoop (k := k) (k' := k') Q).length) ∧
+      run (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx 0 acc⟩ N =
+        ⟨(precLoop (k := k) (k' := k') Q).length, precLoopState a idx 0 acc⟩ := by
+  refine ⟨1, fun m hm => ?_, ?_⟩
+  · rw [show m = 0 by omega, run_zero, length_precLoop]
+    exact show 0 < (precBody (k := k) (k' := k') Q).length + 2 by omega
+  · rw [run_one, step_dec_zero (getElem?_precTest Q) (by simp [precLoopState]), length_precLoop]
+
+/-- **Positive turn.** Decrement, run the body, count the index, jump back. -/
+theorem run_precTurn_succ {g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g)
+    (a idx rem acc acc' : ℕ) (hacc' : acc' ∈ g (Nat.pair a (Nat.pair idx acc))) :
+    ∃ N, (∀ m < N, (run (precLoop (k := k) (k' := k') Q)
+          ⟨0, precLoopState a idx (rem + 1) acc⟩ m).pc <
+        (precLoop (k := k) (k' := k') Q).length) ∧
+      run (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx (rem + 1) acc⟩ N =
+        ⟨0, precLoopState a (idx + 1) rem acc'⟩ := by
+  obtain ⟨N, hin, hex⟩ := run_precBody (k := k) (k' := k') Q hg a idx rem acc acc' hacc'
+  have hstep : step (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx (rem + 1) acc⟩ =
+      ⟨1, precLoopState a idx rem acc⟩ := by
+    rw [step_dec_pos (getElem?_precTest Q) (by simp [precLoopState])]
+    refine congrArg _ (funext fun r => ?_)
+    rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+      ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+      simp [precLoopState]
+  have hmid : ∀ m ≤ N, run (precLoop (k := k) (k' := k') Q) ⟨1, precLoopState a idx rem acc⟩ m =
+      ⟨(run (precBody (k := k) (k' := k') Q) ⟨0, precLoopState a idx rem acc⟩ m).pc + 1,
+        (run (precBody (k := k) (k' := k') Q) ⟨0, precLoopState a idx rem acc⟩ m).regs⟩ :=
+    fun m hm => run_middle (A := [Instr.dec (rR k k') 1
+      ((precBody (k := k) (k' := k') Q).length + 2)])
+      (C := [Instr.inc (rK k k') 0]) hin m hm
+  have hbody : run (precLoop (k := k) (k' := k') Q) ⟨1, precLoopState a idx rem acc⟩ N =
+      ⟨(precBody (k := k) (k' := k') Q).length + 1, precLoopState a idx rem acc'⟩ := by
+    rw [hmid N (Nat.le_refl _), hex]
+  refine ⟨N + 2, fun m hm => ?_, ?_⟩
+  · rcases (show m = 0 ∨ (1 ≤ m ∧ m ≤ N) ∨ m = N + 1 by omega) with rfl | ⟨hm1, hm2⟩ | rfl
+    · rw [run_zero, length_precLoop]
+      exact show 0 < (precBody (k := k) (k' := k') Q).length + 2 by omega
+    · rw [show m = 1 + (m - 1) by omega, run_add, run_one, hstep, hmid (m - 1) (by omega),
+        length_precLoop]
+      have := hin (m - 1) (by omega)
+      exact show (run (precBody (k := k) (k' := k') Q)
+        ⟨0, precLoopState a idx rem acc⟩ (m - 1)).pc + 1 <
+        (precBody (k := k) (k' := k') Q).length + 2 by omega
+    · rw [show N + 1 = 1 + N by omega, run_add, run_one, hstep, hbody, length_precLoop]
+      exact show (precBody (k := k) (k' := k') Q).length + 1 <
+        (precBody (k := k) (k' := k') Q).length + 2 by omega
+  · rw [show N + 2 = 1 + N + 1 by omega, run_add, run_add, run_one, run_one, hstep, hbody,
+      step_inc (getElem?_precInc Q)]
+    refine congrArg _ (funext fun r => ?_)
+    rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+      ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+      simp [precLoopState]
+
 end RegisterMachine
 
 end Hilbert10
