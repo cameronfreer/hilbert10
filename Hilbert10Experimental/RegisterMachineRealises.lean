@@ -317,6 +317,40 @@ theorem Realises.renameRegs_blockState {k' : ℕ} {σ : Fin k → Fin k'} (hσ :
   h.renameRegs hσ (fun regs i => blockState_apply hσ F regs i)
     (fun regs _ hr => blockState_of_not_mem F regs hr)
 
+
+/-- **Running a renamed machine from a matching state.** The run-level analogue of
+`Realises.renameRegs_blockState`: it transports a single exact run rather than a `Realises`, which
+is what a machine with more than one output register needs. -/
+theorem run_renameRegs_of_exit {k' : ℕ} {σ : Fin k → Fin k'} (hσ : Function.Injective σ)
+    {P : Program k} {inRegs outRegs : Fin k → ℕ} {n : ℕ}
+    (hin : ∀ m < n, (run P ⟨0, inRegs⟩ m).pc < P.length)
+    (hex : run P ⟨0, inRegs⟩ n = ⟨P.length, outRegs⟩)
+    {regs : Fin k' → ℕ} (hreg : ∀ i, regs (σ i) = inRegs i) :
+    (∀ m < n, (run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ m).pc <
+        (RegisterMachine.renameRegs σ P).length) ∧
+      run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ n =
+        ⟨(RegisterMachine.renameRegs σ P).length, Function.extend σ outRegs regs⟩ := by
+  classical
+  have hcomp : regs ∘ σ = inRegs := funext hreg
+  have hren : Renamed σ ⟨0, inRegs⟩ ⟨0, regs⟩ := ⟨rfl, fun i => congrFun hcomp i⟩
+  have hexr : (run P ⟨0, inRegs⟩ n).regs = outRegs := by rw [hex]
+  refine ⟨fun m hm => ?_, ?_⟩
+  · rw [(hren.run (P := P) hσ m).pc, length_renameRegs]
+    exact hin m hm
+  · have hpc : (run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ n).pc =
+        (RegisterMachine.renameRegs σ P).length := by
+      rw [(hren.run (P := P) hσ n).pc, hex, length_renameRegs]
+    have hregs : (run (RegisterMachine.renameRegs σ P) ⟨0, regs⟩ n).regs =
+        Function.extend σ outRegs regs := by
+      funext r
+      by_cases hrng : ∃ i, r = σ i
+      · obtain ⟨i, rfl⟩ := hrng
+        rw [(hren.run (P := P) hσ n).regs i, hexr, hσ.extend_apply]
+      · push Not at hrng
+        rw [regs_run_renameRegs_of_ne hrng n,
+          Function.extend_apply' _ _ _ (by rintro ⟨i, rfl⟩; exact hrng i rfl)]
+    rw [← hpc, ← hregs]
+
 /-! ## Primitive machines
 
 The two one-instruction programs. `incr` exercises the exit contract on a straight-line

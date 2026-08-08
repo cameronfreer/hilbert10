@@ -48,6 +48,16 @@ theorem mem_precSem_succ {f g : ℕ →. ℕ} {a k y : ℕ} :
   rw [precSem_succ]
   exact Part.mem_bind_iff
 
+/-- The base case converges whenever any later stage does. This is what lets the controller's
+completeness proof invoke the base machine at all. -/
+theorem mem_precSem_base {f g : ℕ →. ℕ} {a n y : ℕ} (hy : y ∈ precSem f g a n) :
+    ∃ acc, acc ∈ f a := by
+  induction n generalizing y with
+  | zero => exact ⟨y, hy⟩
+  | succ n ih =>
+    obtain ⟨mid, hmid, _⟩ := mem_precSem_succ.mp hy
+    exact ih hmid
+
 /-- **The bridge.** `Code.prec`'s evaluation on a paired input is the recurrence. -/
 theorem eval_prec_eq (cf cg : Code) (a n : ℕ) :
     (Code.prec cf cg).eval (Nat.pair a n) = precSem cf.eval cg.eval a n := by
@@ -1119,6 +1129,63 @@ theorem precLoop_halts_iff {f g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g
       run_precLoop (k := k) (k' := k') Q hg a acc ((precSem f g a rem).get hd) rem hacc
         (Part.get_mem hd)
     exact ⟨N, by rw [hex]; exact Nat.le_refl _⟩
+
+/-! ## The outer controller
+
+Six blocks. The two partiality boundaries are the base call and the loop; no individual step call
+appears here, because `precLoop_halts_iff` already packages them all. -/
+
+/-- Put the input where `unpairLoop` will read it, then split it. -/
+def precSplit : Program (k + k' + 32) :=
+  seq (copy 0 (embedUnpair k k' 0) (rTmp k k'))
+    (renameRegs (embedUnpair k k') unpairLoop)
+
+/-- Move the two components into their registers and seed the base callee. -/
+def precSeedBase : Program (k + k' + 32) :=
+  seq (move (embedUnpair k k' 1) (rA k k'))
+    (seq (move (embedUnpair k k' 2) (rR k k'))
+      (copy (rA k k') (embedBase k k' 0) (rTmp k k')))
+
+/-- Take the base answer as the initial accumulator and clear the input register. -/
+def precSaveBase : Program (k + k' + 32) :=
+  seq (move (embedBase k k' 0) (rAcc k k')) (clear 0)
+
+/-- Discard the loop's bookkeeping and return the accumulator. -/
+def precFinish : Program (k + k' + 32) :=
+  seq (clear (rA k k'))
+    (seq (clear (rK k k')) (seq (clear (rR k k')) (move (rAcc k k') 0)))
+
+/-- The whole controller. -/
+def precController : Program (k + k' + 32) :=
+  seq (precSplit (k := k) (k' := k'))
+    (seq (precSeedBase (k := k) (k' := k'))
+      (seq (renameRegs (embedBase k k') P)
+        (seq (precSaveBase (k := k) (k' := k'))
+          (seq (precLoop (k := k) (k' := k') Q) (precFinish (k := k) (k' := k'))))))
+
+/-! ### The controller's interface states -/
+
+/-- After the input has been copied to the unpairing block. -/
+def precCtlA (x : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedUnpair k k' 0 then x else if r = 0 then x else 0
+
+/-- After unpairing: the two components still inside the block. -/
+def precCtlB (x : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedUnpair k k' 1 then x.unpair.1
+    else if r = embedUnpair k k' 2 then x.unpair.2
+    else if r = 0 then x else 0
+
+/-- After the components are moved out and the base callee is seeded. -/
+def precCtlC (x : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedBase k k' 0 then x.unpair.1
+    else if r = rA k k' then x.unpair.1 else if r = rR k k' then x.unpair.2
+    else if r = 0 then x else 0
+
+/-- After the base call. -/
+def precCtlD (x acc : ℕ) : Fin (k + k' + 32) → ℕ :=
+  fun r => if r = embedBase k k' 0 then acc
+    else if r = rA k k' then x.unpair.1 else if r = rR k k' then x.unpair.2
+    else if r = 0 then x else 0
 
 end RegisterMachine
 
