@@ -21,6 +21,7 @@ import Hilbert10Experimental.CleanScratch
 import Hilbert10Experimental.CodeComp
 import Hilbert10Experimental.CodePair
 import Hilbert10Experimental.CodePrec
+import Hilbert10Experimental.CodeRfind
 import Hilbert10Experimental.DiophToRE
 import Hilbert10Experimental.ExpDioph
 import Hilbert10Experimental.ExpDiophChoose
