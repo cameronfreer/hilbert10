@@ -1042,6 +1042,84 @@ theorem precTurn_halts_iff {g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g)
     obtain ⟨M, hM⟩ := hnext
     exact ⟨N + M, by rw [run_add, hex]; exact hM⟩
 
+/-! ## The loop, semantically
+
+From here nothing mentions an instruction or a program counter except through the in-range and
+exit data the turn contracts already package. -/
+
+/-- **Segment completeness.** The trailing `tail` is what makes the induction line up: the
+inductive step runs the hypothesis at `tail + 1` and then appends one turn. -/
+theorem run_precTurns {f g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g) (a : ℕ) :
+    ∀ q idx acc tail out, acc ∈ precSem f g a idx → out ∈ precSem f g a (idx + q) →
+      ∃ N, (∀ m < N, (run (precLoop (k := k) (k' := k') Q)
+            ⟨0, precLoopState a idx (q + tail) acc⟩ m).pc <
+          (precLoop (k := k) (k' := k') Q).length) ∧
+        run (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx (q + tail) acc⟩ N =
+          ⟨0, precLoopState a (idx + q) tail out⟩ := by
+  intro q
+  induction q with
+  | zero =>
+    intro idx acc tail out hacc hout
+    rw [Nat.add_zero] at hout
+    obtain rfl : out = acc := Part.mem_unique hout hacc
+    refine ⟨0, fun m hm => absurd hm (Nat.not_lt_zero m), ?_⟩
+    rw [run_zero, show (0 : ℕ) + tail = tail from Nat.zero_add tail,
+      show idx + 0 = idx from Nat.add_zero idx]
+  | succ q ih =>
+    intro idx acc tail out hacc hout
+    rw [show idx + (q + 1) = idx + q + 1 by omega] at hout
+    obtain ⟨mid, hmid, hstep⟩ := mem_precSem_succ.mp hout
+    obtain ⟨N1, i1, e1⟩ := ih idx acc (tail + 1) mid hacc hmid
+    obtain ⟨N2, i2, e2⟩ :=
+      run_precTurn_succ (k := k) (k' := k') Q hg a (idx + q) tail mid out hstep
+    rw [show q + 1 + tail = q + (tail + 1) by omega]
+    rw [show idx + (q + 1) = idx + q + 1 by omega]
+    exact ⟨N1 + N2, run_segment_trans i1 e1 i2 e2⟩
+
+/-- **The loop's exact exit**, from the initial head to the program's end. -/
+theorem run_precLoop {f g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g) (a acc out rem : ℕ)
+    (hacc : acc ∈ precSem f g a 0) (hout : out ∈ precSem f g a rem) :
+    ∃ N, (∀ m < N, (run (precLoop (k := k) (k' := k') Q)
+          ⟨0, precLoopState a 0 rem acc⟩ m).pc < (precLoop (k := k) (k' := k') Q).length) ∧
+      run (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a 0 rem acc⟩ N =
+        ⟨(precLoop (k := k) (k' := k') Q).length, precLoopState a rem 0 out⟩ := by
+  obtain ⟨N1, i1, e1⟩ :=
+    run_precTurns (k := k) (k' := k') Q hg a rem 0 acc 0 out hacc (by simpa using hout)
+  rw [show rem + 0 = rem from Nat.add_zero rem] at e1 i1
+  rw [show 0 + rem = rem from Nat.zero_add rem] at e1
+  obtain ⟨N2, i2, e2⟩ := run_precTurn_zero (k := k) (k' := k') Q a rem out
+  exact ⟨N1 + N2, run_segment_trans i1 e1 i2 e2⟩
+
+/-- **Soundness.** A halting loop delivers a value of the recurrence at the final stage. -/
+theorem precLoop_halts_mem {f g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g) (a : ℕ) :
+    ∀ rem idx acc, acc ∈ precSem f g a idx →
+      Halts (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a idx rem acc⟩ →
+      ∃ out, out ∈ precSem f g a (idx + rem) := by
+  intro rem
+  induction rem with
+  | zero => intro idx acc hacc _; exact ⟨acc, by simpa using hacc⟩
+  | succ rem ih =>
+    intro idx acc hacc hh
+    obtain ⟨acc', hacc', hnext⟩ := (precTurn_halts_iff (k := k) (k' := k') Q hg a idx rem acc).mp hh
+    obtain ⟨out, hout⟩ := ih (idx + 1) acc' (mem_precSem_step hacc hacc') hnext
+    exact ⟨out, by rw [show idx + (rem + 1) = idx + 1 + rem by omega]; exact hout⟩
+
+/-- **Halting is convergence at the final stage.** -/
+theorem precLoop_halts_iff {f g : ℕ →. ℕ} (hg : CleanPartComputesUnary Q g) (a acc rem : ℕ)
+    (hacc : acc ∈ precSem f g a 0) :
+    Halts (precLoop (k := k) (k' := k') Q) ⟨0, precLoopState a 0 rem acc⟩ ↔
+      (precSem f g a rem).Dom := by
+  constructor
+  · intro hh
+    obtain ⟨out, hout⟩ := precLoop_halts_mem (k := k) (k' := k') Q hg a rem 0 acc hacc hh
+    rw [Nat.zero_add] at hout
+    exact Part.dom_iff_mem.mpr ⟨out, hout⟩
+  · intro hd
+    obtain ⟨N, _, hex⟩ :=
+      run_precLoop (k := k) (k' := k') Q hg a acc ((precSem f g a rem).get hd) rem hacc
+        (Part.get_mem hd)
+    exact ⟨N, by rw [hex]; exact Nat.le_refl _⟩
+
 end RegisterMachine
 
 end Hilbert10
