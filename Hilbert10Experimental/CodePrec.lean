@@ -1187,6 +1187,226 @@ def precCtlD (x acc : ℕ) : Fin (k + k' + 32) → ℕ :=
     else if r = rA k k' then x.unpair.1 else if r = rR k k' then x.unpair.2
     else if r = 0 then x else 0
 
+/-! ### The controller's transitions -/
+
+theorem run_precSplit (x : ℕ) :
+    ∃ N, (∀ m < N, (run (precSplit (k := k) (k' := k'))
+          ⟨0, unaryConfig (k + k' + 31) x⟩ m).pc < (precSplit (k := k) (k' := k')).length) ∧
+      run (precSplit (k := k) (k' := k')) ⟨0, unaryConfig (k + k' + 31) x⟩ N =
+        ⟨(precSplit (k := k) (k' := k')).length, precCtlB x⟩ := by
+  rw [precSplit]
+  obtain ⟨N1, i1, e1⟩ :=
+    realises_copy (r := (0 : Fin (k + k' + 32))) (s := embedUnpair k k' 0) (t := rTmp k k')
+      (by simp) (by simp) (by simp) (unaryConfig (k + k' + 31) x)
+  have e1' : run (copy 0 (embedUnpair k k' 0) (rTmp k k'))
+      ⟨0, unaryConfig (k + k' + 31) x⟩ N1 =
+      ⟨(copy 0 (embedUnpair k k' 0) (rTmp k k')).length, precCtlA x⟩ := by
+    rw [e1]
+    refine congrArg _ (funext fun r => ?_)
+    rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+      ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+      simp [unaryConfig, precCtlA, embedUnpair_injective.eq_iff]
+  obtain ⟨N2, hu2, hu3⟩ := run_unpairLoop x
+  obtain ⟨i2, e2⟩ :=
+    run_renameRegs_of_exit embedUnpair_injective hu2 hu3
+      (regs := precCtlA (k := k) (k' := k') x)
+      (fun i => by
+        rcases (show i = 0 ∨ i ≠ 0 by tauto) with rfl | hi
+        · simp [precCtlA, unaryConfig]
+        · simp [precCtlA, unaryConfig, embedUnpair_injective.eq_iff, hi])
+  have e2' : run (renameRegs (embedUnpair k k') unpairLoop) ⟨0, precCtlA x⟩ N2 =
+      ⟨(renameRegs (embedUnpair k k') unpairLoop).length, precCtlB x⟩ := by
+    rw [e2]
+    refine congrArg _ (funext fun r => ?_)
+    rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+      ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).1 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).2.1 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).2.2.1 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).2.2.2.1 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).2.2.2.2.1 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨i, hi⟩; exact (embedUnpair_ne_fixed i).2.2.2.2.2 hi)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨j, hj⟩; exact (embedPairA_ne_embedUnpair i j).symm hj)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨j, hj⟩; exact (embedPairB_ne_embedUnpair i j).symm hj)]
+      simp [precCtlA, precCtlB]
+    · rw [embedUnpair_injective.extend_apply]
+      simp only [precCtlB]
+      fin_cases i <;> simp [embedUnpair_injective.eq_iff]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨j, hj⟩; exact (embedUnpair_ne_embedBase j i) hj)]
+      simp [precCtlA, precCtlB]
+    · rw [Function.extend_apply' _ _ _
+        (by rintro ⟨j, hj⟩; exact (embedUnpair_ne_embedStep j i) hj)]
+      simp [precCtlA, precCtlB]
+  exact ⟨N1 + N2, join_exit i1 e1' i2 e2'⟩
+
+theorem run_precSeedBase (x : ℕ) :
+    ∃ N, (∀ m < N, (run (precSeedBase (k := k) (k' := k')) ⟨0, precCtlB x⟩ m).pc <
+        (precSeedBase (k := k) (k' := k')).length) ∧
+      run (precSeedBase (k := k) (k' := k')) ⟨0, precCtlB x⟩ N =
+        ⟨(precSeedBase (k := k) (k' := k')).length, precCtlC x⟩ := by
+  rw [precSeedBase]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_move (r := embedUnpair k k' 1) (s := rA k k') (by simp)).seq
+      ((realises_move (r := embedUnpair k k' 2) (s := rR k k') (by simp)).seq
+        (realises_copy (r := rA k k') (s := embedBase k k' 0) (t := rTmp k k')
+          (by simp) (by simp) (by simp)))) (precCtlB (k := k) (k' := k') x)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [precCtlB, precCtlC]
+  · simp [precCtlB, precCtlC]
+  · simp [precCtlB, precCtlC]
+  · simp [precCtlB, precCtlC, embedUnpair_injective.eq_iff]
+  · simp [precCtlB, precCtlC]
+  · simp [precCtlC]
+  · simp [precCtlB, precCtlC]
+  · simp [precCtlB, precCtlC]
+  · fin_cases i <;> simp [precCtlB, precCtlC, embedUnpair_injective.eq_iff]
+  · by_cases hi : i = 0
+    · subst hi; simp [precCtlB, precCtlC]
+    · simp [precCtlB, precCtlC, embedBase_injective.eq_iff, hi]
+  · simp [precCtlB, precCtlC]
+
+theorem callState_precCtlC (x acc : ℕ) :
+    callState (embedBase k k') (precCtlC (k := k) (k' := k') x) acc = precCtlD x acc := by
+  classical
+  funext r
+  by_cases hrng : ∃ i, r = embedBase k k' i
+  · obtain ⟨i, rfl⟩ := hrng
+    rw [callState_apply embedBase_injective]
+    by_cases hi : i = 0
+    · subst hi; simp [precCtlD]
+    · rw [unaryConfig_of_ne hi]
+      simp [precCtlD, embedBase_injective.eq_iff, hi]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng]
+    simp [precCtlC, precCtlD, hrng 0]
+
+theorem run_precSaveBase (x acc : ℕ) :
+    ∃ N, (∀ m < N, (run (precSaveBase (k := k) (k' := k')) ⟨0, precCtlD x acc⟩ m).pc <
+        (precSaveBase (k := k) (k' := k')).length) ∧
+      run (precSaveBase (k := k) (k' := k')) ⟨0, precCtlD x acc⟩ N =
+        ⟨(precSaveBase (k := k) (k' := k')).length,
+          precLoopState x.unpair.1 0 x.unpair.2 acc⟩ := by
+  rw [precSaveBase]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_move (r := embedBase k k' 0) (s := rAcc k k') (by simp)).seq
+      (realises_clear (0 : Fin (k + k' + 32)))) (precCtlD (k := k) (k' := k') x acc)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · simp [precCtlD, precLoopState]
+  · by_cases hi : i = 0
+    · subst hi; simp [precCtlD, precLoopState]
+    · simp [precCtlD, precLoopState, embedBase_injective.eq_iff, hi]
+  · simp [precCtlD, precLoopState]
+
+theorem run_precFinish (a n out : ℕ) :
+    ∃ N, (∀ m < N, (run (precFinish (k := k) (k' := k'))
+          ⟨0, precLoopState a n 0 out⟩ m).pc < (precFinish (k := k) (k' := k')).length) ∧
+      run (precFinish (k := k) (k' := k')) ⟨0, precLoopState a n 0 out⟩ N =
+        ⟨(precFinish (k := k) (k' := k')).length, unaryConfig (k + k' + 31) out⟩ := by
+  rw [precFinish]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_clear (rA k k')).seq
+      ((realises_clear (rK k k')).seq
+        ((realises_clear (rR k k')).seq
+          (realises_move (r := rAcc k k') (s := (0 : Fin (k + k' + 32))) (by simp)))))
+      (precLoopState (k := k) (k' := k') a n 0 out)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases precLayout_cases r with rfl | rfl | rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ |
+    ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [precLoopState, unaryConfig]
+
+/-! ## The closure theorem
+
+Two partiality boundaries only: the base call and the loop. `precLoop_halts_iff` has already
+absorbed every step call. -/
+
+theorem CleanPartComputesUnary.prec {f g : ℕ →. ℕ} (hf : CleanPartComputesUnary P f)
+    (hg : CleanPartComputesUnary Q g) :
+    CleanPartComputesUnary (precController (k := k) (k' := k') P Q)
+      fun x => precSem f g x.unpair.1 x.unpair.2 := by
+  intro x
+  have hclean : ∀ i, i ≠ 0 → precCtlC (k := k) (k' := k') x (embedBase k k' i) = 0 :=
+    fun i hi => by simp [precCtlC, embedBase_injective.eq_iff, hi]
+  have hseed : precCtlC (k := k) (k' := k') x (embedBase k k' 0) = x.unpair.1 := by simp [precCtlC]
+  refine ⟨fun y hy => ?_, fun hh => ?_⟩
+  · obtain ⟨acc, hacc⟩ := mem_precSem_base hy
+    obtain ⟨N1, i1, e1⟩ := run_precSplit (k := k) (k' := k') x
+    obtain ⟨N2, i2, e2⟩ := run_precSeedBase (k := k) (k' := k') x
+    obtain ⟨N3, i3, e3⟩ := hf.call_exit embedBase_injective hseed hclean hacc
+    rw [callState_precCtlC] at e3
+    obtain ⟨N4, i4, e4⟩ := run_precSaveBase (k := k) (k' := k') x acc
+    obtain ⟨N5, i5, e5⟩ :=
+      run_precLoop (k := k) (k' := k') Q hg x.unpair.1 acc y x.unpair.2 hacc hy
+    obtain ⟨N6, i6, e6⟩ := run_precFinish (k := k) (k' := k') x.unpair.1 x.unpair.2 y
+    obtain ⟨j56, f56⟩ := join_exit i5 e5 i6 e6
+    obtain ⟨j456, f456⟩ := join_exit i4 e4 j56 f56
+    obtain ⟨j3456, f3456⟩ := join_exit i3 e3 j456 f456
+    obtain ⟨j23456, f23456⟩ := join_exit i2 e2 j3456 f3456
+    exact ⟨N1 + (N2 + (N3 + (N4 + (N5 + N6)))), join_exit i1 e1 j23456 f23456⟩
+  · obtain ⟨N1, i1, e1⟩ := run_precSplit (k := k) (k' := k') x
+    have h1 := (halts_append_of_exits i1 (by rw [e1])).mp hh
+    rw [show (run (precSplit (k := k) (k' := k'))
+      ⟨0, unaryConfig (k + k' + 31) x⟩ N1).regs = precCtlB x from by rw [e1]] at h1
+    obtain ⟨N2, i2, e2⟩ := run_precSeedBase (k := k) (k' := k') x
+    have h2 := (halts_append_of_exits i2 (by rw [e2])).mp h1
+    rw [show (run (precSeedBase (k := k) (k' := k'))
+      ⟨0, precCtlB x⟩ N2).regs = precCtlC x from by rw [e2]] at h2
+    have hdom := (hf.call_halts_iff embedBase_injective hseed hclean).mp
+      (halts_prefix_of_halts_append h2)
+    obtain ⟨N3, i3, e3⟩ := hf.call_exit embedBase_injective hseed hclean (Part.get_mem hdom)
+    rw [callState_precCtlC] at e3
+    have h3 := (halts_append_of_exits i3 (by rw [e3])).mp h2
+    rw [show (run (renameRegs (embedBase k k') P) ⟨0, precCtlC x⟩ N3).regs =
+      precCtlD x ((f x.unpair.1).get hdom) from by rw [e3]] at h3
+    obtain ⟨N4, i4, e4⟩ := run_precSaveBase (k := k) (k' := k') x ((f x.unpair.1).get hdom)
+    have h4 := (halts_append_of_exits i4 (by rw [e4])).mp h3
+    rw [show (run (precSaveBase (k := k) (k' := k'))
+      ⟨0, precCtlD x ((f x.unpair.1).get hdom)⟩ N4).regs =
+      precLoopState x.unpair.1 0 x.unpair.2 ((f x.unpair.1).get hdom) from by rw [e4]] at h4
+    exact (precLoop_halts_iff (k := k) (k' := k') Q hg x.unpair.1 ((f x.unpair.1).get hdom)
+      x.unpair.2 (Part.get_mem hdom)).mp (halts_prefix_of_halts_append h4)
+
+/-- **`Code.prec`.** A `congr` corollary of the closure theorem, through `eval_prec_unpair`. -/
+theorem CleanPartComputesUnary.codePrec {cf cg : Code} (hf : CleanPartComputesUnary P cf.eval)
+    (hg : CleanPartComputesUnary Q cg.eval) :
+    CleanPartComputesUnary (precController (k := k) (k' := k') P Q) (Code.prec cf cg).eval :=
+  (CleanPartComputesUnary.prec (k := k) (k' := k') P Q hf hg).congr fun x =>
+    (eval_prec_unpair cf cg x).symm
+
 end RegisterMachine
 
 end Hilbert10
