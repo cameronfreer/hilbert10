@@ -302,6 +302,264 @@ def searchAnswered (a c z : ℕ) : Fin (k + 20) → ℕ :=
   fun r => if r = sA k then a else if r = sC k then c
     else if r = sCall k 0 then z else 0
 
+/-! ### The body's transitions -/
+
+/-- After the parameter reaches the pairing block. -/
+def searchPairA (a c : ℕ) : Fin (k + 20) → ℕ :=
+  fun r => if r = sPair k 0 then a
+    else if r = sA k then a else if r = sC k then c else 0
+
+/-- After the candidate reaches it. -/
+def searchPairB (a c : ℕ) : Fin (k + 20) → ℕ :=
+  fun r => if r = sPair k 1 then c else if r = sPair k 0 then a
+    else if r = sA k then a else if r = sC k then c else 0
+
+theorem searchPairB_comp_sPair (a c : ℕ) :
+    searchPairB (k := k) a c ∘ sPair k = fun i => if i = 0 then a else if i = 1 then c else 0 := by
+  funext i
+  fin_cases i <;> simp [searchPairB, sPair_injective.eq_iff]
+
+theorem run_rfindPairUp_copyA (a c : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (sA k) (sPair k 0) (sT k)) ⟨0, searchState a c⟩ m).pc <
+        (copy (sA k) (sPair k 0) (sT k)).length) ∧
+      run (copy (sA k) (sPair k 0) (sT k)) ⟨0, searchState a c⟩ N =
+        ⟨(copy (sA k) (sPair k 0) (sT k)).length, searchPairA a c⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := sA k) (s := sPair k 0) (t := sT k) (by simp) (by simp) (by simp)
+      (searchState (k := k) a c)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [searchState, searchPairA, sPair_injective.eq_iff]
+
+theorem run_rfindPairUp_copyC (a c : ℕ) :
+    ∃ N, (∀ m < N, (run (copy (sC k) (sPair k 1) (sT k)) ⟨0, searchPairA a c⟩ m).pc <
+        (copy (sC k) (sPair k 1) (sT k)).length) ∧
+      run (copy (sC k) (sPair k 1) (sT k)) ⟨0, searchPairA a c⟩ N =
+        ⟨(copy (sC k) (sPair k 1) (sT k)).length, searchPairB a c⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    realises_copy (r := sC k) (s := sPair k 1) (t := sT k) (by simp) (by simp) (by simp)
+      (searchPairA (k := k) a c)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [searchPairA, searchPairB, sPair_injective.eq_iff]
+
+theorem run_rfindPairUp_pair (a c : ℕ) :
+    ∃ N, (∀ m < N, (run (renameRegs (sPair k) pairMachine) ⟨0, searchPairB a c⟩ m).pc <
+        (renameRegs (sPair k) pairMachine).length) ∧
+      run (renameRegs (sPair k) pairMachine) ⟨0, searchPairB a c⟩ N =
+        ⟨(renameRegs (sPair k) pairMachine).length, searchPaired a c⟩ := by
+  obtain ⟨N, hin, hex⟩ :=
+    (realises_pairMachine.renameRegs_blockState sPair_injective) (searchPairB (k := k) a c)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [searchPairB, searchPaired]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [searchPairB, searchPaired]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [searchPairB, searchPaired]
+  · rw [blockState_of_not_mem _ _ (fun i => by simp)]; simp [searchPairB, searchPaired]
+  · rw [blockState_apply sPair_injective, searchPairB_comp_sPair]
+    simp only [searchPaired]
+    fin_cases i <;> simp [sPair_injective.eq_iff]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]; simp [searchPairB, searchPaired]
+  · rw [blockState_of_not_mem _ _ (fun j => by simp)]; simp [searchPairB, searchPaired]
+
+theorem run_rfindPairUp (a c : ℕ) :
+    ∃ N, (∀ m < N, (run (rfindPairUp (k := k)) ⟨0, searchState a c⟩ m).pc <
+        (rfindPairUp (k := k)).length) ∧
+      run (rfindPairUp (k := k)) ⟨0, searchState a c⟩ N =
+        ⟨(rfindPairUp (k := k)).length, searchPaired a c⟩ := by
+  rw [rfindPairUp]
+  obtain ⟨N1, i1, e1⟩ := run_rfindPairUp_copyA (k := k) a c
+  obtain ⟨N2, i2, e2⟩ := run_rfindPairUp_copyC (k := k) a c
+  obtain ⟨N3, i3, e3⟩ := run_rfindPairUp_pair (k := k) a c
+  obtain ⟨j23, f23⟩ := join_exit i2 e2 i3 e3
+  exact ⟨N1 + (N2 + N3), join_exit i1 e1 j23 f23⟩
+
+theorem run_rfindSeedCall (a c : ℕ) :
+    ∃ N, (∀ m < N, (run (rfindSeedCall (k := k)) ⟨0, searchPaired a c⟩ m).pc <
+        (rfindSeedCall (k := k)).length) ∧
+      run (rfindSeedCall (k := k)) ⟨0, searchPaired a c⟩ N =
+        ⟨(rfindSeedCall (k := k)).length, searchSeeded a c⟩ := by
+  rw [rfindSeedCall]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_copy (r := sPair k 2) (s := sCall k 0) (t := sT k)
+        (by simp) (by simp) (by simp)).seq
+      ((realises_clear (sPair k 0)).seq
+        ((realises_clear (sPair k 1)).seq (realises_clear (sPair k 2))))) 
+      (searchPaired (k := k) a c)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · fin_cases i <;> simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+  · by_cases hi : i = 0
+    · subst hi; simp [searchPaired, searchSeeded, sPair_injective.eq_iff]
+    · simp [searchPaired, searchSeeded, sCall_injective.eq_iff, hi]
+
+theorem callState_searchSeeded (a c z : ℕ) :
+    callState (sCall k) (searchSeeded (k := k) a c) z = searchAnswered a c z := by
+  classical
+  funext r
+  by_cases hrng : ∃ i, r = sCall k i
+  · obtain ⟨i, rfl⟩ := hrng
+    rw [callState_apply sCall_injective]
+    by_cases hi : i = 0
+    · subst hi; simp [searchAnswered]
+    · rw [unaryConfig_of_ne hi]
+      simp [searchAnswered, sCall_injective.eq_iff, hi]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng]
+    simp [searchSeeded, searchAnswered, hrng 0]
+
+/-- **One evaluation of the predicate.** -/
+theorem run_rfindBody {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a c z : ℕ)
+    (hz : z ∈ f (Nat.pair a c)) :
+    ∃ N, (∀ m < N, (run (rfindBody (k := k) Cf) ⟨0, searchState a c⟩ m).pc <
+        (rfindBody (k := k) Cf).length) ∧
+      run (rfindBody (k := k) Cf) ⟨0, searchState a c⟩ N =
+        ⟨(rfindBody (k := k) Cf).length, searchAnswered a c z⟩ := by
+  rw [rfindBody]
+  obtain ⟨N1, i1, e1⟩ := run_rfindPairUp (k := k) a c
+  obtain ⟨N2, i2, e2⟩ := run_rfindSeedCall (k := k) a c
+  obtain ⟨N3, i3, e3⟩ :=
+    hf.call_exit sCall_injective (regs := searchSeeded (k := k) a c)
+      (x := Nat.pair a c) (by simp [searchSeeded])
+      (fun i hi => by simp [searchSeeded, sCall_injective.eq_iff, hi]) hz
+  rw [callState_searchSeeded] at e3
+  obtain ⟨j23, f23⟩ := join_exit i2 e2 i3 e3
+  exact ⟨N1 + (N2 + N3), join_exit i1 e1 j23 f23⟩
+
+/-! ### The two turns
+
+`rfindBody` is a *prefix* of `rfindLoop`, so peeling it needs only `run_append_of_lt` and
+`halts_prefix_of_halts_append`; the absolute jump back in the suffix does not interfere with
+either. -/
+
+private theorem getElem?_sBranch :
+    (rfindLoop (k := k) Cf)[(rfindBody (k := k) Cf).length]? =
+      some (Instr.dec (sCall k 0) ((rfindBody (k := k) Cf).length + 1)
+        ((rfindBody (k := k) Cf).length + 3)) := by
+  rw [rfindLoop, List.getElem?_append_right (Nat.le_refl _)]
+  simp
+
+private theorem getElem?_sDrain :
+    (rfindLoop (k := k) Cf)[(rfindBody (k := k) Cf).length + 1]? =
+      some (Instr.dec (sCall k 0) ((rfindBody (k := k) Cf).length + 1)
+        ((rfindBody (k := k) Cf).length + 2)) := by
+  rw [rfindLoop, List.getElem?_append_right (by omega)]
+  simp
+
+private theorem getElem?_sInc :
+    (rfindLoop (k := k) Cf)[(rfindBody (k := k) Cf).length + 2]? =
+      some (Instr.inc (sC k) 0) := by
+  rw [rfindLoop, List.getElem?_append_right (by omega)]
+  simp
+
+private theorem run_body_in_loop {S : Fin (k + 20) → ℕ} {N : ℕ}
+    (hin : ∀ m < N, (run (rfindBody (k := k) Cf) ⟨0, S⟩ m).pc <
+      (rfindBody (k := k) Cf).length) (m : ℕ) (hm : m ≤ N) :
+    run (rfindLoop (k := k) Cf) ⟨0, S⟩ m = run (rfindBody (k := k) Cf) ⟨0, S⟩ m := by
+  rw [rfindLoop, run_append_of_lt (fun j hj => hin j (by omega))]
+
+/-- **Zero turn.** The predicate answered zero, so the branch leaves the loop at the current
+candidate. -/
+theorem run_rfindTurn_zero {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a c : ℕ)
+    (hz : 0 ∈ f (Nat.pair a c)) :
+    ∃ N, (∀ m < N, (run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ m).pc <
+        (rfindLoop (k := k) Cf).length) ∧
+      run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ N =
+        ⟨(rfindLoop (k := k) Cf).length, searchState a c⟩ := by
+  obtain ⟨N, hin, hex⟩ := run_rfindBody (k := k) hf a c 0 hz
+  have hb : run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ N =
+      ⟨(rfindBody (k := k) Cf).length, searchAnswered a c 0⟩ := by
+    rw [run_body_in_loop hin N (Nat.le_refl _), hex]
+  refine ⟨N + 1, fun j hj => ?_, ?_⟩
+  · rcases (show j ≤ N by omega).lt_or_eq with hlt | rfl
+    · rw [run_body_in_loop hin j (by omega), length_rfindLoop]
+      have := hin j hlt
+      omega
+    · rw [hb, length_rfindLoop]
+      exact show (rfindBody (k := k) Cf).length < (rfindBody (k := k) Cf).length + 3 by omega
+  · rw [show N + 1 = N + 1 from rfl, run_add, hb, run_one,
+      step_dec_zero (getElem?_sBranch (Cf := Cf)) (by simp [searchAnswered]), length_rfindLoop]
+    refine congrArg _ (funext fun r => ?_)
+    rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+      simp [searchAnswered, searchState]
+
+/-- **Nonzero turn.** The predicate answered something else, so the loop discards it, steps the
+candidate and returns to the head. The step count is positive, which is what the halting-time
+induction needs. -/
+theorem run_rfindTurn_ne {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a c z : ℕ)
+    (hzm : z ∈ f (Nat.pair a c)) (hz : z ≠ 0) :
+    ∃ N, 0 < N ∧ (∀ m < N, (run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ m).pc <
+        (rfindLoop (k := k) Cf).length) ∧
+      run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ N = ⟨0, searchState a (c + 1)⟩ := by
+  obtain ⟨N, hin, hex⟩ := run_rfindBody (k := k) hf a c z hzm
+  have hval : searchAnswered (k := k) a c z (sCall k 0) = z := by simp [searchAnswered]
+  have hb : run (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩ N =
+      ⟨(rfindBody (k := k) Cf).length, searchAnswered a c z⟩ := by
+    rw [run_body_in_loop hin N (Nat.le_refl _), hex]
+  have hstep : step (rfindLoop (k := k) Cf)
+      ⟨(rfindBody (k := k) Cf).length, searchAnswered a c z⟩ =
+      ⟨(rfindBody (k := k) Cf).length + 1,
+        Function.update (searchAnswered (k := k) a c z) (sCall k 0) (z - 1)⟩ := by
+    rw [step_dec_pos (getElem?_sBranch (Cf := Cf)) (by rw [hval]; exact hz), hval]
+  have hdrain : run (rfindLoop (k := k) Cf)
+      ⟨(rfindBody (k := k) Cf).length + 1,
+        Function.update (searchAnswered (k := k) a c z) (sCall k 0) (z - 1)⟩ z =
+      ⟨(rfindBody (k := k) Cf).length + 2,
+        Function.update (searchAnswered (k := k) a c z) (sCall k 0) 0⟩ := by
+    have h := run_drain (getElem?_sDrain (Cf := Cf))
+      (Function.update (searchAnswered (k := k) a c z) (sCall k 0) (z - 1))
+    rw [Function.update_self, Function.update_idem,
+      show z - 1 + 1 = z from by omega] at h
+    exact h
+  refine ⟨N + (1 + (z + 1)), by omega, fun j hj => ?_, ?_⟩
+  · rcases (show j ≤ N ∨ (N + 1 ≤ j ∧ j ≤ N + z) ∨ j = N + 1 + z by omega)
+      with hle | ⟨h1, h2⟩ | rfl
+    · rcases hle.lt_or_eq with hlt | rfl
+      · rw [run_body_in_loop hin j (by omega), length_rfindLoop]
+        have := hin j hlt
+        omega
+      · rw [hb, length_rfindLoop]
+        exact show (rfindBody (k := k) Cf).length < (rfindBody (k := k) Cf).length + 3 by omega
+    · rw [show j = N + 1 + (j - N - 1) by omega, run_add, run_add, run_one, hb, hstep,
+        run_drain_partial (getElem?_sDrain (Cf := Cf)) _ (j - N - 1)
+          (by rw [Function.update_self]; omega), length_rfindLoop]
+      exact show (rfindBody (k := k) Cf).length + 1 <
+        (rfindBody (k := k) Cf).length + 3 by omega
+    · rw [show N + 1 + z = N + 1 + z from rfl, run_add, run_add, run_one, hb, hstep, hdrain,
+        length_rfindLoop]
+      exact show (rfindBody (k := k) Cf).length + 2 <
+        (rfindBody (k := k) Cf).length + 3 by omega
+  · rw [show N + (1 + (z + 1)) = N + 1 + z + 1 by omega, run_add, run_add, run_add,
+      run_one, run_one, hb, hstep, hdrain, step_inc (getElem?_sInc (Cf := Cf))]
+    refine congrArg _ (funext fun r => ?_)
+    rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+    · simp [searchAnswered, searchState]
+    · simp [searchAnswered, searchState]
+    · simp [searchAnswered, searchState]
+    · simp [searchAnswered, searchState]
+    · simp [searchAnswered, searchState]
+    · simp [searchAnswered, searchState]
+    · by_cases hi : i = 0
+      · subst hi; simp [searchAnswered, searchState]
+      · simp [searchAnswered, searchState, sCall_injective.eq_iff, hi]
+
 end RegisterMachine
 
 end Hilbert10
