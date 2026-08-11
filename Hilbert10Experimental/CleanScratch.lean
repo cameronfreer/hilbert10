@@ -221,6 +221,60 @@ theorem CleanPartComputesUnary.call_halts_iff {P : Program (k + 1)} {f : ℕ →
   obtain ⟨n, _, hn⟩ := h.call_exit hσ hx hclean (Part.get_mem hd)
   exact ⟨n, by rw [hn]; exact Nat.le_refl _⟩
 
+/-! ## The graph relation
+
+What #21 will arithmetise: a *trace-level* statement about the machine, with no reference to the
+function it computes. `accepts_iff` is the bridge, and it is the only place the two meet. -/
+
+/-- `P` takes the clean configuration for `x` to the clean configuration for `y`, exactly. -/
+def Accepts (P : Program (k + 1)) (x y : ℕ) : Prop :=
+  ∃ n, (∀ m < n, (run P ⟨0, unaryConfig k x⟩ m).pc < P.length) ∧
+    run P ⟨0, unaryConfig k x⟩ n = ⟨P.length, unaryConfig k y⟩
+
+theorem CleanPartComputesUnary.accepts_iff {P : Program (k + 1)} {f : ℕ →. ℕ}
+    (h : CleanPartComputesUnary P f) (x y : ℕ) : Accepts P x y ↔ y ∈ f x := by
+  constructor
+  · rintro ⟨n, hin, hex⟩
+    have hdom : (f x).Dom := h.dom ⟨n, by rw [hex]; exact Nat.le_refl _⟩
+    obtain ⟨n', hin', hex'⟩ := h.exit (Part.get_mem hdom)
+    obtain ⟨-, hoo⟩ := exit_unique hin hex hin' hex'
+    have hy : y = (f x).get hdom := by simpa using congrFun hoo 0
+    rw [hy]
+    exact Part.get_mem hdom
+  · intro hy
+    exact h.exit hy
+
+/-- **Width lifting for the clean contract.** The clean analogue of
+`PartComputesUnary.renameRegs`, and a direct consequence of `call`. Named `widen` rather than
+`renameRegs` because a theorem in the `CleanPartComputesUnary` namespace shadows the top-level
+`renameRegs` inside every other theorem in that namespace: it is what lets two machines
+obtained independently be brought to a common width before composing. -/
+theorem CleanPartComputesUnary.widen {P : Program (k + 1)} {f : ℕ →. ℕ}
+    (h : CleanPartComputesUnary P f) {σ : Fin (k + 1) → Fin (k' + 1)}
+    (hσ : Function.Injective σ) (hσ0 : σ 0 = 0) :
+    CleanPartComputesUnary (RegisterMachine.renameRegs σ P) f := by
+  classical
+  have hne : ∀ i, i ≠ 0 → σ i ≠ 0 := fun i hi hc => hi (hσ (hc.trans hσ0.symm))
+  intro x
+  have hx : unaryConfig k' x (σ 0) = x := by rw [hσ0, unaryConfig_zero]
+  have hcl : ∀ i, i ≠ 0 → unaryConfig k' x (σ i) = 0 := fun i hi =>
+    unaryConfig_of_ne (hne i hi)
+  refine ⟨fun y hy => ?_, fun hh => (h.call_halts_iff hσ hx hcl).mp hh⟩
+  obtain ⟨n, hin, hex⟩ := h.call_exit hσ hx hcl hy
+  refine ⟨n, hin, ?_⟩
+  rw [hex]
+  refine congrArg _ (funext fun r => ?_)
+  by_cases hrng : ∃ i, r = σ i
+  · obtain ⟨i, rfl⟩ := hrng
+    rw [callState_apply hσ]
+    by_cases hi : i = 0
+    · subst hi; rw [hσ0, unaryConfig_zero, unaryConfig_zero]
+    · rw [unaryConfig_of_ne hi, unaryConfig_of_ne (hne i hi)]
+  · push Not at hrng
+    rw [callState_of_not_mem _ _ hrng,
+      unaryConfig_of_ne (by rintro rfl; exact hrng 0 hσ0.symm),
+      unaryConfig_of_ne (by rintro rfl; exact hrng 0 hσ0.symm)]
+
 end RegisterMachine
 
 end Hilbert10

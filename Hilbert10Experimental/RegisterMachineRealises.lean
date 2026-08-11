@@ -154,6 +154,21 @@ theorem Realises.append {P Q : Program k} {F G : (Fin k → ℕ) → Fin k → �
   obtain ⟨nQ, hQin, hQex⟩ := hQ (F regs)
   exact ⟨nP + nQ, join_exit hPin hPex hQin hQex⟩
 
+
+/-- **Exact exits are unique.** Execution is deterministic, so a run that stops exactly at
+`P.length` without leaving the program first does so at one time and in one state. -/
+theorem exit_unique {P : Program k} {c : Config k} {o₁ o₂ : Fin k → ℕ} {n₁ n₂ : ℕ}
+    (h1in : ∀ m < n₁, (run P c m).pc < P.length) (h1ex : run P c n₁ = ⟨P.length, o₁⟩)
+    (h2in : ∀ m < n₂, (run P c m).pc < P.length) (h2ex : run P c n₂ = ⟨P.length, o₂⟩) :
+    n₁ = n₂ ∧ o₁ = o₂ := by
+  have hn : n₁ = n₂ := by
+    rcases Nat.lt_trichotomy n₁ n₂ with h | h | h
+    · exact absurd (h2in n₁ h) (by rw [h1ex]; exact Nat.not_lt.mpr (Nat.le_refl _))
+    · exact h
+    · exact absurd (h1in n₂ h) (by rw [h2ex]; exact Nat.not_lt.mpr (Nat.le_refl _))
+  subst hn
+  exact ⟨rfl, congrArg Config.regs (h1ex.symm.trans h2ex)⟩
+
 /-! ## The partial contract
 
 `rfind'` is where divergence originates, but it propagates: `comp cf cg` diverges wherever `cg`
