@@ -560,6 +560,62 @@ theorem run_rfindTurn_ne {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (
       · subst hi; simp [searchAnswered, searchState]
       · simp [searchAnswered, searchState, sCall_injective.eq_iff, hi]
 
+/-! ### Soundness
+
+There is no counter to induct on, so the induction is on the halting time. The nonzero turn's
+`0 < steps` and its in-range clause together give `N - steps < N`. -/
+
+/-- A halting loop forces the predicate to converge at the current candidate. -/
+theorem rfindLoop_call_dom {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a c : ℕ)
+    (hh : Halts (rfindLoop (k := k) Cf) ⟨0, searchState a c⟩) : (f (Nat.pair a c)).Dom := by
+  have hbody : Halts (rfindBody (k := k) Cf) ⟨0, searchState a c⟩ := by
+    rw [rfindLoop] at hh
+    exact halts_prefix_of_halts_append hh
+  rw [rfindBody] at hbody
+  obtain ⟨N1, i1, e1⟩ := run_rfindPairUp (k := k) a c
+  have h1 := (halts_append_of_exits i1 (by rw [e1])).mp hbody
+  rw [show (run (rfindPairUp (k := k)) ⟨0, searchState a c⟩ N1).regs =
+    searchPaired a c from by rw [e1]] at h1
+  obtain ⟨N2, i2, e2⟩ := run_rfindSeedCall (k := k) a c
+  have h2 := (halts_append_of_exits i2 (by rw [e2])).mp h1
+  rw [show (run (rfindSeedCall (k := k)) ⟨0, searchPaired a c⟩ N2).regs =
+    searchSeeded a c from by rw [e2]] at h2
+  exact (hf.call_halts_iff sCall_injective (regs := searchSeeded (k := k) a c)
+    (x := Nat.pair a c) (by simp [searchSeeded])
+    (fun i hi => by simp [searchSeeded, sCall_injective.eq_iff, hi])).mp h2
+
+/-- **Soundness, with an explicit halting time.** A loop that halts at time `N` from candidate
+`q + m` exhibits a stopping point `d ≥ q`, together with the failures in between. -/
+theorem rfindLoop_sound_at {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a m : ℕ) :
+    ∀ N q, Halted (rfindLoop (k := k) Cf)
+        (run (rfindLoop (k := k) Cf) ⟨0, searchState a (q + m)⟩ N) →
+      ∃ d, 0 ∈ f (Nat.pair a (d + m)) ∧ q ≤ d ∧
+        ∀ j, q ≤ j → j < d → ∃ z ∈ f (Nat.pair a (j + m)), z ≠ 0 := by
+  intro N
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    intro q hN
+    have hdom := rfindLoop_call_dom (k := k) hf a (q + m) ⟨N, hN⟩
+    by_cases hz : (f (Nat.pair a (q + m))).get hdom = 0
+    · exact ⟨q, hz ▸ Part.get_mem hdom, Nat.le_refl q,
+        fun j h1 h2 => absurd h2 (Nat.not_lt.mpr h1)⟩
+    · obtain ⟨steps, hpos, hin, hex⟩ :=
+        run_rfindTurn_ne (k := k) hf a (q + m) _ (Part.get_mem hdom) hz
+      have hle : steps ≤ N := by
+        by_contra hlt
+        exact absurd hN (Nat.not_le.mpr (hin N (Nat.not_le.mp hlt)))
+      obtain ⟨t, rfl⟩ := Nat.exists_eq_add_of_le hle
+      rw [run_add, hex] at hN
+      have hnext : Halted (rfindLoop (k := k) Cf)
+          (run (rfindLoop (k := k) Cf) ⟨0, searchState a (q + 1 + m)⟩ t) := by
+        rw [show q + 1 + m = q + m + 1 from by omega]
+        exact hN
+      obtain ⟨d, hd0, hdq, hdj⟩ := ih t (by omega) (q + 1) hnext
+      refine ⟨d, hd0, by omega, fun j h1 h2 => ?_⟩
+      rcases (show j = q ∨ q + 1 ≤ j by omega) with rfl | h3
+      · exact ⟨_, Part.get_mem hdom, hz⟩
+      · exact hdj j h3 h2
+
 end RegisterMachine
 
 end Hilbert10
