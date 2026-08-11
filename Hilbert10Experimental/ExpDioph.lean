@@ -188,6 +188,47 @@ theorem and {S T : Set (α → ℕ)} (hS : ExpDioph S) (hT : ExpDioph T) : ExpDi
     simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2] at hw
     refine ⟨(h₁ v).mpr ⟨w ∘ Sum.inl, by omega⟩, (h₂ v).mpr ⟨w ∘ Sum.inr, by omega⟩⟩
 
+/-- `ExpDioph` is closed under disjunction, via the *product* of the two symmetric equality
+gaps: a product of naturals vanishes exactly when one factor does. Finite dispatch over a fixed
+program's instruction list (#45) is repeated use of this, which is why it is worth having
+alongside `and` rather than routing through complements. -/
+theorem or {S T : Set (α → ℕ)} (hS : ExpDioph S) (hT : ExpDioph T) : ExpDioph (S ∪ T) := by
+  obtain ⟨β, s₁, t₁, h₁⟩ := hS
+  obtain ⟨γ, s₂, t₂, h₂⟩ := hT
+  let f₁ : α ⊕ β → α ⊕ (β ⊕ γ) := Sum.elim Sum.inl (fun b => Sum.inr (Sum.inl b))
+  let f₂ : α ⊕ γ → α ⊕ (β ⊕ γ) := Sum.elim Sum.inl (fun c => Sum.inr (Sum.inr c))
+  refine ⟨β ⊕ γ,
+    .mul (.add (.sub (s₁.map f₁) (t₁.map f₁)) (.sub (t₁.map f₁) (s₁.map f₁)))
+      (.add (.sub (s₂.map f₂) (t₂.map f₂)) (.sub (t₂.map f₂) (s₂.map f₂))),
+    .const 0, fun v => ?_⟩
+  have key : ∀ (w : (β ⊕ γ) → ℕ),
+      (Sum.elim v w ∘ f₁ = Sum.elim v (w ∘ Sum.inl)) ∧
+        (Sum.elim v w ∘ f₂ = Sum.elim v (w ∘ Sum.inr)) := by
+    intro w
+    constructor <;> (funext z; cases z <;> rfl)
+  constructor
+  · rintro (hv | hv)
+    · obtain ⟨w₁, hw₁⟩ := (h₁ v).mp hv
+      refine ⟨Sum.elim w₁ (fun _ => 0), ?_⟩
+      have e := key (Sum.elim w₁ (fun _ => 0))
+      simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2, Sum.elim_comp_inl, Sum.elim_comp_inr]
+      exact Nat.mul_eq_zero.mpr (Or.inl (by omega))
+    · obtain ⟨w₂, hw₂⟩ := (h₂ v).mp hv
+      refine ⟨Sum.elim (fun _ => 0) w₂, ?_⟩
+      have e := key (Sum.elim (fun _ => 0) w₂)
+      simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2, Sum.elim_comp_inl, Sum.elim_comp_inr]
+      exact Nat.mul_eq_zero.mpr (Or.inr (by omega))
+  · rintro ⟨w, hw⟩
+    have e := key w
+    simp only [ExpTerm.eval, ExpTerm.eval_map, e.1, e.2] at hw
+    rcases Nat.mul_eq_zero.mp hw with h | h
+    · exact Or.inl ((h₁ v).mpr ⟨w ∘ Sum.inl, by omega⟩)
+    · exact Or.inr ((h₂ v).mpr ⟨w ∘ Sum.inr, by omega⟩)
+
+/-- The empty relation. The base case of a finite disjunction. -/
+theorem of_false : ExpDioph (∅ : Set (α → ℕ)) :=
+  ⟨Empty, .const 0, .const 1, fun v => by simp [ExpTerm.eval]⟩
+
 /-- `ExpDioph` respects extensional equality of relations. -/
 theorem congr {S T : Set (α → ℕ)} (h : ExpDioph S) (hST : ∀ v, v ∈ S ↔ v ∈ T) :
     ExpDioph T := by
