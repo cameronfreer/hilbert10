@@ -616,6 +616,184 @@ theorem rfindLoop_sound_at {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f)
       · exact ⟨_, Part.get_mem hdom, hz⟩
       · exact hdj j h3 h2
 
+/-! ### Completeness, and the semantic endpoint -/
+
+/-- **Segment completeness.** Given `q` failures, the loop walks from candidate `m` to `q + m`. -/
+theorem run_rfindFailures {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a m : ℕ) :
+    ∀ q, (∀ j < q, ∃ z ∈ f (Nat.pair a (j + m)), z ≠ 0) →
+      ∃ steps, (∀ s < steps, (run (rfindLoop (k := k) Cf) ⟨0, searchState a m⟩ s).pc <
+          (rfindLoop (k := k) Cf).length) ∧
+        run (rfindLoop (k := k) Cf) ⟨0, searchState a m⟩ steps =
+          ⟨0, searchState a (q + m)⟩ := by
+  intro q
+  induction q with
+  | zero =>
+    intro _
+    refine ⟨0, fun s hs => absurd hs (Nat.not_lt_zero s), ?_⟩
+    rw [run_zero, show (0 : ℕ) + m = m from Nat.zero_add m]
+  | succ q ih =>
+    intro hfail
+    obtain ⟨s1, i1, e1⟩ := ih (fun j hj => hfail j (by omega))
+    obtain ⟨z, hz, hz0⟩ := hfail q (by omega)
+    obtain ⟨s2, _, i2, e2⟩ := run_rfindTurn_ne (k := k) hf a (q + m) z hz hz0
+    rw [show q + m + 1 = q + 1 + m from by omega] at e2
+    exact ⟨s1 + s2, run_segment_trans i1 e1 i2 e2⟩
+
+/-- **The loop's exact exit.** -/
+theorem run_rfindLoop {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a m y : ℕ)
+    (hy : y ∈ rfindSem f a m) :
+    ∃ N, (∀ s < N, (run (rfindLoop (k := k) Cf) ⟨0, searchState a m⟩ s).pc <
+        (rfindLoop (k := k) Cf).length) ∧
+      run (rfindLoop (k := k) Cf) ⟨0, searchState a m⟩ N =
+        ⟨(rfindLoop (k := k) Cf).length, searchState a y⟩ := by
+  obtain ⟨q, rfl, hq, hmin⟩ := mem_rfindSem.mp hy
+  obtain ⟨s1, i1, e1⟩ := run_rfindFailures (k := k) hf a m q hmin
+  obtain ⟨s2, i2, e2⟩ := run_rfindTurn_zero (k := k) hf a (q + m) hq
+  exact ⟨s1 + s2, run_segment_trans i1 e1 i2 e2⟩
+
+/-- **The semantic endpoint of the loop.** -/
+theorem rfindLoop_halts_iff {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) (a m : ℕ) :
+    Halts (rfindLoop (k := k) Cf) ⟨0, searchState a m⟩ ↔ (rfindSem f a m).Dom := by
+  constructor
+  · rintro ⟨N, hN⟩
+    have hN' : Halted (rfindLoop (k := k) Cf)
+        (run (rfindLoop (k := k) Cf) ⟨0, searchState a (0 + m)⟩ N) := by
+      rw [show (0 : ℕ) + m = m from Nat.zero_add m]
+      exact hN
+    obtain ⟨d, hd0, _, hdj⟩ := rfindLoop_sound_at (k := k) hf a m N 0 hN'
+    exact Part.dom_iff_mem.mpr ⟨d + m,
+      mem_rfindSem.mpr ⟨d, rfl, hd0, fun j hj => hdj j (Nat.zero_le j) hj⟩⟩
+  · intro hd
+    obtain ⟨N, _, hex⟩ :=
+      run_rfindLoop (k := k) hf a m ((rfindSem f a m).get hd) (Part.get_mem hd)
+    exact ⟨N, by rw [hex]; exact Nat.le_refl _⟩
+
+/-! ## The controller
+
+One partial boundary: the packaged search loop. -/
+
+/-- After the input has been copied to the unpairing block. -/
+def rfindCtlA (x : ℕ) : Fin (k + 20) → ℕ :=
+  fun r => if r = sUnpair k 0 then x else if r = 0 then x else 0
+
+/-- After unpairing. -/
+def rfindCtlB (x : ℕ) : Fin (k + 20) → ℕ :=
+  fun r => if r = sUnpair k 1 then x.unpair.1 else if r = sUnpair k 2 then x.unpair.2
+    else if r = 0 then x else 0
+
+theorem run_rfindSplit (x : ℕ) :
+    ∃ N, (∀ m < N, (run (rfindSplit (k := k)) ⟨0, unaryConfig (k + 19) x⟩ m).pc <
+        (rfindSplit (k := k)).length) ∧
+      run (rfindSplit (k := k)) ⟨0, unaryConfig (k + 19) x⟩ N =
+        ⟨(rfindSplit (k := k)).length, rfindCtlB x⟩ := by
+  rw [rfindSplit]
+  obtain ⟨N1, i1, e1⟩ :=
+    realises_copy (r := (0 : Fin (k + 20))) (s := sUnpair k 0) (t := sT k)
+      (by simp) (by simp) (by simp) (unaryConfig (k + 19) x)
+  have e1' : run (copy 0 (sUnpair k 0) (sT k)) ⟨0, unaryConfig (k + 19) x⟩ N1 =
+      ⟨(copy 0 (sUnpair k 0) (sT k)).length, rfindCtlA x⟩ := by
+    rw [e1]
+    refine congrArg _ (funext fun r => ?_)
+    rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+      simp [unaryConfig, rfindCtlA, sUnpair_injective.eq_iff]
+  obtain ⟨N2, hu2, hu3⟩ := run_unpairLoop x
+  obtain ⟨i2, e2⟩ :=
+    run_renameRegs_of_exit sUnpair_injective hu2 hu3 (regs := rfindCtlA (k := k) x)
+      (fun i => by
+        rcases (show i = 0 ∨ i ≠ 0 by tauto) with rfl | hi
+        · simp [rfindCtlA, unaryConfig]
+        · simp [rfindCtlA, unaryConfig, sUnpair_injective.eq_iff, hi])
+  have e2' : run (renameRegs (sUnpair k) unpairLoop) ⟨0, rfindCtlA x⟩ N2 =
+      ⟨(renameRegs (sUnpair k) unpairLoop).length, rfindCtlB x⟩ := by
+    rw [e2]
+    refine congrArg _ (funext fun r => ?_)
+    rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (sUnpair_ne_fixed i).1 hi)]
+      simp [rfindCtlA, rfindCtlB]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (sUnpair_ne_fixed i).2.1 hi)]
+      simp [rfindCtlA, rfindCtlB]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (sUnpair_ne_fixed i).2.2.1 hi)]
+      simp [rfindCtlA, rfindCtlB]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨i, hi⟩; exact (sUnpair_ne_fixed i).2.2.2 hi)]
+      simp [rfindCtlA, rfindCtlB]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨j, hj⟩; exact (sUnpair_ne_sPair j i) hj)]
+      simp [rfindCtlA, rfindCtlB]
+    · rw [sUnpair_injective.extend_apply]
+      simp only [rfindCtlB]
+      fin_cases i <;> simp [sUnpair_injective.eq_iff]
+    · rw [Function.extend_apply' _ _ _ (by rintro ⟨j, hj⟩; exact (sUnpair_ne_sCall j i) hj)]
+      simp [rfindCtlA, rfindCtlB]
+  exact ⟨N1 + N2, join_exit i1 e1' i2 e2'⟩
+
+theorem run_rfindSeed (x : ℕ) :
+    ∃ N, (∀ m < N, (run (rfindSeed (k := k)) ⟨0, rfindCtlB x⟩ m).pc <
+        (rfindSeed (k := k)).length) ∧
+      run (rfindSeed (k := k)) ⟨0, rfindCtlB x⟩ N =
+        ⟨(rfindSeed (k := k)).length, searchState x.unpair.1 x.unpair.2⟩ := by
+  rw [rfindSeed]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_move (r := sUnpair k 1) (s := sA k) (by simp)).seq
+      ((realises_move (r := sUnpair k 2) (s := sC k) (by simp)).seq
+        (realises_clear (0 : Fin (k + 20))))) (rfindCtlB (k := k) x)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · fin_cases i <;> simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+  · simp [rfindCtlB, searchState, sUnpair_injective.eq_iff]
+
+theorem run_rfindFinish (a y : ℕ) :
+    ∃ N, (∀ m < N, (run (rfindFinish (k := k)) ⟨0, searchState a y⟩ m).pc <
+        (rfindFinish (k := k)).length) ∧
+      run (rfindFinish (k := k)) ⟨0, searchState a y⟩ N =
+        ⟨(rfindFinish (k := k)).length, unaryConfig (k + 19) y⟩ := by
+  rw [rfindFinish]
+  obtain ⟨N, hin, hex⟩ :=
+    ((realises_clear (sA k)).seq
+      (realises_move (r := sC k) (s := (0 : Fin (k + 20))) (by simp)))
+      (searchState (k := k) a y)
+  refine ⟨N, hin, ?_⟩
+  rw [hex]
+  clear hex hin
+  refine congrArg _ (funext fun r => ?_)
+  rcases sLayout_cases r with rfl | rfl | rfl | rfl | ⟨i, rfl⟩ | ⟨i, rfl⟩ | ⟨i, rfl⟩ <;>
+    simp [searchState, unaryConfig]
+
+/-- **`Code.rfind'`'s closure theorem.** -/
+theorem CleanPartComputesUnary.rfind' {f : ℕ →. ℕ} (hf : CleanPartComputesUnary Cf f) :
+    CleanPartComputesUnary (rfindController (k := k) Cf)
+      fun x => rfindSem f x.unpair.1 x.unpair.2 := by
+  intro x
+  refine ⟨fun y hy => ?_, fun hh => ?_⟩
+  · obtain ⟨N1, i1, e1⟩ := run_rfindSplit (k := k) x
+    obtain ⟨N2, i2, e2⟩ := run_rfindSeed (k := k) x
+    obtain ⟨N3, i3, e3⟩ := run_rfindLoop (k := k) hf x.unpair.1 x.unpair.2 y hy
+    obtain ⟨N4, i4, e4⟩ := run_rfindFinish (k := k) x.unpair.1 y
+    obtain ⟨j34, f34⟩ := join_exit i3 e3 i4 e4
+    obtain ⟨j234, f234⟩ := join_exit i2 e2 j34 f34
+    exact ⟨N1 + (N2 + (N3 + N4)), join_exit i1 e1 j234 f234⟩
+  · obtain ⟨N1, i1, e1⟩ := run_rfindSplit (k := k) x
+    have h1 := (halts_append_of_exits i1 (by rw [e1])).mp hh
+    rw [show (run (rfindSplit (k := k)) ⟨0, unaryConfig (k + 19) x⟩ N1).regs =
+      rfindCtlB x from by rw [e1]] at h1
+    obtain ⟨N2, i2, e2⟩ := run_rfindSeed (k := k) x
+    have h2 := (halts_append_of_exits i2 (by rw [e2])).mp h1
+    rw [show (run (rfindSeed (k := k)) ⟨0, rfindCtlB x⟩ N2).regs =
+      searchState x.unpair.1 x.unpair.2 from by rw [e2]] at h2
+    exact (rfindLoop_halts_iff (k := k) hf x.unpair.1 x.unpair.2).mp
+      (halts_prefix_of_halts_append h2)
+
+/-- **`Code.rfind'`.** `congr` through the source-semantics bridge, and nothing else. -/
+theorem CleanPartComputesUnary.codeRfind {cf : Code} (hf : CleanPartComputesUnary Cf cf.eval) :
+    CleanPartComputesUnary (rfindController (k := k) Cf) (Code.rfind' cf).eval :=
+  (CleanPartComputesUnary.rfind' (k := k) hf).congr fun x => (eval_rfind_unpair cf x).symm
+
 end RegisterMachine
 
 end Hilbert10
