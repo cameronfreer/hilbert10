@@ -338,12 +338,12 @@ recursion on that list: nothing here encodes a program or looks an instruction u
 pins the program counter, which is what makes the disjunction below exclusive. -/
 def Instr.EncodedStep (w p : ℕ) : Instr k → ℕ → ℕ → Prop
   | .inc r j => fun b a =>
-      configField w b 0 = p ∧
+      configField w b 0 = p ∧ j < 2 ^ w ∧ configField w b ((r : ℕ) + 1) + 1 < 2 ^ w ∧
         a = setField w (setField w b 0 j) ((r : ℕ) + 1) (configField w b ((r : ℕ) + 1) + 1)
   | .dec r jpos jzero => fun b a =>
       configField w b 0 = p ∧
-        ((configField w b ((r : ℕ) + 1) = 0 ∧ a = setField w b 0 jzero) ∨
-          (0 < configField w b ((r : ℕ) + 1) ∧
+        ((configField w b ((r : ℕ) + 1) = 0 ∧ jzero < 2 ^ w ∧ a = setField w b 0 jzero) ∨
+          (0 < configField w b ((r : ℕ) + 1) ∧ jpos < 2 ^ w ∧
             a = setField w (setField w b 0 jpos) ((r : ℕ) + 1)
               (configField w b ((r : ℕ) + 1) - 1)))
 
@@ -382,10 +382,11 @@ theorem encodedStep_iff_exists {P : Program k} {w b a : ℕ} :
   simpa using encodedStepFrom_iff w P 0 b a
 
 /-- The instruction at the current program counter, encoded, is satisfied by exactly the code of
-the successor configuration. -/
+the successor configuration — and only when that successor fits. -/
 theorem instr_encodedStep_iff {P : Program k} {w : ℕ} {c : Config k} {z : ℕ}
-    (hc : FitsConfig w c) (hs : FitsConfig w (step P c)) (hpc : c.pc < P.length) :
-    (P[c.pc]'hpc).EncodedStep w c.pc (configCode w c) z ↔ z = configCode w (step P c) := by
+    (hc : FitsConfig w c) (hpc : c.pc < P.length) :
+    (P[c.pc]'hpc).EncodedStep w c.pc (configCode w c) z ↔
+      FitsConfig w (step P c) ∧ z = configCode w (step P c) := by
   have hstep : step P c = (P[c.pc]'hpc).exec c.regs :=
     step_of_getElem? (List.getElem?_eq_getElem hpc)
   have hpc0 : configField w (configCode w c) 0 = c.pc := field_configCode_zero hc
@@ -393,52 +394,87 @@ theorem instr_encodedStep_iff {P : Program k} {w : ℕ} {c : Config k} {z : ℕ}
   · -- `inc r j`
     have hexec : step P c = ⟨j, Function.update c.regs r (c.regs r + 1)⟩ := by
       rw [hstep, hI]; rfl
-    have hj : j < 2 ^ w := by have := hs.1; rw [hexec] at this; exact this
-    have hv : c.regs r + 1 < 2 ^ w := by
-      have := hs.2 r; rw [hexec] at this; simpa using this
-    rw [show Instr.EncodedStep w c.pc (Instr.inc r j) (configCode w c) z
-        = (configField w (configCode w c) 0 = c.pc ∧
-            z = setField w (setField w (configCode w c) 0 j) ((r : ℕ) + 1)
-              (configField w (configCode w c) ((r : ℕ) + 1) + 1)) from rfl,
-      field_configCode_succ hc r, hexec, configCode_update hc hj r hv]
-    exact and_iff_right hpc0
+    have hreg : configField w (configCode w c) ((r : ℕ) + 1) = c.regs r :=
+      field_configCode_succ hc r
+    have hE : Instr.EncodedStep w c.pc (Instr.inc r j) (configCode w c) z ↔
+        (j < 2 ^ w ∧ c.regs r + 1 < 2 ^ w ∧
+          z = setField w (setField w (configCode w c) 0 j) ((r : ℕ) + 1) (c.regs r + 1)) := by
+      rw [show Instr.EncodedStep w c.pc (Instr.inc r j) (configCode w c) z
+          = (configField w (configCode w c) 0 = c.pc ∧ j < 2 ^ w ∧
+              configField w (configCode w c) ((r : ℕ) + 1) + 1 < 2 ^ w ∧
+              z = setField w (setField w (configCode w c) 0 j) ((r : ℕ) + 1)
+                (configField w (configCode w c) ((r : ℕ) + 1) + 1)) from rfl, hreg]
+      exact and_iff_right hpc0
+    rw [hE, hexec]
+    constructor
+    · rintro ⟨hj, hv, hz⟩
+      refine ⟨⟨hj, fun s => ?_⟩, by rw [hz, configCode_update hc hj r hv]⟩
+      rcases eq_or_ne s r with rfl | hs
+      · simpa using hv
+      · simpa [Function.update_of_ne hs] using hc.2 s
+    · rintro ⟨hfit, hz⟩
+      have hj : j < 2 ^ w := hfit.1
+      have hv : c.regs r + 1 < 2 ^ w := by simpa using hfit.2 r
+      exact ⟨hj, hv, by rw [hz, configCode_update hc hj r hv]⟩
   · -- `dec r jpos jzero`
     have hreg : configField w (configCode w c) ((r : ℕ) + 1) = c.regs r :=
       field_configCode_succ hc r
-    rw [show Instr.EncodedStep w c.pc (Instr.dec r jpos jzero) (configCode w c) z
-        = (configField w (configCode w c) 0 = c.pc ∧
-            ((configField w (configCode w c) ((r : ℕ) + 1) = 0 ∧
-                z = setField w (configCode w c) 0 jzero) ∨
-              (0 < configField w (configCode w c) ((r : ℕ) + 1) ∧
-                z = setField w (setField w (configCode w c) 0 jpos) ((r : ℕ) + 1)
-                  (configField w (configCode w c) ((r : ℕ) + 1) - 1)))) from rfl,
-      hreg, and_iff_right hpc0]
+    have hE : Instr.EncodedStep w c.pc (Instr.dec r jpos jzero) (configCode w c) z ↔
+        ((c.regs r = 0 ∧ jzero < 2 ^ w ∧ z = setField w (configCode w c) 0 jzero) ∨
+          (0 < c.regs r ∧ jpos < 2 ^ w ∧
+            z = setField w (setField w (configCode w c) 0 jpos) ((r : ℕ) + 1)
+              (c.regs r - 1))) := by
+      rw [show Instr.EncodedStep w c.pc (Instr.dec r jpos jzero) (configCode w c) z
+          = (configField w (configCode w c) 0 = c.pc ∧
+              ((configField w (configCode w c) ((r : ℕ) + 1) = 0 ∧ jzero < 2 ^ w ∧
+                  z = setField w (configCode w c) 0 jzero) ∨
+                (0 < configField w (configCode w c) ((r : ℕ) + 1) ∧ jpos < 2 ^ w ∧
+                  z = setField w (setField w (configCode w c) 0 jpos) ((r : ℕ) + 1)
+                    (configField w (configCode w c) ((r : ℕ) + 1) - 1)))) from rfl,
+        hreg]
+      exact and_iff_right hpc0
+    rw [hE]
     rcases Nat.eq_zero_or_pos (c.regs r) with hz | hz
     · have hexec : step P c = ⟨jzero, c.regs⟩ := by rw [hstep, hI]; simp [Instr.exec, hz]
-      have hj : jzero < 2 ^ w := by have := hs.1; rw [hexec] at this; exact this
-      rw [hexec, configCode_setPc hc hj]
+      rw [hexec]
       constructor
-      · rintro (⟨-, h⟩ | ⟨h, -⟩) <;> [exact h; omega]
-      · exact fun h => Or.inl ⟨hz, h⟩
+      · rintro (⟨-, hj, h⟩ | ⟨h, -, -⟩)
+        · exact ⟨⟨hj, hc.2⟩, by rw [h, configCode_setPc hc hj]⟩
+        · omega
+      · rintro ⟨hfit, h⟩
+        exact Or.inl ⟨hz, hfit.1, by rw [h, configCode_setPc hc hfit.1]⟩
     · have hexec : step P c = ⟨jpos, Function.update c.regs r (c.regs r - 1)⟩ := by
         rw [hstep, hI]; simp [Instr.exec, Nat.ne_of_gt hz]
-      have hj : jpos < 2 ^ w := by have := hs.1; rw [hexec] at this; exact this
-      have hv : c.regs r - 1 < 2 ^ w := by
-        have := hs.2 r; rw [hexec] at this; simpa using this
-      rw [hexec, configCode_update hc hj r hv]
+      have hv : c.regs r - 1 < 2 ^ w := by have := hc.2 r; omega
+      rw [hexec]
       constructor
-      · rintro (⟨h, -⟩ | ⟨-, h⟩) <;> [omega; exact h]
-      · exact fun h => Or.inr ⟨hz, h⟩
+      · rintro (⟨h, -, -⟩ | ⟨-, hj, h⟩)
+        · omega
+        · refine ⟨⟨hj, fun s => ?_⟩, by rw [h, configCode_update hc hj r hv]⟩
+          rcases eq_or_ne s r with rfl | hs
+          · simpa using hv
+          · simpa [Function.update_of_ne hs] using hc.2 s
+      · rintro ⟨hfit, h⟩
+        exact Or.inr ⟨hz, hfit.1, by rw [h, configCode_update hc hfit.1 r hv]⟩
 
-/-- **The headline theorem.** For an in-range configuration that fits, and whose successor fits,
-the encoded step relation holds of exactly one number: the code of the successor.
+/-- **The headline theorem.** For an in-range configuration that fits, the encoded step relation
+holds of exactly one number, and only when the real successor fits too.
+
+The successor-fit conjunct is not decoration. `setField` is permissive, so an out-of-range
+written value carries into the next field and the resulting code is still bounded: with `w = 2`,
+`[inc 0 1, dec 1 2 2]` from `⟨0, ![3, 0]⟩` would encode `⟨1, ![4, 0]⟩` as `17`, whose digits are
+`(1, 0, 1)`, and the encoded run would then decrement the carried `1` and terminate at `0` where
+the machine terminates at `4`. Every code stays below the bound throughout, so no outer block
+constraint catches it. The per-instruction bound conjuncts are what rule it out, and #48 needs
+them because the successor-fit hypothesis is not available during soundness.
 
 Only in-range configurations get a case. `Accepts` never steps its terminal configuration, so
 there is no out-of-range branch to add — and adding one would cost a disequality guard in every
 disjunct downstream. -/
 theorem encodedStep_iff {P : Program k} {w : ℕ} {c : Config k} {z : ℕ}
-    (hc : FitsConfig w c) (hs : FitsConfig w (step P c)) (hpc : c.pc < P.length) :
-    EncodedStep P w (configCode w c) z ↔ z = configCode w (step P c) := by
+    (hc : FitsConfig w c) (hpc : c.pc < P.length) :
+    EncodedStep P w (configCode w c) z ↔
+      FitsConfig w (step P c) ∧ z = configCode w (step P c) := by
   rw [encodedStep_iff_exists]
   constructor
   · rintro ⟨q, hq, hstep⟩
@@ -449,9 +485,9 @@ theorem encodedStep_iff {P : Program k} {w : ℕ} {c : Config k} {z : ℕ}
           rw [field_configCode_zero hc] at this
           omega
     subst hqc
-    exact (instr_encodedStep_iff hc hs hpc).mp hstep
+    exact (instr_encodedStep_iff hc hpc).mp hstep
   · intro h
-    exact ⟨c.pc, hpc, (instr_encodedStep_iff hc hs hpc).mpr h⟩
+    exact ⟨c.pc, hpc, (instr_encodedStep_iff hc hpc).mpr h⟩
 
 /-- Widening the field width preserves fitting. #46 chooses one width large enough for every
 configuration of a run; this is what lets a per-configuration bound be promoted to it. -/
@@ -460,18 +496,45 @@ theorem FitsConfig.mono {w w' : ℕ} {c : Config k} (h : FitsConfig w c) (hw : w
   ⟨lt_of_lt_of_le h.1 (Nat.pow_le_pow_right (by norm_num) hw),
     fun r => lt_of_lt_of_le (h.2 r) (Nat.pow_le_pow_right (by norm_num) hw)⟩
 
-/-- Soundness, in the form #47 uses: the intended successor is related. -/
+/-- Soundness, in the form #48 uses: a related successor code *is* the code of the real
+successor, and the real successor fits. No fit hypothesis about the successor is needed. -/
+theorem eq_configCode_step_of_encodedStep {P : Program k} {w : ℕ} {c : Config k} {z : ℕ}
+    (hc : FitsConfig w c) (hpc : c.pc < P.length) (h : EncodedStep P w (configCode w c) z) :
+    FitsConfig w (step P c) ∧ z = configCode w (step P c) :=
+  (encodedStep_iff hc hpc).mp h
+
+/-- Completeness, in the form #47 uses: the intended successor is related. -/
 theorem encodedStep_configCode {P : Program k} {w : ℕ} {c : Config k} (hc : FitsConfig w c)
     (hs : FitsConfig w (step P c)) (hpc : c.pc < P.length) :
     EncodedStep P w (configCode w c) (configCode w (step P c)) :=
-  (encodedStep_iff hc hs hpc).mpr rfl
+  (encodedStep_iff hc hpc).mpr ⟨hs, rfl⟩
 
-/-- Determinism, in the form #48 uses: nothing else is related. -/
+/-- Determinism. -/
 theorem encodedStep_unique {P : Program k} {w : ℕ} {c : Config k} {z₁ z₂ : ℕ}
-    (hc : FitsConfig w c) (hs : FitsConfig w (step P c)) (hpc : c.pc < P.length)
+    (hc : FitsConfig w c) (hpc : c.pc < P.length)
     (h₁ : EncodedStep P w (configCode w c) z₁) (h₂ : EncodedStep P w (configCode w c) z₂) :
     z₁ = z₂ :=
-  ((encodedStep_iff hc hs hpc).mp h₁).trans ((encodedStep_iff hc hs hpc).mp h₂).symm
+  ((encodedStep_iff hc hpc).mp h₁).2.trans ((encodedStep_iff hc hpc).mp h₂).2.symm
+
+/-- Nothing at all is related when the real successor overflows the width. This is the whole
+content of the correction: an overflowing step is *unrepresentable* at that width rather than
+represented wrongly, and #46's job is to choose a width where it never happens. -/
+theorem not_encodedStep_of_not_fits {P : Program k} {w : ℕ} {c : Config k}
+    (hc : FitsConfig w c) (hpc : c.pc < P.length) (hs : ¬ FitsConfig w (step P c)) (z : ℕ) :
+    ¬ EncodedStep P w (configCode w c) z :=
+  fun h => hs ((encodedStep_iff hc hpc).mp h).1
+
+/-- The counterexample above, kept as a regression: at width `2` the machine's first step
+overflows register `0`, and the strengthened relation has no successor for it. -/
+example (z : ℕ) :
+    ¬ EncodedStep ([.inc 0 1, .dec 1 2 2] : Program 2) 2
+      (configCode 2 ⟨0, fun i : Fin 2 => if i = 0 then 3 else 0⟩) z := by
+  refine not_encodedStep_of_not_fits ⟨by norm_num, fun r => ?_⟩ (by norm_num) (fun h => ?_) z
+  · dsimp only; split <;> norm_num
+  · have := h.2 0
+    rw [show step ([.inc 0 1, .dec 1 2 2] : Program 2) ⟨0, fun i : Fin 2 => if i = 0 then 3 else 0⟩
+        = ⟨1, Function.update (fun i : Fin 2 => if i = 0 then 3 else 0) 0 4⟩ from rfl] at this
+    norm_num at this
 
 end RegisterMachine
 

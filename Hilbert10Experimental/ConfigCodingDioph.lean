@@ -60,23 +60,29 @@ theorem expDioph_instrEncodedStep (W b a : ExpTerm α) (p : ℕ) (I : Instr k) :
   | inc r j =>
     refine ExpDioph.congr
       (ExpDioph.and (ExpDioph.of_eq (s := fieldTerm W b 0) (t := .const p))
-        (ExpDioph.of_eq (s := a)
-          (t := setFieldTerm W (setFieldTerm W b 0 (.const j)) ((r : ℕ) + 1)
-            (.add (fieldTerm W b ((r : ℕ) + 1)) (.const 1))))) ?_
+        (ExpDioph.and (ExpDioph.of_lt (s := .const j) (t := widthTerm W))
+          (ExpDioph.and
+            (ExpDioph.of_lt (s := .add (fieldTerm W b ((r : ℕ) + 1)) (.const 1))
+              (t := widthTerm W))
+            (ExpDioph.of_eq (s := a)
+              (t := setFieldTerm W (setFieldTerm W b 0 (.const j)) ((r : ℕ) + 1)
+                (.add (fieldTerm W b ((r : ℕ) + 1)) (.const 1))))))) ?_
     intro v
-    simp [Instr.EncodedStep, ExpTerm.eval]
+    simp [Instr.EncodedStep, ExpTerm.eval, widthTerm]
   | dec r jpos jzero =>
     refine ExpDioph.congr
       (ExpDioph.and (ExpDioph.of_eq (s := fieldTerm W b 0) (t := .const p))
         (ExpDioph.or
           (ExpDioph.and (ExpDioph.of_eq (s := fieldTerm W b ((r : ℕ) + 1)) (t := .const 0))
-            (ExpDioph.of_eq (s := a) (t := setFieldTerm W b 0 (.const jzero))))
+            (ExpDioph.and (ExpDioph.of_lt (s := .const jzero) (t := widthTerm W))
+              (ExpDioph.of_eq (s := a) (t := setFieldTerm W b 0 (.const jzero)))))
           (ExpDioph.and (ExpDioph.of_lt (s := .const 0) (t := fieldTerm W b ((r : ℕ) + 1)))
-            (ExpDioph.of_eq (s := a)
-              (t := setFieldTerm W (setFieldTerm W b 0 (.const jpos)) ((r : ℕ) + 1)
-                (.sub (fieldTerm W b ((r : ℕ) + 1)) (.const 1))))))) ?_
+            (ExpDioph.and (ExpDioph.of_lt (s := .const jpos) (t := widthTerm W))
+              (ExpDioph.of_eq (s := a)
+                (t := setFieldTerm W (setFieldTerm W b 0 (.const jpos)) ((r : ℕ) + 1)
+                  (.sub (fieldTerm W b ((r : ℕ) + 1)) (.const 1)))))))) ?_
     intro v
-    simp [Instr.EncodedStep, ExpTerm.eval]
+    simp [Instr.EncodedStep, ExpTerm.eval, widthTerm]
 
 /-- The disjunction over a suffix of the program. Recursion on the instruction list; each `::`
 is one use of `ExpDioph.or`. -/

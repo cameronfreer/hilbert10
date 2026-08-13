@@ -31,6 +31,7 @@ import Hilbert10Experimental.ExpDiophChoose
 import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.RegisterMachine
 import Hilbert10Experimental.RegisterMachineComp
+import Hilbert10Experimental.RunWidth
 import Hilbert10Experimental.RegisterMachineMacros
 import Hilbert10Experimental.RegisterMachinePair
 import Hilbert10Experimental.RegisterMachinePairing
