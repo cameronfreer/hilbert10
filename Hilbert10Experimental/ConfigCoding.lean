@@ -329,6 +329,37 @@ theorem configCode_update {w : ℕ} {c : Config k} (h : FitsConfig w c) {j : ℕ
         field_configCode_succ h s]
       simp [Function.update_of_ne hs]
 
+/-! ### Decoding
+
+The inverse of `configCode`, total like everything else here. #48 runs it on every block of a
+packed run, so it must not carry a fitting hypothesis. -/
+
+/-- The configuration a number codes, read field by field. -/
+def decodeConfig (w z : ℕ) : Config k :=
+  ⟨configField w z 0, fun r => configField w z ((r : ℕ) + 1)⟩
+
+/-- Unconditional: every extracted field is a remainder modulo `2 ^ w`. -/
+theorem fits_decodeConfig {w z : ℕ} : FitsConfig w (decodeConfig (k := k) w z) :=
+  ⟨configField_lt w z 0, fun r => configField_lt w z ((r : ℕ) + 1)⟩
+
+theorem configCode_decodeConfig {w z : ℕ} (hz : z < 2 ^ (w * (k + 1))) :
+    configCode w (decodeConfig (k := k) w z) = z := by
+  rw [pow_mul] at hz
+  rw [configCode,
+    show @Fin.cons k (fun _ => ℕ) (decodeConfig (k := k) w z).pc (decodeConfig (k := k) w z).regs
+        = fun i : Fin (k + 1) => configField w z i from by
+      funext i
+      refine Fin.cases ?_ ?_ i
+      · rfl
+      · intro r; rw [Fin.cons_succ, Fin.val_succ]; rfl]
+  exact fieldsCode_configField hz
+
+theorem decodeConfig_configCode {w : ℕ} {c : Config k} (hc : FitsConfig w c) :
+    decodeConfig w (configCode w c) = c := by
+  obtain ⟨p, r⟩ := c
+  simp only [decodeConfig, Config.mk.injEq]
+  exact ⟨field_configCode_zero hc, funext fun s => field_configCode_succ hc s⟩
+
 /-! ### One step, as a relation on codes
 
 The program is *fixed*. `EncodedStep` is a finite disjunction over its instruction list, built by
@@ -535,6 +566,33 @@ example (z : ℕ) :
     rw [show step ([.inc 0 1, .dec 1 2 2] : Program 2) ⟨0, fun i : Fin 2 => if i = 0 then 3 else 0⟩
         = ⟨1, Function.update (fun i : Fin 2 => if i = 0 then 3 else 0) 0 4⟩ from rfl] at this
     norm_num at this
+
+/-! ### The seams #48 consumes
+
+Both directions of the step relation, packaged so that all carry reasoning stays here. -/
+
+/-- The program counter of a related code is in range. #48 needs this before it can apply
+`encodedStep_iff`, and the relation already contains it: every disjunct pins the field. -/
+theorem configField_zero_lt_of_encodedStep {P : Program k} {w b a : ℕ}
+    (h : EncodedStep P w b a) : configField w b 0 < P.length := by
+  obtain ⟨q, hq, hstep⟩ := encodedStep_iff_exists.mp h
+  rcases hI : (P[q]'hq) with ⟨r, j⟩ | ⟨r, jpos, jzero⟩ <;>
+    · rw [hI] at hstep
+      rw [hstep.1]
+      exact hq
+
+/-- **Soundness of one step, decoded.** Only the bound on `b` is needed: the strengthened
+`encodedStep_iff` already proves that the real successor fits and that `a` is its exact code. -/
+theorem decodeConfig_step_of_encodedStep {P : Program k} {w b a : ℕ}
+    (hb : b < 2 ^ (w * (k + 1))) (h : EncodedStep P w b a) :
+    decodeConfig w a = step P (decodeConfig (k := k) w b) := by
+  have hc : FitsConfig w (decodeConfig (k := k) w b) := fits_decodeConfig
+  have hcode : configCode w (decodeConfig (k := k) w b) = b := configCode_decodeConfig hb
+  have hpc : (decodeConfig (k := k) w b).pc < P.length :=
+    configField_zero_lt_of_encodedStep h
+  rw [← hcode] at h
+  obtain ⟨hfit, ha⟩ := (encodedStep_iff hc hpc).mp h
+  rw [ha, decodeConfig_configCode hfit]
 
 end RegisterMachine
 

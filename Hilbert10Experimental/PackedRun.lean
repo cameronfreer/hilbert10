@@ -114,20 +114,36 @@ theorem encodedRun_packRun {P : Program k} {c : Config k} {n : ℕ}
     exact encodedStep_run hi (hin i hi)
 
 /-- **The endpoint #49 consumes.** An accepting run of `P` is a packed run from the clean input
-configuration to the clean output configuration.
+configuration to the clean output configuration, *with the boundary constants bounded*.
 
-`Accepts` supplies exactly the three things `encodedRun_packRun` needs: the run length, the
-in-range program counter at every transition, and the exit equation. Fitting comes from #46
-internally and is never an obligation on the caller. -/
+The three bounds are not redundant with the mask. `EncodedRun` bounds its blocks, but an
+oversized `x`, `y` or `P.length` carries inside `configCode` exactly as an oversized register
+value carried inside `setField` before #45 was corrected, and the packed run would still satisfy
+every block constraint. Stating them is what lets #48 recover the *exact* clean boundary
+configurations rather than merely bounded ones. They are free at #46's width and cheap for
+`ExpDioph`, being three `of_lt` conjuncts.
+
+`Accepts` supplies exactly what `encodedRun_packRun` needs: the run length, the in-range program
+counter at every transition, and the exit equation. Fitting comes from #46 internally and is
+never an obligation on the caller. -/
 theorem exists_encodedRun_of_accepts {P : Program (k + 1)} {x y : ℕ} (h : Accepts P x y) :
-    ∃ n w R, EncodedRun P w n R
-      (configCode w (⟨0, unaryConfig k x⟩ : Config (k + 1)))
-      (configCode w (⟨P.length, unaryConfig k y⟩ : Config (k + 1))) := by
+    ∃ n w R, x < 2 ^ w ∧ y < 2 ^ w ∧ P.length < 2 ^ w ∧
+      EncodedRun P w n R
+        (configCode w (⟨0, unaryConfig k x⟩ : Config (k + 1)))
+        (configCode w (⟨P.length, unaryConfig k y⟩ : Config (k + 1))) := by
   obtain ⟨n, hin, hex⟩ := h
   refine ⟨n, runWidth P ⟨0, unaryConfig k x⟩ n,
-    packRun P ⟨0, unaryConfig k x⟩ (runWidth P ⟨0, unaryConfig k x⟩ n) n, ?_⟩
-  have := encodedRun_packRun (P := P) (c := ⟨0, unaryConfig k x⟩) (n := n) hin
-  rwa [hex] at this
+    packRun P ⟨0, unaryConfig k x⟩ (runWidth P ⟨0, unaryConfig k x⟩ n) n, ?_, ?_,
+    length_lt_two_pow_runWidth P ⟨0, unaryConfig k x⟩ n, ?_⟩
+  · have := (fits_runWidth (P := P) (c := ⟨0, unaryConfig k x⟩) (i := 0) (n := n)
+      (Nat.zero_le n)).2 0
+    rw [run_zero] at this
+    simpa using this
+  · have := (fits_runWidth (P := P) (c := ⟨0, unaryConfig k x⟩) (i := n) (n := n) le_rfl).2 0
+    rw [hex] at this
+    simpa using this
+  · have := encodedRun_packRun (P := P) (c := ⟨0, unaryConfig k x⟩) (n := n) hin
+    rwa [hex] at this
 
 end RegisterMachine
 
