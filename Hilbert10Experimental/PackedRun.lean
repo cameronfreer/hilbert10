@@ -1,0 +1,134 @@
+/-
+Copyright (c) 2026 Cameron Freer. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Cameron Freer
+-/
+import Hilbert10Experimental.BlockPacking
+import Hilbert10Experimental.CleanScratch
+import Hilbert10Experimental.RunWidth
+
+/-!
+# A whole run as one number
+
+Issue #47: packed-run completeness, semantically. An accepting run becomes a single natural
+number whose blocks are the configuration codes of its successive configurations.
+
+## Two nestings of the same construction
+
+`fieldsCode` is used twice, at two widths, and that is the whole design.
+
+*Inner*: a configuration of an `r`-register machine is `r + 1` fields of width `w`, so it
+occupies `w * (r + 1)` bits (#45).
+
+*Outer*: a run of `n + 1` configurations is `n + 1` blocks of width `w * (r + 1) + 1` — the
+configuration, plus `BlockPacking`'s single guard bit. `Nat.IsBinarySubmask R (guardMask …)`
+says exactly that every block's guard bit is clear, which by
+`isBinarySubmask_guardMask_iff` is exactly that every block holds a configuration.
+
+So extraction is `field_fieldsCode` at the outer width, and the mask obligation is the existing
+`BlockPacking` characterisation. No new packing arithmetic appears here.
+
+## Indexing
+
+The width is written `w * (k + 1)` where `k` is the *program's* register count, so a
+`Program (k + 1)` — which is what `CleanScratch` deals in — gets `w * (k + 2)` automatically.
+The specialisation happens only at the `Accepts` endpoint.
+
+## Scope
+
+The bounded conjunction `∀ i < n, EncodedStep …` is left visible. Turning it into an exponential
+Diophantine condition is #49; this file is semantics only.
+
+## Main results
+
+* `RegisterMachine.EncodedRun` — the packed-run predicate
+* `RegisterMachine.encodedRun_packRun` — every prefix of a run packs
+* `RegisterMachine.exists_encodedRun_of_accepts` — the endpoint #49 consumes
+-/
+
+namespace Hilbert10
+
+namespace RegisterMachine
+
+variable {k : ℕ}
+
+/-- **A packed run.** `R` codes `n + 1` configurations in blocks of width `w * (k + 1) + 1`,
+consecutive blocks are related by one step of `P`, and the first and last are `start` and
+`finish`. -/
+def EncodedRun (P : Program k) (w n R start finish : ℕ) : Prop :=
+  Nat.IsBinarySubmask R (guardMask (w * (k + 1)) (n + 1)) ∧
+    configField (w * (k + 1) + 1) R 0 = start ∧
+      configField (w * (k + 1) + 1) R n = finish ∧
+        ∀ i < n, EncodedStep P w (configField (w * (k + 1) + 1) R i)
+          (configField (w * (k + 1) + 1) R (i + 1))
+
+/-- The packing: block `i` is the code of the `i`-th configuration. -/
+def packRun (P : Program k) (c : Config k) (w n : ℕ) : ℕ :=
+  fieldsCode (w * (k + 1) + 1) fun i : Fin (n + 1) => configCode w (run P c i)
+
+/-- Each block of a configuration code sits strictly inside its data field, leaving the guard
+bit clear. This is the one numeric fact the outer layer needs about the inner one. -/
+theorem configCode_lt_dataBound {w : ℕ} {c : Config k} (h : FitsConfig w c) :
+    configCode w c < dataBound (w * (k + 1)) :=
+  configCode_lt_two_pow h
+
+theorem configCode_lt_blockBase {w : ℕ} {c : Config k} (h : FitsConfig w c) :
+    configCode w c < 2 ^ (w * (k + 1) + 1) :=
+  lt_trans (configCode_lt_two_pow h) (Nat.pow_lt_pow_right (by norm_num) (by omega))
+
+/-- Extraction: the blocks of `packRun` are the configuration codes. -/
+theorem field_packRun {P : Program k} {c : Config k} {w n : ℕ}
+    (hfit : ∀ i ≤ n, FitsConfig w (run P c i)) {i : ℕ} (hi : i ≤ n) :
+    configField (w * (k + 1) + 1) (packRun P c w n) i = configCode w (run P c i) := by
+  have := field_fieldsCode
+    (w := w * (k + 1) + 1) (f := fun j : Fin (n + 1) => configCode w (run P c j))
+    (fun j => configCode_lt_blockBase (hfit j (by omega))) ⟨i, by omega⟩
+  simpa [packRun] using this
+
+theorem packRun_lt {P : Program k} {c : Config k} {w n : ℕ}
+    (hfit : ∀ i ≤ n, FitsConfig w (run P c i)) :
+    packRun P c w n < blockBase (w * (k + 1)) ^ (n + 1) :=
+  fieldsCode_lt fun j => configCode_lt_blockBase (hfit j (by omega))
+
+/-- The guard bits are clear. Immediately from `BlockPacking`'s characterisation, since each
+block is a configuration code and so below `dataBound`. -/
+theorem isBinarySubmask_packRun {P : Program k} {c : Config k} {w n : ℕ}
+    (hfit : ∀ i ≤ n, FitsConfig w (run P c i)) :
+    Nat.IsBinarySubmask (packRun P c w n) (guardMask (w * (k + 1)) (n + 1)) := by
+  refine isBinarySubmask_guardMask_iff.mpr ⟨packRun_lt hfit, fun i hi => ?_⟩
+  rw [show packRun P c w n / blockBase (w * (k + 1)) ^ i % blockBase (w * (k + 1))
+      = configField (w * (k + 1) + 1) (packRun P c w n) i from rfl,
+    field_packRun hfit (by omega)]
+  exact configCode_lt_dataBound (hfit i (by omega))
+
+/-- **Every prefix of a run packs.** The width is #46's, so no fitting hypothesis is needed. -/
+theorem encodedRun_packRun {P : Program k} {c : Config k} {n : ℕ}
+    (hin : ∀ i < n, (run P c i).pc < P.length) :
+    EncodedRun P (runWidth P c n) n (packRun P c (runWidth P c n) n)
+      (configCode (runWidth P c n) c) (configCode (runWidth P c n) (run P c n)) := by
+  set w := runWidth P c n with hw
+  have hfit : ∀ i ≤ n, FitsConfig w (run P c i) := fun i hi => fits_runWidth hi
+  refine ⟨isBinarySubmask_packRun hfit, ?_, field_packRun hfit le_rfl, fun i hi => ?_⟩
+  · rw [field_packRun hfit (Nat.zero_le n), run_zero]
+  · rw [field_packRun hfit (by omega), field_packRun hfit (by omega)]
+    exact encodedStep_run hi (hin i hi)
+
+/-- **The endpoint #49 consumes.** An accepting run of `P` is a packed run from the clean input
+configuration to the clean output configuration.
+
+`Accepts` supplies exactly the three things `encodedRun_packRun` needs: the run length, the
+in-range program counter at every transition, and the exit equation. Fitting comes from #46
+internally and is never an obligation on the caller. -/
+theorem exists_encodedRun_of_accepts {P : Program (k + 1)} {x y : ℕ} (h : Accepts P x y) :
+    ∃ n w R, EncodedRun P w n R
+      (configCode w (⟨0, unaryConfig k x⟩ : Config (k + 1)))
+      (configCode w (⟨P.length, unaryConfig k y⟩ : Config (k + 1))) := by
+  obtain ⟨n, hin, hex⟩ := h
+  refine ⟨n, runWidth P ⟨0, unaryConfig k x⟩ n,
+    packRun P ⟨0, unaryConfig k x⟩ (runWidth P ⟨0, unaryConfig k x⟩ n) n, ?_⟩
+  have := encodedRun_packRun (P := P) (c := ⟨0, unaryConfig k x⟩) (n := n) hin
+  rwa [hex] at this
+
+end RegisterMachine
+
+end Hilbert10
