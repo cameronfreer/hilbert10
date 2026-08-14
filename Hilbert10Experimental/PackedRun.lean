@@ -145,6 +145,62 @@ theorem exists_encodedRun_of_accepts {P : Program (k + 1)} {x y : ℕ} (h : Acce
   · have := encodedRun_packRun (P := P) (c := ⟨0, unaryConfig k x⟩) (n := n) hin
     rwa [hex] at this
 
+/-! ### Soundness
+
+The inverse of `encodedRun_packRun`. Every carry argument was discharged in #45, so this is an
+induction over block indices and nothing else. -/
+
+/-- **A packed run really is a run.** Generic in the boundary configurations; the clean
+specialisation comes after.
+
+The invariant is that block `i`, decoded, is the `i`-th configuration of the run. It is
+maintained by `decodeConfig_step_of_encodedStep`, which needs only the block bound the mask
+already supplies, and `n = 0` needs no separate case because the base case is the identification
+of block `0`. -/
+theorem encodedRun_sound {P : Program k} {w n R : ℕ} {start finish : Config k}
+    (hs : FitsConfig w start) (hf : FitsConfig w finish)
+    (h : EncodedRun P w n R (configCode w start) (configCode w finish)) :
+    (∀ i < n, (run P start i).pc < P.length) ∧ run P start n = finish := by
+  obtain ⟨hmask, h0, hn, hstep⟩ := h
+  have hblk : ∀ i < n + 1, configField (w * (k + 1) + 1) R i < 2 ^ (w * (k + 1)) := fun i hi =>
+    (isBinarySubmask_guardMask_iff.mp hmask).2 i hi
+  have key : ∀ i, i ≤ n → decodeConfig w (configField (w * (k + 1) + 1) R i) = run P start i := by
+    intro i
+    induction i with
+    | zero => intro _; rw [h0, decodeConfig_configCode hs, run_zero]
+    | succ i ih =>
+      intro hi
+      rw [decodeConfig_step_of_encodedStep (hblk i (by omega)) (hstep i (by omega)),
+        ih (by omega), run_succ]
+  refine ⟨fun i hi => ?_, ?_⟩
+  · rw [← key i (by omega)]
+    exact configField_zero_lt_of_encodedStep (hstep i hi)
+  · rw [← key n le_rfl, hn, decodeConfig_configCode hf]
+
+/-- The clean boundary configurations fit as soon as their two constants do. -/
+theorem fitsConfig_unaryConfig {w p x : ℕ} (hp : p < 2 ^ w) (hx : x < 2 ^ w) :
+    FitsConfig w (⟨p, unaryConfig k x⟩ : Config (k + 1)) := by
+  refine ⟨hp, fun i => ?_⟩
+  rcases eq_or_ne i 0 with rfl | hi
+  · simpa using hx
+  · simp [unaryConfig_of_ne hi]
+
+/-- **The exact endpoint.** `Accepts` — the trace relation #20 hands over — is *equivalent* to
+the existence of a packed run with bounded boundary constants.
+
+`EncodedRun` itself stays generic; the boundary bounds live only here, where they are needed to
+pin the endpoints down to the clean configurations. #49 targets this right-hand side verbatim. -/
+theorem accepts_iff_exists_encodedRun {P : Program (k + 1)} {x y : ℕ} :
+    Accepts P x y ↔
+      ∃ n w R, x < 2 ^ w ∧ y < 2 ^ w ∧ P.length < 2 ^ w ∧
+        EncodedRun P w n R
+          (configCode w (⟨0, unaryConfig k x⟩ : Config (k + 1)))
+          (configCode w (⟨P.length, unaryConfig k y⟩ : Config (k + 1))) := by
+  refine ⟨exists_encodedRun_of_accepts, ?_⟩
+  rintro ⟨n, w, R, hx, hy, hlen, hrun⟩
+  exact ⟨n, encodedRun_sound (fitsConfig_unaryConfig (Nat.two_pow_pos w) hx)
+    (fitsConfig_unaryConfig hlen hy) hrun⟩
+
 end RegisterMachine
 
 end Hilbert10
