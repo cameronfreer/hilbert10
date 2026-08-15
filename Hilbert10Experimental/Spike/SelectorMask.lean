@@ -3,6 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
+import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.ConfigCoding
 import Hilbert10Experimental.ForMathlib.BinarySubmask
 import Mathlib.Algebra.BigOperators.Fin
@@ -236,6 +237,62 @@ theorem fieldsCode_selected_smul_eq_iff {ι : Type} {W n : ℕ} {s : Finset ι} 
   rcases hfit p₀ hp₀s with h | h
   · exact absurd (h i) hp₀
   · exact h
+
+/-! ### Lane masks
+
+A lane's blocks hold `w`-bit values inside `w * (k + 1) + 1`-bit blocks, so the lane data mask is
+*narrower* than `BlockPacking`'s `guardMask` and is not an instance of it. These two lemmas are
+the ones the globalisation step demands: the mask is a constant packing, and it characterises
+both the range and the per-block bound. -/
+
+theorem fieldsCode_const (W v : ℕ) : ∀ {t : ℕ},
+    fieldsCode W (fun _ : Fin t => v) = v * geom (2 ^ W) t
+  | 0 => by simp [fieldsCode, geom]
+  | t + 1 => by
+    rw [fieldsCode_succ,
+      show ((fun _ : Fin (t + 1) => v) ∘ Fin.succ) = fun _ : Fin t => v from rfl,
+      fieldsCode_const W v, geom_succ]
+    ring
+
+/-- **The lane mask says exactly what it should.** Being a submask of `(2 ^ v - 1)` repeated in
+every block is being below `(2 ^ W) ^ t` with every block below `2 ^ v`. Mirrors
+`isBinarySubmask_guardMask_iff`, which is the same statement at `v = W - 1`. -/
+theorem isBinarySubmask_constMask_iff {W v : ℕ} (hv : v ≤ W) : ∀ {t X : ℕ},
+    Nat.IsBinarySubmask X ((2 ^ v - 1) * geom (2 ^ W) t) ↔
+      X < (2 ^ W) ^ t ∧ ∀ i < t, configField W X i < 2 ^ v := by
+  intro t
+  induction t with
+  | zero =>
+    intro X
+    simp only [geom, Finset.range_zero, Finset.sum_empty, mul_zero, pow_zero, Nat.lt_one_iff,
+      Nat.isBinarySubmask_zero_iff]
+    exact ⟨fun h => ⟨h, by omega⟩, fun h => h.1⟩
+  | succ t ih =>
+    intro X
+    have hlow : 2 ^ v - 1 < 2 ^ W := by
+      have h1 : (2 : ℕ) ^ v ≤ 2 ^ W := Nat.pow_le_pow_right (by norm_num) hv
+      have h2 : 0 < (2 : ℕ) ^ v := Nat.two_pow_pos v
+      omega
+    have hB : 0 < (2 : ℕ) ^ W := Nat.two_pow_pos W
+    rw [geom_succ, Nat.mul_add, mul_one,
+      show (2 ^ v - 1) * (2 ^ W * geom (2 ^ W) t) = 2 ^ W * ((2 ^ v - 1) * geom (2 ^ W) t) by ring,
+      Nat.isBinarySubmask_add_mul_two_pow_iff hlow,
+      Nat.isBinarySubmask_two_pow_sub_one_iff, ih]
+    constructor
+    · rintro ⟨hmod, hlt, hblk⟩
+      refine ⟨?_, fun i hi => ?_⟩
+      · rw [pow_succ]
+        exact (Nat.div_lt_iff_lt_mul hB).mp hlt
+      · cases i with
+        | zero => rwa [configField_zero]
+        | succ i => rw [configField_succ]; exact hblk i (by omega)
+    · rintro ⟨hlt, hblk⟩
+      refine ⟨by have := hblk 0 (by omega); rwa [configField_zero] at this, ?_,
+        fun i hi => ?_⟩
+      · refine (Nat.div_lt_iff_lt_mul hB).mpr ?_
+        rwa [← pow_succ]
+      · have := hblk (i + 1) (by omega)
+        rwa [configField_succ] at this
 
 /-! ### The lane decomposition
 

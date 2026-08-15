@@ -37,8 +37,21 @@ therefore look harmless and break the layer above.
 
 ## Scope
 
-Blockwise only. Globalising these conditions to packed numbers, and representing the result, are
-the remaining layers.
+The blockwise equivalence is proved. `SliceGlobalConditions` states the packed-level conditions,
+but the theorem relating them to `EncodedStep` is **not** proved here:
+
+```
+P.length < 2 ^ w ∧ IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
+  (∀ i < n, EncodedStep sliceP w (block R i) (block R (i + 1)))
+↔ ∃ Xpc X0 S0 S1p S1z S2 Res, SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res
+```
+
+Completeness decodes `R`, applies `sliceStep_iff`, and packs the result; soundness reads the lane
+masks as per-block bounds, recovers `SliceStep` blockwise from the global identities, and applies
+`sliceStep_iff` in reverse. Two cases need explicit attention: `n = 0`, where the selector and
+residual packings must exist with no semantic input; and small `w` with `S₂ = 0`, where the
+target disjunction has to take its zero-selector branch, while `S₂ ≠ 0` must recover
+`1000 < 2 ^ w`. Only after that is `ExpDioph` finite plumbing.
 -/
 
 namespace Hilbert10
@@ -187,6 +200,44 @@ theorem sliceStep_iff (w n : ℕ) (cs : ℕ → Config 1) (hfit : ∀ i, FitsCon
       rw [← hnext]; exact hfit (i + 1)
     have := encodedStep_configCode (hfit i) hfits hpc
     rwa [← hnext] at this
+
+/-! ### The global conditions
+
+Layer 1 for the packed level: the fixed program's global selector conditions, written down so
+that the remaining work is proof rather than design.
+
+Everything is packed at the outer base `B = 2 ^ (w * 2 + 1)`, which for this one-register program
+is the same base `R` uses. Lanes carry `n + 1` blocks, selectors and the residual carry `n`.
+`laneMask` and `bitMask` are the two constant packings: `w`-bit fields and single bits. -/
+
+/-- The `w`-bit data mask over `t` blocks. -/
+def laneMask (w t : ℕ) : ℕ := (2 ^ w - 1) * geom (2 ^ (w * 2 + 1)) t
+
+/-- The one-bit-per-block mask over `t` blocks. -/
+def bitMask (w t : ℕ) : ℕ := geom (2 ^ (w * 2 + 1)) t
+
+/-- **The global selector conditions for `sliceP`.**
+
+Read in order: the two lanes are `w`-bit packings; they reassemble `R`; the four selectors are
+bit packings partitioning every block; the program counter agrees with the selector and jumps to
+the selected target; the register update is subtraction-free; the decrement's zero branch forces
+the register to vanish and its positive branch forces the register to be at least one, the latter
+needing its own masked residual; and each selected target fits.
+
+Twelve conditions, and the count depends only on `sliceP`. -/
+def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res : ℕ) : Prop :=
+  Nat.IsBinarySubmask Xpc (laneMask w (n + 1)) ∧
+  Nat.IsBinarySubmask X0 (laneMask w (n + 1)) ∧
+  R = Xpc + 2 ^ w * X0 ∧
+  Nat.IsBinarySubmask S0 (bitMask w n) ∧ Nat.IsBinarySubmask S1p (bitMask w n) ∧
+    Nat.IsBinarySubmask S1z (bitMask w n) ∧ Nat.IsBinarySubmask S2 (bitMask w n) ∧
+  S0 + S1p + S1z + S2 = bitMask w n ∧
+  Xpc % (2 ^ (w * 2 + 1)) ^ n = S1p + S1z + 2 * S2 ∧
+  Xpc / 2 ^ (w * 2 + 1) = S0 + 2 * S1z + 1000 * S2 ∧
+  X0 / 2 ^ (w * 2 + 1) + S1p = X0 % (2 ^ (w * 2 + 1)) ^ n + S0 + S2 ∧
+  Nat.IsBinarySubmask (S1z * (2 ^ w - 1)) (laneMask w n - X0 % (2 ^ (w * 2 + 1)) ^ n) ∧
+  (X0 % (2 ^ (w * 2 + 1)) ^ n = Res + S1p ∧ Nat.IsBinarySubmask Res (laneMask w n)) ∧
+  (S0 = 0 ∨ 1 < 2 ^ w) ∧ (S1z = 0 ∨ 2 < 2 ^ w) ∧ (S2 = 0 ∨ 1000 < 2 ^ w)
 
 end RegisterMachine
 
