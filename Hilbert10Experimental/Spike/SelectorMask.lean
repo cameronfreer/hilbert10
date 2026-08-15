@@ -197,6 +197,46 @@ theorem fieldsCode_sum_smul_eq_iff {ι : Type} {W n : ℕ} {s : Finset ι}
   · intro heq
     exact congrArg _ (funext heq)
 
+/-- **Only selected scalars have to fit.** A scaled sum of selectors is blockwise exactly when
+every selector that is used *somewhere* carries a scalar below the block bound; a selector that
+is identically zero imposes nothing at all.
+
+This is the mechanism behind the disjunctions `Sₚ = 0 ∨ targetₚ < 2 ^ w` in the condition list.
+It is what stops an oversized target on an unreachable branch from being required to fit, and it
+is why the bound must be stated per branch rather than over the whole program. -/
+theorem fieldsCode_selected_smul_eq_iff {ι : Type} {W n : ℕ} {s : Finset ι} {m : ι → ℕ}
+    {sel : ι → Fin n → ℕ} {d : Fin n → ℕ}
+    (hone : ∀ i, ∑ p ∈ s, sel p i = 1)
+    (hfit : ∀ p ∈ s, (∀ i, sel p i = 0) ∨ m p < 2 ^ W)
+    (hd : ∀ i, d i < 2 ^ W) :
+    ∑ p ∈ s, m p * fieldsCode W (sel p) = fieldsCode W d ↔
+      ∀ i, ∑ p ∈ s, m p * sel p i = d i := by
+  classical
+  refine fieldsCode_sum_smul_eq_iff (fun i => ?_) hd
+  -- exactly one selector is `1` at block `i`, so the block value is that selector's scalar
+  obtain ⟨p₀, hp₀s, hp₀⟩ : ∃ p ∈ s, sel p i ≠ 0 := by
+    by_contra hcon
+    simp only [not_exists, not_and, ne_eq, not_not] at hcon
+    have h1 := hone i
+    rw [Finset.sum_congr rfl fun p hp => hcon p hp] at h1
+    simp at h1
+  have hle : sel p₀ i ≤ ∑ p ∈ s, sel p i :=
+    Finset.single_le_sum (f := fun p => sel p i) (fun _ _ => Nat.zero_le _) hp₀s
+  rw [hone i] at hle
+  have hp₀one : sel p₀ i = 1 := by omega
+  have hsplit : sel p₀ i + ∑ p ∈ s.erase p₀, sel p i = 1 :=
+    (Finset.add_sum_erase s (fun p => sel p i) hp₀s).trans (hone i)
+  have hzero : ∑ p ∈ s.erase p₀, sel p i = 0 := by omega
+  have herase : ∑ p ∈ s.erase p₀, m p * sel p i = 0 :=
+    Finset.sum_eq_zero fun p hp => by rw [Finset.sum_eq_zero_iff.mp hzero p hp, mul_zero]
+  have hval : ∑ p ∈ s, m p * sel p i = m p₀ := by
+    rw [← Finset.add_sum_erase s (fun p => m p * sel p i) hp₀s, herase, hp₀one, mul_one]
+    omega
+  rw [hval]
+  rcases hfit p₀ hp₀s with h | h
+  · exact absurd (h i) hp₀
+  · exact h
+
 /-! ### The lane decomposition
 
 Why lanes are packed at the *outer* base `B` rather than at their own tight base: the packed run
