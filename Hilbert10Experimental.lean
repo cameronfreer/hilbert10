@@ -29,6 +29,7 @@ import Hilbert10Experimental.ConfigCodingDioph
 import Hilbert10Experimental.DiophToRE
 import Hilbert10Experimental.ExpDioph
 import Hilbert10Experimental.ExpDiophChoose
+import Hilbert10Experimental.AcceptsDioph
 import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.RegisterMachine
 import Hilbert10Experimental.RegisterMachineComp

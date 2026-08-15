@@ -145,6 +145,18 @@ theorem exists_encodedRun_of_accepts {P : Program (k + 1)} {x y : ℕ} (h : Acce
   · have := encodedRun_packRun (P := P) (c := ⟨0, unaryConfig k x⟩) (n := n) hin
     rwa [hex] at this
 
+/-- The code of a clean configuration, in closed form. The register file is zero above
+register `0`, so the whole code is two terms — which is what makes the endpoint equalities of
+#49 ordinary exponential terms rather than nested sums. -/
+theorem configCode_unaryConfig (w p x : ℕ) :
+    configCode w (⟨p, unaryConfig k x⟩ : Config (k + 1)) = p + 2 ^ w * x := by
+  have h1 : (@Fin.cons (k + 1) (fun _ => ℕ) p (unaryConfig k x)) ∘ Fin.succ = unaryConfig k x := by
+    funext i; simp
+  have h2 : (unaryConfig k x) ∘ Fin.succ = fun _ : Fin k => 0 := by
+    funext i; exact unaryConfig_of_ne (Fin.succ_ne_zero i)
+  rw [configCode, fieldsCode_succ, h1, fieldsCode_succ, h2, fieldsCode_const_zero]
+  simp
+
 /-! ### Soundness
 
 The inverse of `encodedRun_packRun`. Every carry argument was discharged in #45, so this is an

@@ -194,6 +194,13 @@ theorem fieldsCode_lt {w : ℕ} : ∀ {n : ℕ} {f : Fin n → ℕ}, (∀ i, f i
       _ ≤ 2 ^ w * (2 ^ w) ^ n := Nat.mul_le_mul_left _ hrest
       _ = (2 ^ w) ^ (n + 1) := by ring
 
+@[simp] theorem fieldsCode_const_zero (w : ℕ) : ∀ {n : ℕ}, fieldsCode w (fun _ : Fin n => 0) = 0
+  | 0 => rfl
+  | n + 1 => by
+    rw [fieldsCode_succ, show ((fun _ : Fin (n + 1) => 0) ∘ Fin.succ) = fun _ : Fin n => 0 from rfl,
+      fieldsCode_const_zero w]
+    simp
+
 theorem field_fieldsCode {w : ℕ} : ∀ {n : ℕ} {f : Fin n → ℕ}, (∀ i, f i < 2 ^ w) →
     ∀ i : Fin n, configField w (fieldsCode w f) i = f i := by
   intro n
