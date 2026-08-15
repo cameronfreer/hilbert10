@@ -37,8 +37,8 @@ therefore look harmless and break the layer above.
 
 ## Scope
 
-The blockwise equivalence is proved. `SliceGlobalConditions` states the packed-level conditions,
-but the theorem relating them to `EncodedStep` is **not** proved here:
+Both layers are proved. `sliceStep_iff` is the blockwise equivalence, and `sliceGlobal_iff` is
+the packed one:
 
 ```
 P.length < 2 ^ w ∧ IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
@@ -49,16 +49,16 @@ P.length < 2 ^ w ∧ IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
 
 Completeness decodes `R`, applies `sliceStep_iff`, and packs the result; soundness reads the lane
 masks as per-block bounds, recovers `SliceStep` blockwise from the global identities, and applies
-`sliceStep_iff` in reverse. Two cases need explicit attention: `n = 0`, where the selector and
-residual packings must exist with no semantic input; and small `w` with `S₂ = 0`, where the
-target disjunction has to take its zero-selector branch, while `S₂ ≠ 0` must recover
-`1000 < 2 ^ w`. Only after that is `ExpDioph` finite plumbing.
+`sliceStep_iff` in reverse. The right-hand side has no bounded universal quantifier, so for this
+program the `∀ i < n` is eliminated outright rather than reduced to a smaller one.
 
-Setting the equivalence up already found one missing condition — see
-`SliceGlobalConditions` on why the program-length bound has to be listed — so no claim is made
-here that the rest is mechanical. No further mathematical ingredient is *currently identified*,
-which is a weaker statement, and the global equivalence is exactly the test that could identify
-one.
+Setting the equivalence up found one missing condition — see `SliceGlobalConditions` on why the
+program-length bound has to be listed — and proving it found no further one. What the slice
+establishes is that the selector vocabulary is sufficient for a program exercising an increment,
+both branches of a decrement, and an oversized jump target; it is not a proof for arbitrary
+programs, which is what `Aggregation` in `AcceptsDioph` still asks for. Turning
+`SliceGlobalConditions` into an `ExpDioph` condition is finite plumbing over the existing
+combinators, and is not done here.
 -/
 
 namespace Hilbert10
@@ -90,6 +90,10 @@ theorem config_one_ext {c₁ c₂ : Config 1} (hpc : c₁.pc = c₂.pc) (hr : c�
   obtain ⟨p₂, r₂⟩ := c₂
   simp only [Config.mk.injEq]
   exact ⟨hpc, funext fun i => by rw [Subsingleton.elim i 0]; exact hr⟩
+
+/-- With one register there are exactly two fields, so the code is the two lanes. -/
+theorem configCode_one (w : ℕ) (c : Config 1) : configCode w c = c.pc + 2 ^ w * c.regs 0 := by
+  simp [configCode, fieldsCode]
 
 /-- **The blockwise selector conditions at one step.**
 
@@ -355,6 +359,405 @@ theorem selector_eq_blockwise {W n : ℕ} {f : Fin n → ℕ} {a b c : ℕ} {g h
     (i : Fin n) : f i = a * g i + b * h i + c * k i := by
   rw [fieldsCode_three] at heq
   exact congrFun (fieldsCode_injective hf hbd heq) i
+
+/-! ### Soundness -/
+
+/-- **Soundness of the global system.** -/
+theorem sliceGlobal_sound {w n R Xpc X0 S0 S1p S1z S2 Res Zres : ℕ}
+    (h : SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res Zres) :
+    sliceP.length < 2 ^ w ∧
+      Nat.IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
+      ∀ i < n, EncodedStep sliceP w (configField (w * 2 + 1) R i)
+        (configField (w * 2 + 1) R (i + 1)) := by
+  obtain ⟨hlen, hmpc, hm0, hR, hs0, hs1p, hs1z, hs2, hsum, hpcEq, hjump, hupd,
+    ⟨hzeq, hzm⟩, ⟨hres, hresm⟩, ht0, ht1, ht2⟩ := h
+  have hw2 : 2 ≤ w := two_le_of_sliceP_length_lt hlen
+  obtain ⟨epc, bpc⟩ := lane_norm hmpc
+  obtain ⟨e0, b0⟩ := lane_norm hm0
+  obtain ⟨f0, c0⟩ := selector_norm hs0
+  obtain ⟨f1p, c1p⟩ := selector_norm hs1p
+  obtain ⟨f1z, c1z⟩ := selector_norm hs1z
+  obtain ⟨f2, c2⟩ := selector_norm hs2
+  obtain ⟨eres, bres⟩ := lane_norm hresm
+  obtain ⟨ez, bz⟩ := lane_norm hzm
+  have hpow : (2 : ℕ) ^ w * 2 ^ w = 2 ^ (w * 2) := by rw [← pow_add]; ring_nf
+  have hppos : 0 < (2 : ℕ) ^ w := Nat.two_pow_pos w
+  have hmul : 2 ^ w * (2 ^ w - 1) + 2 ^ w = 2 ^ (w * 2) := by
+    have hr : 2 ^ w * (2 ^ w - 1) + 2 ^ w = 2 ^ w * ((2 ^ w - 1) + 1) := by ring
+    rw [hr, show (2 : ℕ) ^ w - 1 + 1 = 2 ^ w from by omega, hpow]
+  have hlt : (2 : ℕ) ^ (w * 2) < 2 ^ (w * 2 + 1) :=
+    Nat.pow_lt_pow_right (by norm_num) (by omega)
+  -- the two lanes reassemble `R` blockwise
+  have hblk : ∀ i : Fin (n + 1), configField (w * 2 + 1) R i
+      = configField (w * 2 + 1) Xpc i + 2 ^ w * configField (w * 2 + 1) X0 i := by
+    have hbd : ∀ i : Fin (n + 1),
+        configField (w * 2 + 1) Xpc i + 2 ^ w * configField (w * 2 + 1) X0 i < 2 ^ (w * 2 + 1) := by
+      intro i
+      have h1 := bpc i
+      have h2 := b0 i
+      have : 2 ^ w * configField (w * 2 + 1) X0 i ≤ 2 ^ w * (2 ^ w - 1) :=
+        Nat.mul_le_mul_left _ (by omega)
+      omega
+    intro i
+    have hRe : R = fieldsCode (w * 2 + 1)
+        (fun j : Fin (n + 1) => configField (w * 2 + 1) Xpc j
+          + 2 ^ w * configField (w * 2 + 1) X0 j) := by
+      rw [hR]
+      conv_lhs => rw [epc, e0]
+      rw [fieldsCode_smul, fieldsCode_add]
+    rw [hRe, field_fieldsCode hbd i]
+  have hRblk : ∀ i : Fin (n + 1), configField (w * 2 + 1) R i < 2 ^ (w * 2) := by
+    intro i
+    have h1 := bpc i
+    have h2 := b0 i
+    have h3 : 2 ^ w * configField (w * 2 + 1) X0 i ≤ 2 ^ w * (2 ^ w - 1) :=
+      Nat.mul_le_mul_left _ (by omega)
+    rw [hblk i]; omega
+  have hRlt : R < (2 ^ (w * 2 + 1)) ^ (n + 1) := by
+    rw [hR]
+    conv_lhs => rw [epc, e0]
+    rw [fieldsCode_smul, fieldsCode_add]
+    exact fieldsCode_lt fun j => by
+      have h1 := bpc j
+      have h2 := b0 j
+      have h3 : 2 ^ w * configField (w * 2 + 1) X0 j ≤ 2 ^ w * (2 ^ w - 1) :=
+        Nat.mul_le_mul_left _ (by omega)
+      omega
+  refine ⟨hlen, isBinarySubmask_guardMask_iff.mpr ⟨hRlt, fun i hi => hRblk ⟨i, hi⟩⟩, ?_⟩
+  -- decode and hand over to the blockwise slice
+  set cs : ℕ → Config 1 := fun i => decodeConfig w (configField (w * 2 + 1) R i) with hcs
+  have hcode : ∀ i : Fin (n + 1), configCode w (cs i) = configField (w * 2 + 1) R i := by
+    intro i
+    exact configCode_decodeConfig (by simpa using hRblk i)
+  have hfitcs : ∀ i, FitsConfig w (cs i) := fun _ => fits_decodeConfig
+  have hpcv : ∀ i : Fin (n + 1), (cs i).pc = configField (w * 2 + 1) Xpc i := by
+    intro i
+    have h1 := bpc i
+    change configField w (configField (w * 2 + 1) R i) 0 = _
+    rw [configField_zero, hblk i, Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt h1]
+  have hr0v : ∀ i : Fin (n + 1), (cs i).regs 0 = configField (w * 2 + 1) X0 i := by
+    intro i
+    have h1 := bpc i
+    have h2 := b0 i
+    change configField w (configField (w * 2 + 1) R i) (((0 : Fin 1) : ℕ) + 1) = _
+    rw [show (((0 : Fin 1) : ℕ) + 1) = 0 + 1 from rfl, configField_succ, configField_zero,
+      hblk i, Nat.add_mul_div_left _ _ (Nat.two_pow_pos w), Nat.div_eq_of_lt h1, Nat.zero_add,
+      Nat.mod_eq_of_lt h2]
+  have hfour : (4 : ℕ) < 2 ^ (w * 2 + 1) := four_lt_outer hw2
+  have hwlt : (2 : ℕ) ^ w < 2 ^ (w * 2 + 1) := Nat.pow_lt_pow_right (by norm_num) (by omega)
+  have hone := slice_one_hot hlen hs0 hs1p hs1z hs2 hsum
+  -- the four global equations, blockwise
+  have hA : ∀ j : Fin n, configField (w * 2 + 1) Xpc j
+      = configField (w * 2 + 1) S1p j + configField (w * 2 + 1) S1z j
+        + 2 * configField (w * 2 + 1) S2 j := by
+    intro j
+    have heq : fieldsCode (w * 2 + 1)
+        (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) Xpc i)
+        = 1 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S1p i)
+          + 1 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S1z i)
+          + 2 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S2 i) := by
+      rw [← fieldsCode_mod_pow (fun i => lt_trans (bpc i) hwlt), ← epc, hpcEq, ← f1p, ← f1z, ← f2]
+      ring
+    have := selector_eq_blockwise
+      (fun i => lt_trans (bpc _) hwlt)
+      (fun i => by have := c1p i; have := c1z i; have := c2 i; omega) heq j
+    simpa [Fin.init] using this
+  have hB : ∀ j : Fin n, configField (w * 2 + 1) Xpc (j + 1)
+      = configField (w * 2 + 1) S0 j + 2 * configField (w * 2 + 1) S1z j
+        + 1000 * configField (w * 2 + 1) S2 j := by
+    intro j
+    have heq : fieldsCode (w * 2 + 1)
+        ((fun i : Fin (n + 1) => configField (w * 2 + 1) Xpc i) ∘ Fin.succ)
+        = 1 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S0 i)
+          + 2 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S1z i)
+          + 1000 * fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) S2 i) := by
+      rw [← fieldsCode_div _ _ (lt_trans (bpc 0) hwlt), ← epc, hjump, ← f0, ← f1z, ← f2]
+      ring
+    have hbd : ∀ i : Fin n, 1 * configField (w * 2 + 1) S0 i + 2 * configField (w * 2 + 1) S1z i
+        + 1000 * configField (w * 2 + 1) S2 i < 2 ^ (w * 2 + 1) := by
+      intro i
+      rcases Nat.eq_zero_or_pos (configField (w * 2 + 1) S2 i) with hz | hz
+      · have := c0 i; have := c1z i; omega
+      · have h2 : configField (w * 2 + 1) S2 i = 1 := by have := c2 i; omega
+        have := slice_target ht2 h2
+        have := c0 i; have := c1z i
+        have : (1000 : ℕ) < 2 ^ (w * 2 + 1) := lt_trans (slice_target ht2 h2) hwlt
+        omega
+    have := selector_eq_blockwise (fun i => lt_trans (bpc _) hwlt) hbd heq j
+    simpa using this
+  have hC : ∀ j : Fin n, configField (w * 2 + 1) X0 (j + 1) + configField (w * 2 + 1) S1p j
+      = configField (w * 2 + 1) X0 j + configField (w * 2 + 1) S0 j
+        + configField (w * 2 + 1) S2 j := by
+    intro j
+    have heq : fieldsCode (w * 2 + 1)
+        (fun i : Fin n => configField (w * 2 + 1) X0 (i.succ)
+          + configField (w * 2 + 1) S1p i)
+        = fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) X0 (i.castSucc)
+          + configField (w * 2 + 1) S0 i + configField (w * 2 + 1) S2 i) := by
+      rw [← fieldsCode_add, ← fieldsCode_add, ← fieldsCode_add]
+      have hd : fieldsCode (w * 2 + 1)
+          ((fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i) ∘ Fin.succ)
+          = X0 / 2 ^ (w * 2 + 1) := by
+        rw [← fieldsCode_div _ _ (lt_trans (b0 0) hwlt), ← e0]
+      have hm : fieldsCode (w * 2 + 1)
+          (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i)
+          = X0 % (2 ^ (w * 2 + 1)) ^ n := by
+        rw [← fieldsCode_mod_pow (fun i => lt_trans (b0 i) hwlt), ← e0]
+      rw [show (fun i : Fin n => configField (w * 2 + 1) X0 (i.succ)) =
+        ((fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i) ∘ Fin.succ) from rfl, hd,
+        show (fun i : Fin n => configField (w * 2 + 1) X0 (i.castSucc)) =
+          (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i) from rfl, hm,
+        ← f1p, ← f0, ← f2, hupd]
+    have hbd1 : ∀ i : Fin n, configField (w * 2 + 1) X0 (i.succ)
+        + configField (w * 2 + 1) S1p i < 2 ^ (w * 2 + 1) := by
+      intro i; have := b0 i.succ; have := c1p i; omega
+    have hbd2 : ∀ i : Fin n, configField (w * 2 + 1) X0 (i.castSucc)
+        + configField (w * 2 + 1) S0 i + configField (w * 2 + 1) S2 i < 2 ^ (w * 2 + 1) := by
+      intro i; have := b0 i.castSucc; have := c0 i; have := c2 i; omega
+    have := congrFun (fieldsCode_injective hbd1 hbd2 heq) j
+    simpa using this
+  have hD : ∀ j : Fin n, configField (w * 2 + 1) X0 j
+      + configField (w * 2 + 1) S1z j * (2 ^ w - 1) + configField (w * 2 + 1) Zres j
+      = 2 ^ w - 1 := by
+    intro j
+    have hm : fieldsCode (w * 2 + 1)
+        (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i)
+        = X0 % (2 ^ (w * 2 + 1)) ^ n := by
+      rw [← fieldsCode_mod_pow (fun i => lt_trans (b0 i) hwlt), ← e0]
+    have heq : fieldsCode (w * 2 + 1) (fun i : Fin n =>
+        configField (w * 2 + 1) X0 (i.castSucc)
+          + configField (w * 2 + 1) S1z i * (2 ^ w - 1)
+          + configField (w * 2 + 1) Zres i)
+        = fieldsCode (w * 2 + 1) (fun _ : Fin n => 2 ^ w - 1) := by
+      rw [← fieldsCode_add, ← fieldsCode_add, fieldsCode_const,
+        show (fun i : Fin n => configField (w * 2 + 1) X0 (i.castSucc)) =
+          (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i) from rfl, hm,
+        show (fun i : Fin n => configField (w * 2 + 1) S1z i * (2 ^ w - 1)) =
+          (fun i : Fin n => (2 ^ w - 1) * configField (w * 2 + 1) S1z i) from
+            funext fun i => Nat.mul_comm _ _,
+        ← fieldsCode_smul, ← f1z, ← ez,
+        show (2 ^ w - 1) * geom (2 ^ (w * 2 + 1)) n = laneMask w n from rfl]
+      simpa [Nat.mul_comm] using hzeq
+    have hbd1 : ∀ i : Fin n, configField (w * 2 + 1) X0 (i.castSucc)
+        + configField (w * 2 + 1) S1z i * (2 ^ w - 1)
+        + configField (w * 2 + 1) Zres i < 2 ^ (w * 2 + 1) := fun i =>
+      zero_branch_carry hw2 (b0 _) (by have := c1z i; omega) (bz i)
+    have := congrFun (fieldsCode_injective hbd1
+      (fun _ => lt_trans (by omega : 2 ^ w - 1 < 2 ^ w) hwlt) heq) j
+    simpa using this
+  have hE : ∀ j : Fin n, configField (w * 2 + 1) X0 j
+      = configField (w * 2 + 1) Res j + configField (w * 2 + 1) S1p j := by
+    intro j
+    have heq : fieldsCode (w * 2 + 1)
+        (Fin.init fun i : Fin (n + 1) => configField (w * 2 + 1) X0 i)
+        = fieldsCode (w * 2 + 1) (fun i : Fin n => configField (w * 2 + 1) Res i
+          + configField (w * 2 + 1) S1p i) := by
+      rw [← fieldsCode_add, ← fieldsCode_mod_pow (fun i => lt_trans (b0 i) hwlt), ← e0, ← eres,
+        ← f1p, hres]
+    have hbd2 : ∀ i : Fin n, configField (w * 2 + 1) Res i
+        + configField (w * 2 + 1) S1p i < 2 ^ (w * 2 + 1) := by
+      intro i; have := bres i; have := c1p i; omega
+    have := congrFun (fieldsCode_injective (fun i => lt_trans (b0 _) hwlt) hbd2 heq) j
+    simpa [Fin.init] using this
+  intro i hi
+  rw [show configField (w * 2 + 1) R i = configCode w (cs i) from (hcode ⟨i, by omega⟩).symm,
+    show configField (w * 2 + 1) R (i + 1) = configCode w (cs (i + 1)) from
+      (hcode ⟨i + 1, by omega⟩).symm]
+  refine (sliceStep_iff w n cs hfitcs).mpr ⟨fun j => configField (w * 2 + 1) S0 j,
+    fun j => configField (w * 2 + 1) S1p j, fun j => configField (w * 2 + 1) S1z j,
+    fun j => configField (w * 2 + 1) S2 j, fun j => configField (w * 2 + 1) Res j, ?_⟩ i hi
+  intro j hj
+  dsimp only
+  have p1 := hone ⟨j, hj⟩
+  have p2 := hA ⟨j, hj⟩
+  have p3 := hB ⟨j, hj⟩
+  have p4 := hC ⟨j, hj⟩
+  have p5 := hD ⟨j, hj⟩
+  have p6 := hE ⟨j, hj⟩
+  have q1 := hpcv ⟨j, by omega⟩
+  have q2 := hpcv ⟨j + 1, by omega⟩
+  have q3 := hr0v ⟨j, by omega⟩
+  have q4 := hr0v ⟨j + 1, by omega⟩
+  have q5 := b0 ⟨j, by omega⟩
+  have q6 := bpc (⟨j + 1, by omega⟩ : Fin (n + 1))
+  have q7 := b0 (⟨j + 1, by omega⟩ : Fin (n + 1))
+  have q8 := bres ⟨j, hj⟩
+  have q9 := c1z ⟨j, hj⟩
+  dsimp only at p1 p2 p3 p4 p5 p6 q1 q2 q3 q4 q5 q6 q7 q8 q9
+  refine ⟨by omega, by omega, by omega, by omega, ?_, by omega, by omega, ?_, ?_, ?_,
+    by omega, by omega⟩
+  · intro hz
+    have hp : 0 < (2 : ℕ) ^ w := Nat.two_pow_pos w
+    rw [hz, one_mul] at p5
+    omega
+  · intro hz; exact slice_target ht0 hz
+  · intro hz; exact slice_target ht1 hz
+  · intro hz; exact slice_target ht2 hz
+
+/-! ### Completeness
+
+The other direction needs no packing theory beyond linearity: decode `R`, read the selectors off
+`sliceStep_iff`, and pack each of them. Every global condition is then the packing of its
+blockwise instance, so the only real content is the two witnesses that the blockwise layer
+leaves implicit — the zero-branch residual, and the case split that decides whether
+`1000 < 2 ^ w` has to hold. -/
+
+/-- **Completeness of the global system.** -/
+theorem sliceGlobal_complete {w n R : ℕ} (hlen : sliceP.length < 2 ^ w)
+    (hmask : Nat.IsBinarySubmask R (guardMask (w * 2) (n + 1)))
+    (hstep : ∀ i < n, EncodedStep sliceP w (configField (w * 2 + 1) R i)
+      (configField (w * 2 + 1) R (i + 1))) :
+    ∃ Xpc X0 S0 S1p S1z S2 Res Zres,
+      SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res Zres := by
+  have hw2 : 2 ≤ w := two_le_of_sliceP_length_lt hlen
+  have hlen3 : 3 < 2 ^ w := by simpa using hlen
+  have hwlt : (2 : ℕ) ^ w < 2 ^ (w * 2 + 1) := Nat.pow_lt_pow_right (by norm_num) (by omega)
+  have h2lt : (2 : ℕ) < 2 ^ (w * 2 + 1) := by have := four_lt_outer hw2; omega
+  obtain ⟨hRlt, hRblk⟩ := isBinarySubmask_guardMask_iff.mp hmask
+  have hRlt' : R < (2 ^ (w * 2 + 1)) ^ (n + 1) := hRlt
+  set cs : ℕ → Config 1 := fun i => decodeConfig w (configField (w * 2 + 1) R i) with hcs
+  have hblkR : ∀ i : Fin (n + 1), configField (w * 2 + 1) R i < 2 ^ (w * 2) :=
+    fun i => hRblk i i.isLt
+  have hfitcs : ∀ i, FitsConfig w (cs i) := fun _ => fits_decodeConfig
+  have hcode : ∀ i : Fin (n + 1), configCode w (cs i) = configField (w * 2 + 1) R i :=
+    fun i => configCode_decodeConfig (by simpa using hblkR i)
+  have hbpc : ∀ i : Fin (n + 1), (cs i).pc < 2 ^ w := fun i => (hfitcs i).1
+  have hbr : ∀ i : Fin (n + 1), (cs i).regs 0 < 2 ^ w := fun i => (hfitcs i).2 0
+  -- the blockwise selectors
+  have hstep' : ∀ i < n,
+      EncodedStep sliceP w (configCode w (cs i)) (configCode w (cs (i + 1))) := by
+    intro i hi
+    rw [show configCode w (cs i) = configField (w * 2 + 1) R i from hcode ⟨i, by omega⟩,
+      show configCode w (cs (i + 1)) = configField (w * 2 + 1) R (i + 1) from
+        hcode ⟨i + 1, by omega⟩]
+    exact hstep i hi
+  obtain ⟨s0, s1p, s1z, s2, res, hsl⟩ := (sliceStep_iff w n cs hfitcs).mp hstep'
+  have hsl' : ∀ i : Fin n, SliceStep w (cs (i : ℕ)).pc (cs ((i : ℕ) + 1)).pc
+      ((cs (i : ℕ)).regs 0) ((cs ((i : ℕ) + 1)).regs 0) (s0 i) (s1p i) (s1z i) (s2 i) (res i) :=
+    fun i => hsl i i.isLt
+  have e1 : ∀ i : Fin n, s0 i + s1p i + s1z i + s2 i = 1 := fun i => (hsl' i).1
+  have e2 : ∀ i : Fin n, (cs (i : ℕ)).pc = s1p i + s1z i + 2 * s2 i := fun i => (hsl' i).2.1
+  have e3 : ∀ i : Fin n, (cs ((i : ℕ) + 1)).pc = s0 i + 2 * s1z i + 1000 * s2 i :=
+    fun i => (hsl' i).2.2.1
+  have e4 : ∀ i : Fin n, (cs ((i : ℕ) + 1)).regs 0 + s1p i
+      = (cs (i : ℕ)).regs 0 + s0 i + s2 i := fun i => (hsl' i).2.2.2.1
+  have e5 : ∀ i : Fin n, s1z i = 1 → (cs (i : ℕ)).regs 0 = 0 := fun i => (hsl' i).2.2.2.2.1
+  have e6 : ∀ i : Fin n, (cs (i : ℕ)).regs 0 = res i + s1p i := fun i => (hsl' i).2.2.2.2.2.1
+  have e7 : ∀ i : Fin n, res i < 2 ^ w := fun i => (hsl' i).2.2.2.2.2.2.1
+  have e8 : ∀ i : Fin n, s2 i = 1 → 1000 < 2 ^ w := fun i => (hsl' i).2.2.2.2.2.2.2.2.2.1
+  -- packing a bounded family into its mask
+  have laneOf : ∀ {t : ℕ} (f : Fin t → ℕ), (∀ i, f i < 2 ^ w) →
+      Nat.IsBinarySubmask (fieldsCode (w * 2 + 1) f) (laneMask w t) := by
+    intro t f hf
+    rw [laneMask]
+    refine (isBinarySubmask_constMask_iff (by omega)).mpr
+      ⟨fieldsCode_lt (fun i => lt_trans (hf i) hwlt), fun i hi => ?_⟩
+    rw [field_fieldsCode (fun j => lt_trans (hf j) hwlt) ⟨i, hi⟩]
+    exact hf ⟨i, hi⟩
+  have bitOf : ∀ {t : ℕ} (f : Fin t → ℕ), (∀ i, f i < 2) →
+      Nat.IsBinarySubmask (fieldsCode (w * 2 + 1) f) (bitMask w t) := by
+    intro t f hf
+    rw [bitMask_eq]
+    refine (isBinarySubmask_constMask_iff (v := 1) (by omega)).mpr
+      ⟨fieldsCode_lt (fun i => lt_trans (hf i) h2lt), fun i hi => ?_⟩
+    rw [field_fieldsCode (fun j => lt_trans (hf j) h2lt) ⟨i, hi⟩]
+    simpa using hf ⟨i, hi⟩
+  have hbit : bitMask w n = fieldsCode (w * 2 + 1) (fun _ : Fin n => 1) := by
+    rw [fieldsCode_const]; simp [bitMask]
+  have hlane : laneMask w n = fieldsCode (w * 2 + 1) (fun _ : Fin n => 2 ^ w - 1) :=
+    (fieldsCode_const _ _).symm
+  -- truncating and shifting the two lanes
+  have hXpcmod : (fieldsCode (w * 2 + 1) fun i : Fin (n + 1) => (cs (i : ℕ)).pc)
+      % (2 ^ (w * 2 + 1)) ^ n = fieldsCode (w * 2 + 1) fun i : Fin n => (cs (i : ℕ)).pc :=
+    fieldsCode_mod_pow (fun i => lt_trans (hbpc i) hwlt)
+  have hXpcdiv : (fieldsCode (w * 2 + 1) fun i : Fin (n + 1) => (cs (i : ℕ)).pc)
+      / 2 ^ (w * 2 + 1) = fieldsCode (w * 2 + 1) fun i : Fin n => (cs ((i : ℕ) + 1)).pc :=
+    fieldsCode_div _ _ (lt_trans (hbpc 0) hwlt)
+  have hX0mod : (fieldsCode (w * 2 + 1) fun i : Fin (n + 1) => (cs (i : ℕ)).regs 0)
+      % (2 ^ (w * 2 + 1)) ^ n = fieldsCode (w * 2 + 1) fun i : Fin n => (cs (i : ℕ)).regs 0 :=
+    fieldsCode_mod_pow (fun i => lt_trans (hbr i) hwlt)
+  have hX0div : (fieldsCode (w * 2 + 1) fun i : Fin (n + 1) => (cs (i : ℕ)).regs 0)
+      / 2 ^ (w * 2 + 1) = fieldsCode (w * 2 + 1) fun i : Fin n => (cs ((i : ℕ) + 1)).regs 0 :=
+    fieldsCode_div _ _ (lt_trans (hbr 0) hwlt)
+  -- the zero-branch residual, blockwise: `2 ^ w - 1` minus what the branch already spends
+  have hzb : ∀ i : Fin n, (cs (i : ℕ)).regs 0 + (2 ^ w - 1) * s1z i
+      + ((2 ^ w - 1) - ((cs (i : ℕ)).regs 0 + s1z i * (2 ^ w - 1))) = 2 ^ w - 1 := by
+    intro i
+    have h1 : (cs (i : ℕ)).regs 0 < 2 ^ w := hbr i.castSucc
+    have h2 := e1 i
+    rcases (by omega : s1z i = 0 ∨ s1z i = 1) with h | h
+    · rw [h]; omega
+    · rw [h, e5 i h]; omega
+  refine ⟨fieldsCode (w * 2 + 1) (fun i : Fin (n + 1) => (cs (i : ℕ)).pc),
+    fieldsCode (w * 2 + 1) (fun i : Fin (n + 1) => (cs (i : ℕ)).regs 0),
+    fieldsCode (w * 2 + 1) (fun i : Fin n => s0 i),
+    fieldsCode (w * 2 + 1) (fun i : Fin n => s1p i),
+    fieldsCode (w * 2 + 1) (fun i : Fin n => s1z i),
+    fieldsCode (w * 2 + 1) (fun i : Fin n => s2 i),
+    fieldsCode (w * 2 + 1) (fun i : Fin n => res i),
+    fieldsCode (w * 2 + 1) (fun i : Fin n =>
+      (2 ^ w - 1) - ((cs (i : ℕ)).regs 0 + s1z i * (2 ^ w - 1))), ?_⟩
+  refine ⟨hlen, laneOf _ hbpc, laneOf _ hbr, ?_, bitOf _ (fun i => by have := e1 i; omega),
+    bitOf _ (fun i => by have := e1 i; omega), bitOf _ (fun i => by have := e1 i; omega),
+    bitOf _ (fun i => by have := e1 i; omega), ?_, ?_, ?_, ?_, ⟨?_, ?_⟩, ⟨?_, ?_⟩,
+    Or.inr (by omega), Or.inr (by omega), ?_⟩
+  · -- `R` is the scaled sum of its lanes
+    rw [fieldsCode_smul, fieldsCode_add]
+    have h1 : fieldsCode (w * 2 + 1) (fun i : Fin (n + 1) => configField (w * 2 + 1) R i) = R :=
+      fieldsCode_configField hRlt'
+    rw [← h1]
+    exact congrArg _ (funext fun i => by rw [← hcode i, configCode_one])
+  · -- the selectors partition every block
+    rw [fieldsCode_add, fieldsCode_add, fieldsCode_add, hbit]
+    exact congrArg _ (funext e1)
+  · -- program-counter agreement
+    rw [hXpcmod, fieldsCode_add, fieldsCode_smul, fieldsCode_add]
+    exact congrArg _ (funext e2)
+  · -- the jump
+    rw [hXpcdiv, fieldsCode_smul, fieldsCode_smul, fieldsCode_add, fieldsCode_add]
+    exact congrArg _ (funext e3)
+  · -- the register update
+    rw [hX0div, hX0mod, fieldsCode_add, fieldsCode_add, fieldsCode_add]
+    exact congrArg _ (funext e4)
+  · -- the zero branch
+    rw [hX0mod, Nat.mul_comm (fieldsCode (w * 2 + 1) fun i : Fin n => s1z i) (2 ^ w - 1),
+      fieldsCode_smul, fieldsCode_add, fieldsCode_add, hlane]
+    exact congrArg _ (funext hzb)
+  · exact laneOf _ (fun i => by have := hbr i.castSucc; omega)
+  · -- the positive branch
+    rw [hX0mod, fieldsCode_add]
+    exact congrArg _ (funext e6)
+  · exact laneOf _ e7
+  · -- the one target bound that does not follow from the program length
+    by_cases hall : ∀ i : Fin n, s2 i = 0
+    · left
+      rw [show (fun i : Fin n => s2 i) = (fun _ : Fin n => 0) from funext hall,
+        fieldsCode_const_zero]
+    · right
+      push Not at hall
+      obtain ⟨i, hi⟩ := hall
+      exact e8 i (by have := e1 i; omega)
+
+/-- **The global equivalence.** For the slice program, the packed selector conditions say exactly
+what the encoded run says: the program length fits, `R` is a guarded packing, and every adjacent
+pair of blocks is an encoded step.
+
+Both directions are proved without any bounded universal quantifier, which is the point: the
+`∀ i < n` on the left is discharged into finitely many identities between packed numbers, and the
+identities are recovered from it. `n = 0` is not a special case on either side — the selector
+packings are empty, `bitMask w 0 = 0`, and the program-length condition is what keeps the
+right-hand side from being satisfiable at `w = 1`. -/
+theorem sliceGlobal_iff (w n R : ℕ) :
+    (sliceP.length < 2 ^ w ∧ Nat.IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
+        ∀ i < n, EncodedStep sliceP w (configField (w * 2 + 1) R i)
+          (configField (w * 2 + 1) R (i + 1))) ↔
+      ∃ Xpc X0 S0 S1p S1z S2 Res Zres,
+        SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res Zres := by
+  constructor
+  · rintro ⟨hlen, hmask, hstep⟩
+    exact sliceGlobal_complete hlen hmask hstep
+  · rintro ⟨_, _, _, _, _, _, _, _, h⟩
+    exact sliceGlobal_sound h
 
 end RegisterMachine
 
