@@ -5,13 +5,14 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ConfigCoding
 import Hilbert10Experimental.ForMathlib.BinarySubmask
+import Mathlib.Algebra.BigOperators.Fin
 
 /-!
 # Route probe: can selector masks aggregate a run without a bounded universal?
 
-Time-boxed probe for #49, phase 2. `Aggregation` is a bounded conjunction over block indices.
-The question is whether, for a *fixed* program, it can instead be expressed by finitely many
-global identities over per-register packed numbers.
+Time-boxed probe for #49, phase 2. `Aggregation` is a bounded conjunction over block indices,
+bundled with a guard mask and a program-length bound. The question is whether, for a *fixed*
+program, it can instead be expressed by finitely many global identities.
 
 ## The distinction that decides it
 
@@ -24,34 +25,59 @@ is a **theorem proved by induction on the block index**, and unacceptable if it 
 `Spike/Sequences.lean` is the second kind: coding partial products and requiring
 `p (i + 1) = p i * h i` reproduces the bounded conjunction one level down.
 
-The primitives below are all of the first kind. That is the whole content of the probe:
-`fieldsCode` is linear, so sums and scalar multiples of packed numbers are blockwise for free,
-and equality of two in-range packings is blockwise by base-`2 ^ W` uniqueness. No new
-representation theorem is involved, only induction.
+Every primitive below is of the first kind. That is the content of the probe: `fieldsCode` is
+linear, so sums, scalar multiples and pointwise-bounded differences of packed numbers are
+blockwise for free; equality of two in-range packings is blockwise by base uniqueness; and a
+submask condition is blockwise by peeling one block at a time.
 
 ## The intended encoding
 
-Per *register*, not per configuration: `Xpc, X₀, …, X_k`, each packing `n + 1` values in
-blocks of width `W = w + 1`. For a fixed program `P` of `m` instructions, selectors
-`S₀, …, S_{m-1}` pack `n` bits, one per step, and each `dec` selector splits as
-`S⁺ₚ + S⁰ₚ`. The conditions are then, all global:
+Per *register lane*, not per configuration: `Xpc, X₀, …, X_k`, each packing `n + 1` values.
+
+**All lanes use the same outer base as the packed run**, `B = 2 ^ (w * (k + 1) + 1)`. This is
+deliberately wasteful — a lane block spends `w * (k + 1) + 1` bits carrying a `w`-bit value —
+and it is what keeps the connection to #47's `R` a single global identity,
+
+```
+R = Xpc + 2 ^ w * X₀ + 2 ^ (2 * w) * X₁ + ⋯
+```
+
+blockwise, since a configuration code is below `2 ^ (w * (k + 1))` and so below `B`. Lanes at
+their own tight base `2 ^ (w + 1)` would have forced a second packed-run development alongside
+#47 and #48; at base `B` those two are reused unchanged.
+
+The data mask for a lane is `M = (2 ^ w - 1) * geom B (n + 1)`: one `w`-bit field per block,
+guard bits clear.
+
+For a fixed program of `m` instructions, selectors `S₀, …, S_{m-1}` pack `n` bits, and each
+`dec` selector splits as `S⁺ₚ + S⁰ₚ`. The conditions are then, all global:
 
 * `IsBinarySubmask Sₚ (geom B n)` — each selector is one bit per block;
-* `∑ₚ Sₚ = geom B n` — exactly one instruction runs per step (no carries, since `m < 2 ^ w`);
+* `∑ₚ Sₚ = geom B n` — exactly one instruction runs per step, carry-free because
+  `P.length < 2 ^ w` is part of `Aggregation`'s bundle;
 * `Xpc % Bⁿ = ∑ₚ p · Sₚ` — the selector agrees with the program counter;
 * `Xpc / B = ∑ₚ targetₚ · Sₚ^branch` — the jump;
 * `X_r / B + ∑_{dec r} S⁺ₚ = X_r % Bⁿ + ∑_{inc r} Sₚ` — the register update, subtraction-free;
-* `S⁰ₚ + S⁺ₚ = Sₚ`, `IsBinarySubmask (S⁰ₚ · (2 ^ w - 1)) (M - X_r % Bⁿ)` and
-  `X_r % Bⁿ = X''ₚ + S⁺ₚ` — the two branch conditions of `dec`.
+* for each `dec` instruction `p` reading register `r`:
+  `S⁰ₚ + S⁺ₚ = Sₚ`, both submasked by `geom B n`;
+  `IsBinarySubmask (S⁰ₚ · (2 ^ w - 1)) (M % Bⁿ - X_r % Bⁿ)` — the zero branch;
+  `X_r % Bⁿ = X''ₚ + S⁺ₚ` **together with** `IsBinarySubmask X''ₚ (M % Bⁿ)` — the positive
+  branch.
 
-Every one is a single equation or submask atom, and the count depends only on `P`.
+That last mask is load-bearing, not decoration. Without it the equation is unsound blockwise,
+because the addition may carry: at `B = 8`, `X = 8`, `S⁺ = 1`, `X'' = 7` satisfies `X = X'' + S⁺`
+while block `0` of `X` is zero and block `0` of `S⁺` is one. Bounding each block of `X''` below
+`2 ^ w` rules the carry out.
+
+Several instructions may read the same register: give each `dec` its own `S⁰ₚ` and `S⁺ₚ`, and the
+global selector partition puts their conditions on disjoint blocks.
 
 ## Status
 
-**Not a discharge of `Aggregation`.** This file proves the primitives and nothing else. The
-acceptance slice — a program with an `inc` and both `dec` branches, verified in both directions
-at arbitrary run length — is not built, and until it is, the analysis above is an argument, not
-a theorem.
+The primitives are proved. The **acceptance slice** — a program with an `inc` and both `dec`
+branches, verified in both directions at arbitrary run length — is **not built**, and until it
+is, the encoding above is an argument rather than a theorem. This file discharges nothing of
+`Aggregation`.
 -/
 
 namespace Hilbert10
@@ -112,13 +138,112 @@ theorem fieldsCode_smul_add_eq_iff {n m₁ m₂ : ℕ} {a c d : Fin n → ℕ}
   rw [fieldsCode_smul, fieldsCode_smul]
   exact fieldsCode_add_eq_iff h hd
 
+/-- Pointwise-bounded differences are blockwise too. The zero-branch complement
+`M % Bⁿ - X_r % Bⁿ` depends on this. -/
+theorem fieldsCode_sub (W : ℕ) {n : ℕ} {a c : Fin n → ℕ} (h : ∀ i, c i ≤ a i) :
+    fieldsCode W a - fieldsCode W c = fieldsCode W fun i => a i - c i := by
+  have key : fieldsCode W c + fieldsCode W (fun i => a i - c i) = fieldsCode W a := by
+    rw [fieldsCode_add]
+    exact congrArg _ (funext fun i => by have := h i; omega)
+  omega
+
+/-! ### Finite sums of lanes
+
+Every selector condition is a sum over the program's instructions, so the two-term lemmas are
+not enough. `Finset` induction lifts them. -/
+
+theorem fieldsCode_sum {ι : Type} (W : ℕ) {n : ℕ} (s : Finset ι) (g : ι → Fin n → ℕ) :
+    ∑ p ∈ s, fieldsCode W (g p) = fieldsCode W fun i => ∑ p ∈ s, g p i := by
+  classical
+  induction s using Finset.induction with
+  | empty => simp
+  | insert p s hp ih =>
+    rw [Finset.sum_insert hp, ih, fieldsCode_add]
+    exact congrArg _ (funext fun i => (Finset.sum_insert (f := fun q => g q i) hp).symm)
+
+theorem fieldsCode_sum_smul {ι : Type} (W : ℕ) {n : ℕ} (s : Finset ι)
+    (m : ι → ℕ) (g : ι → Fin n → ℕ) :
+    ∑ p ∈ s, m p * fieldsCode W (g p) = fieldsCode W fun i => ∑ p ∈ s, m p * g p i := by
+  rw [← fieldsCode_sum]
+  exact Finset.sum_congr rfl fun p _ => fieldsCode_smul W (m p) (g p)
+
+/-- The selector-condition shape: one global equation between a scaled sum of lanes and a lane
+is the family of its block equations. -/
+theorem fieldsCode_sum_smul_eq_iff {ι : Type} {W n : ℕ} {s : Finset ι}
+    {m : ι → ℕ} {g : ι → Fin n → ℕ} {d : Fin n → ℕ}
+    (h : ∀ i, ∑ p ∈ s, m p * g p i < 2 ^ W) (hd : ∀ i, d i < 2 ^ W) :
+    ∑ p ∈ s, m p * fieldsCode W (g p) = fieldsCode W d ↔ ∀ i, ∑ p ∈ s, m p * g p i = d i := by
+  rw [fieldsCode_sum_smul]
+  constructor
+  · intro heq i
+    exact congrFun (fieldsCode_injective h hd heq) i
+  · intro heq
+    exact congrArg _ (funext heq)
+
+/-! ### The lane decomposition
+
+Why lanes are packed at the *outer* base `B` rather than at their own tight base: the packed run
+of #47 is then a scaled sum of the lanes, one global identity, and #47 and #48 are reused
+unchanged. -/
+
+theorem fieldsCode_eq_sum (W : ℕ) : ∀ {n : ℕ} (f : Fin n → ℕ),
+    fieldsCode W f = ∑ i : Fin n, (2 ^ W) ^ (i : ℕ) * f i := by
+  intro n
+  induction n with
+  | zero => simp [fieldsCode]
+  | succ n ih =>
+    intro f
+    rw [fieldsCode_succ, ih (f ∘ Fin.succ), Fin.sum_univ_succ, Finset.mul_sum]
+    simp only [Fin.val_zero, pow_zero, one_mul, Fin.val_succ, Function.comp_apply]
+    congr 1
+    exact Finset.sum_congr rfl fun i _ => by ring
+
+/-- **`R` is the scaled sum of its lanes.** The identity that lets the selector encoding talk
+about registers separately while #47's packed run stays exactly as it is. -/
+theorem fieldsCode_configCode_eq_lanes {k : ℕ} (w : ℕ) {n : ℕ} (cs : Fin n → Config k) :
+    fieldsCode (w * (k + 1) + 1) (fun i => configCode w (cs i))
+      = ∑ j : Fin (k + 1), (2 ^ w) ^ (j : ℕ) *
+          fieldsCode (w * (k + 1) + 1)
+            (fun i => (@Fin.cons k (fun _ => ℕ) (cs i).pc (cs i).regs) j) := by
+  rw [fieldsCode_sum_smul]
+  exact congrArg _ (funext fun i => fieldsCode_eq_sum w _)
+
+/-! ### Truncation
+
+`X % Bⁿ` drops the last block: it is what restricts a lane of `n + 1` values to the `n` steps
+that have a successor. -/
+
+theorem fieldsCode_snoc (W : ℕ) : ∀ {n : ℕ} (f : Fin (n + 1) → ℕ),
+    fieldsCode W f = fieldsCode W (Fin.init f) + (2 ^ W) ^ n * f (Fin.last n) := by
+  intro n
+  induction n with
+  | zero =>
+    intro f
+    rw [fieldsCode_succ]
+    simp [fieldsCode]
+  | succ n ih =>
+    intro f
+    have h2 : ((Fin.init f) ∘ Fin.succ) = Fin.init (f ∘ Fin.succ) := by
+      funext i
+      exact congrArg f (Fin.ext (by simp))
+    have h3 : (f ∘ Fin.succ) (Fin.last n) = f (Fin.last (n + 1)) :=
+      congrArg f (Fin.ext (by simp))
+    rw [fieldsCode_succ, fieldsCode_succ W n (Fin.init f), h2, ih (f ∘ Fin.succ), h3,
+      show (Fin.init f) 0 = f 0 from congrArg f (Fin.ext (by simp))]
+    ring
+
+theorem fieldsCode_mod_pow {W n : ℕ} {f : Fin (n + 1) → ℕ} (hf : ∀ i, f i < 2 ^ W) :
+    fieldsCode W f % (2 ^ W) ^ n = fieldsCode W (Fin.init f) := by
+  rw [fieldsCode_snoc, Nat.add_mul_mod_self_left]
+  exact Nat.mod_eq_of_lt (fieldsCode_lt fun i => hf _)
+
 /-! ### Blockwise masking
 
 The other half: a submask condition between packed numbers is the family of submask conditions
 between their blocks. This is the one that decides whether *selector validity* is cheap, since
 every selector is constrained by a mask rather than an equation. -/
 
-theorem fieldsCode_mod (W : ℕ) {n : ℕ} (f : Fin (n + 1) → ℕ) (h0 : f 0 < 2 ^ W) :
+theorem fieldsCode_mod_base (W : ℕ) {n : ℕ} (f : Fin (n + 1) → ℕ) (h0 : f 0 < 2 ^ W) :
     fieldsCode W f % 2 ^ W = f 0 := by
   rw [fieldsCode_succ, Nat.add_mul_mod_self_left, Nat.mod_eq_of_lt h0]
 
@@ -143,7 +268,7 @@ theorem isBinarySubmask_fieldsCode_iff : ∀ {n : ℕ} {a c : Fin n → ℕ}, (�
   | succ n ih =>
     intro a c ha hc
     rw [show fieldsCode W c = c 0 + 2 ^ W * fieldsCode W (c ∘ Fin.succ) from fieldsCode_succ W n c,
-      Nat.isBinarySubmask_add_mul_two_pow_iff (hc 0), fieldsCode_mod W a (ha 0),
+      Nat.isBinarySubmask_add_mul_two_pow_iff (hc 0), fieldsCode_mod_base W a (ha 0),
       fieldsCode_div W a (ha 0),
       ih (a := a ∘ Fin.succ) (c := c ∘ Fin.succ) (fun i => ha i.succ) (fun i => hc i.succ)]
     constructor

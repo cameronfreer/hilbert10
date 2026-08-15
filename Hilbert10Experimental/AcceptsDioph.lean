@@ -19,16 +19,25 @@ gives the remainder a name.
 The endpoint of `accepts_iff_exists_encodedRun` has eight conjuncts under four existentials.
 Seven of them are ordinary exponential Diophantine atoms:
 
-* three boundary bounds, `of_lt`;
-* the guard mask, `ExpDioph.of_isBinarySubmask` (#34) — with `geom` carried as a *variable*
-  rather than computed, which is exactly what `geom_unique` was proved for;
+* the two input and output bounds, `of_lt`;
 * two endpoint equalities, `of_eq`, using the closed form `configCode w ⟨p, unaryConfig k x⟩
-  = p + 2 ^ w * x`;
-* the per-index step relation, `expDioph_encodedStep` (#45).
+  = p + 2 ^ w * x`.
 
-The eighth is the bounded conjunction over indices. It is named `Aggregation` and taken as a
-hypothesis, so that the accounting cannot drift: `expDioph_accepts` is *conditional*, and the
-condition is a single `def` one can read.
+The rest — the program-length bound, the guard mask, and the bounded conjunction over indices —
+is bundled into `Aggregation` and taken as a hypothesis, so that the accounting cannot drift:
+`expDioph_accepts` is *conditional*, and the condition is a single `def` one can read.
+
+## Why the bundle, and not the conjunct alone
+
+The mask is not hard to represent. It is `ExpDioph.of_isBinarySubmask` (#34) applied to
+`guardMask` with `geom` carried as a *variable* pinned by `geom_unique` — which is exactly what
+that subtraction-free identity was proved for — and the program-length bound is one `of_lt`.
+They are bundled anyway, because any construction that discharges the bounded conjunction needs
+them as *hypotheses*: without the mask it must reason about arbitrary, possibly overflowing
+block values, and without `P.length < 2 ^ w` it cannot bound instruction indices inside a block.
+Stating the obligation as the weakest thing the endpoint actually needs is the same "prove only
+the endpoint" rule the rest of the development follows. The geometric-sum witness therefore
+stays internal to whatever proof discharges `Aggregation`.
 
 ## What is not discharged, and must not be faked
 
@@ -91,70 +100,60 @@ def blockTerm (k : ℕ) (W R I : ExpTerm α) : ExpTerm α :=
 /-! ### The obligation -/
 
 /-- **The sole remaining representability obligation of #21**: a bounded conjunction of step
-relations over a variable number of block indices.
+relations over a variable number of block indices, bundled with the two facts any proof of it
+would have to assume anyway.
 
 Stated with `N`, `W`, `R` as terms and the index quantified semantically, so that it cannot be
 satisfied by making the index a numeral or by assuming a representable lookup function. -/
 def Aggregation (k : ℕ) : Prop :=
   ∀ {α : Type} (P : Program k) (N W R : ExpTerm α),
-    ExpDioph {v : α → ℕ | ∀ i < N.eval v,
-      EncodedStep P (W.eval v)
-        (configField (W.eval v * (k + 1) + 1) (R.eval v) i)
-        (configField (W.eval v * (k + 1) + 1) (R.eval v) (i + 1))}
+    ExpDioph {v : α → ℕ |
+      P.length < 2 ^ W.eval v ∧
+      Nat.IsBinarySubmask (R.eval v) (guardMask (W.eval v * (k + 1)) (N.eval v + 1)) ∧
+      ∀ i < N.eval v,
+        EncodedStep P (W.eval v)
+          (configField (W.eval v * (k + 1) + 1) (R.eval v) i)
+          (configField (W.eval v * (k + 1) + 1) (R.eval v) (i + 1))}
 
 /-! ### Everything else -/
 
-/-- The witness block of `expDioph_accepts`, spelled out: `0` is the run length, `1` the width,
-`2` the packed run, `3` the geometric sum carried as a variable. -/
-def runBody (P : Program (k + 1)) (X Y : ExpTerm α) : Set ((α ⊕ Fin 4) → ℕ) :=
+/-- The witness block of `expDioph_accepts`: `0` is the run length, `1` the width, `2` the
+packed run. There is no fourth witness — the geometric sum moved inside `Aggregation`. -/
+def runBody (P : Program (k + 1)) (X Y : ExpTerm α) : Set ((α ⊕ Fin 3) → ℕ) :=
   {u | (X.map Sum.inl).eval u < 2 ^ u (Sum.inr 1) ∧
     (Y.map Sum.inl).eval u < 2 ^ u (Sum.inr 1) ∧
-    P.length < 2 ^ u (Sum.inr 1) ∧
-    u (Sum.inr 3) * 2 ^ (u (Sum.inr 1) * (k + 1 + 1) + 1) + 1
-      = u (Sum.inr 3) + (2 ^ (u (Sum.inr 1) * (k + 1 + 1) + 1)) ^ (u (Sum.inr 0) + 1) ∧
-    Nat.IsBinarySubmask (u (Sum.inr 2))
-      ((2 ^ (u (Sum.inr 1) * (k + 1 + 1)) - 1) * u (Sum.inr 3)) ∧
     configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) 0
       = 2 ^ u (Sum.inr 1) * (X.map Sum.inl).eval u ∧
     configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) (u (Sum.inr 0))
       = P.length + 2 ^ u (Sum.inr 1) * (Y.map Sum.inl).eval u ∧
-    ∀ i < u (Sum.inr 0),
-      EncodedStep P (u (Sum.inr 1))
-        (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) i)
-        (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) (i + 1))}
+    (P.length < 2 ^ u (Sum.inr 1) ∧
+      Nat.IsBinarySubmask (u (Sum.inr 2))
+        (guardMask (u (Sum.inr 1) * (k + 1 + 1)) (u (Sum.inr 0) + 1)) ∧
+      ∀ i < u (Sum.inr 0),
+        EncodedStep P (u (Sum.inr 1))
+          (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) i)
+          (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) (i + 1)))}
 
 theorem expDioph_runBody (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
     ExpDioph (runBody P X Y) := by
   refine ExpDioph.congr (ExpDioph.and
     (ExpDioph.of_lt (s := X.map Sum.inl) (t := widthTerm (.var (Sum.inr 1)))) (ExpDioph.and
     (ExpDioph.of_lt (s := Y.map Sum.inl) (t := widthTerm (.var (Sum.inr 1)))) (ExpDioph.and
-    (ExpDioph.of_lt (s := .const P.length) (t := widthTerm (.var (Sum.inr 1)))) (ExpDioph.and
-    (ExpDioph.of_eq
-      (s := .add (.mul (.var (Sum.inr 3)) (outerBaseTerm (k + 1) (.var (Sum.inr 1)))) (.const 1))
-      (t := .add (.var (Sum.inr 3))
-        (.pow (outerBaseTerm (k + 1) (.var (Sum.inr 1)))
-          (.add (.var (Sum.inr 0)) (.const 1))))) (ExpDioph.and
-    (ExpDioph.of_isBinarySubmask (.var (Sum.inr 2))
-      (.mul (.sub (dataBaseTerm (k + 1) (.var (Sum.inr 1))) (.const 1)) (.var (Sum.inr 3))))
-      (ExpDioph.and
     (ExpDioph.of_eq
       (s := blockTerm (k + 1) (.var (Sum.inr 1)) (.var (Sum.inr 2)) (.const 0))
       (t := .mul (widthTerm (.var (Sum.inr 1))) (X.map Sum.inl))) (ExpDioph.and
     (ExpDioph.of_eq
       (s := blockTerm (k + 1) (.var (Sum.inr 1)) (.var (Sum.inr 2)) (.var (Sum.inr 0)))
-      (t := .add (.const P.length)
-        (.mul (widthTerm (.var (Sum.inr 1))) (Y.map Sum.inl))))
-    (hagg P (.var (Sum.inr 0)) (.var (Sum.inr 1)) (.var (Sum.inr 2)))))))))) ?_
+      (t := .add (.const P.length) (.mul (widthTerm (.var (Sum.inr 1))) (Y.map Sum.inl))))
+    (hagg P (.var (Sum.inr 0)) (.var (Sum.inr 1)) (.var (Sum.inr 2))))))) ?_
   intro u
   simp only [Set.mem_inter_iff, Set.mem_setOf_eq, runBody, widthTerm, ExpTerm.eval,
-    eval_dataBaseTerm, eval_outerBaseTerm, eval_blockTerm]
+    eval_blockTerm]
 
 /-- **The endpoint, conditional on aggregation.**
 
-Every conjunct of `accepts_iff_exists_encodedRun` other than the bounded conjunction is
-discharged here. The geometric sum is carried as the fourth witness and pinned by
-`geom_unique`, which is the one place `BlockPacking`'s subtraction-free identity earns its
-keep: the guard mask is a *variable* satisfying one equation, never a computed sum. -/
+Every conjunct of `accepts_iff_exists_encodedRun` other than the bundle is discharged here:
+the input and output bounds, and the two endpoint equalities. -/
 theorem expDioph_accepts (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
     ExpDioph {v : α → ℕ | Accepts P (X.eval v) (Y.eval v)} := by
   refine ExpDioph.congr (ExpDioph.ex (expDioph_runBody hagg P X Y)) fun v => ?_
@@ -162,17 +161,10 @@ theorem expDioph_accepts (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y
   rw [accepts_iff_exists_encodedRun]
   simp only [EncodedRun, configCode_unaryConfig, Nat.zero_add]
   constructor
-  · rintro ⟨u, hx, hy, hlen, hgeom, hmask, h0, hn, hstep⟩
-    have hG : u 3 = geom (blockBase (u 1 * (k + 1 + 1))) (u 0 + 1) :=
-      geom_unique (two_le_blockBase _) hgeom
-    refine ⟨u 0, u 1, u 2, hx, hy, hlen, ?_, h0, hn, hstep⟩
-    rw [guardMask_eq, ← hG]
-    simpa [dataBound] using hmask
+  · rintro ⟨u, hx, hy, h0, hn, hlen, hmask, hstep⟩
+    exact ⟨u 0, u 1, u 2, hx, hy, hlen, hmask, h0, hn, hstep⟩
   · rintro ⟨n, w, R, hx, hy, hlen, hmask, h0, hn, hstep⟩
-    refine ⟨![n, w, R, geom (2 ^ (w * (k + 1 + 1) + 1)) (n + 1)], hx, hy, hlen,
-      geom_spec _ _, ?_, h0, hn, hstep⟩
-    rw [guardMask_eq] at hmask
-    simpa [dataBound, blockBase] using hmask
+    exact ⟨![n, w, R], hx, hy, h0, hn, hlen, hmask, hstep⟩
 
 end RegisterMachine
 
