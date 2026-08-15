@@ -56,9 +56,10 @@ Setting the equivalence up found one missing condition — see `SliceGlobalCondi
 program-length bound has to be listed — and proving it found no further one. What the slice
 establishes is that the selector vocabulary is sufficient for a program exercising an increment,
 both branches of a decrement, and an oversized jump target; it is not a proof for arbitrary
-programs, which is what `Aggregation` in `AcceptsDioph` still asks for. Turning
-`SliceGlobalConditions` into an `ExpDioph` condition is finite plumbing over the existing
-combinators, and is not done here.
+programs, which is what `Aggregation` in `AcceptsDioph` still asks for.
+
+`Spike/SelectorSliceDioph` makes `SliceGlobalConditions` exponential Diophantine, which carries
+this program to the endpoint of #48.
 -/
 
 namespace Hilbert10

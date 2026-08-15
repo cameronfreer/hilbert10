@@ -99,21 +99,28 @@ def blockTerm (k : ℕ) (W R I : ExpTerm α) : ExpTerm α :=
 
 /-! ### The obligation -/
 
-/-- **The sole remaining representability obligation of #21**: a bounded conjunction of step
-relations over a variable number of block indices, bundled with the two facts any proof of it
-would have to assume anyway.
+/-- **The obligation for one program**: a bounded conjunction of step relations over a variable
+number of block indices, bundled with the two facts any proof of it would have to assume anyway.
 
 Stated with `N`, `W`, `R` as terms and the index quantified semantically, so that it cannot be
-satisfied by making the index a numeral or by assuming a representable lookup function. -/
+satisfied by making the index a numeral or by assuming a representable lookup function.
+
+Separated from `Aggregation` because it is provable for particular programs — see
+`Spike/SelectorSliceDioph` — long before it is provable for all of them, and the endpoint below
+only ever needs it at the one program it is applied to. -/
+def StepBundle (P : Program k) (N W R : ExpTerm α) : Set (α → ℕ) :=
+  {v : α → ℕ |
+    P.length < 2 ^ W.eval v ∧
+    Nat.IsBinarySubmask (R.eval v) (guardMask (W.eval v * (k + 1)) (N.eval v + 1)) ∧
+    ∀ i < N.eval v,
+      EncodedStep P (W.eval v)
+        (configField (W.eval v * (k + 1) + 1) (R.eval v) i)
+        (configField (W.eval v * (k + 1) + 1) (R.eval v) (i + 1))}
+
+/-- **The sole remaining representability obligation of #21**: `StepBundle`, uniformly in the
+program. -/
 def Aggregation (k : ℕ) : Prop :=
-  ∀ {α : Type} (P : Program k) (N W R : ExpTerm α),
-    ExpDioph {v : α → ℕ |
-      P.length < 2 ^ W.eval v ∧
-      Nat.IsBinarySubmask (R.eval v) (guardMask (W.eval v * (k + 1)) (N.eval v + 1)) ∧
-      ∀ i < N.eval v,
-        EncodedStep P (W.eval v)
-          (configField (W.eval v * (k + 1) + 1) (R.eval v) i)
-          (configField (W.eval v * (k + 1) + 1) (R.eval v) (i + 1))}
+  ∀ {α : Type} (P : Program k) (N W R : ExpTerm α), ExpDioph (StepBundle P N W R)
 
 /-! ### Everything else -/
 
@@ -134,7 +141,8 @@ def runBody (P : Program (k + 1)) (X Y : ExpTerm α) : Set ((α ⊕ Fin 3) → �
           (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) i)
           (configField (u (Sum.inr 1) * (k + 1 + 1) + 1) (u (Sum.inr 2)) (i + 1)))}
 
-theorem expDioph_runBody (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
+theorem expDioph_runBody_of_bundle {P : Program (k + 1)}
+    (hP : ∀ {β : Type} (N W R : ExpTerm β), ExpDioph (StepBundle P N W R)) (X Y : ExpTerm α) :
     ExpDioph (runBody P X Y) := by
   refine ExpDioph.congr (ExpDioph.and
     (ExpDioph.of_lt (s := X.map Sum.inl) (t := widthTerm (.var (Sum.inr 1)))) (ExpDioph.and
@@ -145,18 +153,25 @@ theorem expDioph_runBody (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y
     (ExpDioph.of_eq
       (s := blockTerm (k + 1) (.var (Sum.inr 1)) (.var (Sum.inr 2)) (.var (Sum.inr 0)))
       (t := .add (.const P.length) (.mul (widthTerm (.var (Sum.inr 1))) (Y.map Sum.inl))))
-    (hagg P (.var (Sum.inr 0)) (.var (Sum.inr 1)) (.var (Sum.inr 2))))))) ?_
+    (hP (.var (Sum.inr 0)) (.var (Sum.inr 1)) (.var (Sum.inr 2))))))) ?_
   intro u
-  simp only [Set.mem_inter_iff, Set.mem_setOf_eq, runBody, widthTerm, ExpTerm.eval,
+  simp only [Set.mem_inter_iff, Set.mem_setOf_eq, runBody, StepBundle, widthTerm, ExpTerm.eval,
     eval_blockTerm]
 
-/-- **The endpoint, conditional on aggregation.**
+theorem expDioph_runBody (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
+    ExpDioph (runBody P X Y) :=
+  expDioph_runBody_of_bundle (fun {β} N W R => hagg (α := β) P N W R) X Y
+
+/-- **The endpoint, for a single program.**
 
 Every conjunct of `accepts_iff_exists_encodedRun` other than the bundle is discharged here:
-the input and output bounds, and the two endpoint equalities. -/
-theorem expDioph_accepts (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
+the input and output bounds, and the two endpoint equalities. Only `StepBundle` for the one
+program in hand is assumed, so a program whose aggregation is provable is representable
+outright, without waiting for `Aggregation`. -/
+theorem expDioph_accepts_of_bundle {P : Program (k + 1)}
+    (hP : ∀ {β : Type} (N W R : ExpTerm β), ExpDioph (StepBundle P N W R)) (X Y : ExpTerm α) :
     ExpDioph {v : α → ℕ | Accepts P (X.eval v) (Y.eval v)} := by
-  refine ExpDioph.congr (ExpDioph.ex (expDioph_runBody hagg P X Y)) fun v => ?_
+  refine ExpDioph.congr (ExpDioph.ex (expDioph_runBody_of_bundle hP X Y)) fun v => ?_
   simp only [runBody, Set.mem_setOf_eq, ExpTerm.eval_map, Sum.elim_comp_inl, Sum.elim_inr]
   rw [accepts_iff_exists_encodedRun]
   simp only [EncodedRun, configCode_unaryConfig, Nat.zero_add]
@@ -165,6 +180,11 @@ theorem expDioph_accepts (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y
     exact ⟨u 0, u 1, u 2, hx, hy, hlen, hmask, h0, hn, hstep⟩
   · rintro ⟨n, w, R, hx, hy, hlen, hmask, h0, hn, hstep⟩
     exact ⟨![n, w, R], hx, hy, h0, hn, hlen, hmask, hstep⟩
+
+/-- **The endpoint, conditional on aggregation.** -/
+theorem expDioph_accepts (hagg : Aggregation (k + 1)) (P : Program (k + 1)) (X Y : ExpTerm α) :
+    ExpDioph {v : α → ℕ | Accepts P (X.eval v) (Y.eval v)} :=
+  expDioph_accepts_of_bundle (fun {β} N W R => hagg (α := β) P N W R) X Y
 
 end RegisterMachine
 
