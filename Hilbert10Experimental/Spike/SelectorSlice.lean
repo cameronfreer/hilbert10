@@ -43,7 +43,8 @@ but the theorem relating them to `EncodedStep` is **not** proved here:
 ```
 P.length < 2 ^ w ∧ IsBinarySubmask R (guardMask (w * 2) (n + 1)) ∧
   (∀ i < n, EncodedStep sliceP w (block R i) (block R (i + 1)))
-↔ ∃ Xpc X0 S0 S1p S1z S2 Res, SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res
+↔ ∃ Xpc X0 S0 S1p S1z S2 Res Zres,
+    SliceGlobalConditions w n R Xpc X0 S0 S1p S1z S2 Res Zres
 ```
 
 Completeness decodes `R`, applies `sliceStep_iff`, and packs the result; soundness reads the lane
@@ -228,16 +229,23 @@ Read in order: the program length fits; the two lanes are `w`-bit packings; they
 the four selectors are bit packings partitioning every block; the program counter agrees with the
 selector and jumps to the selected target; the register update is subtraction-free; the
 decrement's zero branch forces the register to vanish and its positive branch forces the register
-to be at least one, the latter needing its own masked residual; and each selected target fits.
+to be at least one, each needing its own masked witness; and each selected target fits.
 
-Thirteen conditions, and the count depends only on `sliceP`.
+Fourteen conditions, and the count depends only on `sliceP`.
+
+The zero branch is an *equation*, not a submask condition. Reading
+`IsBinarySubmask (S1z * (2 ^ w - 1)) (M - X0 % Bⁿ)` blockwise would need
+`IsBinarySubmask a b → a ≤ b`, a bit-level fact this development does not have and should not
+need. Blockwise, `x0 i + s1z i * (2 ^ w - 1) + z i = 2 ^ w - 1` forces `x0 i = 0` when
+`s1z i = 1`, and is satisfiable with `z i = 2 ^ w - 1 - x0 i` when `s1z i = 0` — the same content
+subtraction-free, and symmetric with how the positive branch was already stated.
 
 The program-length bound is not decoration and is not implied by the rest. At `n = 0` every
 selector is forced to `0` by `bitMask w 0 = 0`, so all three target disjunctions take their
 zero-selector branch and nothing else mentions `2 ^ w` from below: `w = 1`, `R = 0` satisfies
 every other condition while `sliceP.length = 3 < 2` is false. It has to be re-exported here
 because `Aggregation` bundles it on the other side. -/
-def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res : ℕ) : Prop :=
+def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res Zres : ℕ) : Prop :=
   sliceP.length < 2 ^ w ∧
   Nat.IsBinarySubmask Xpc (laneMask w (n + 1)) ∧
   Nat.IsBinarySubmask X0 (laneMask w (n + 1)) ∧
@@ -248,7 +256,8 @@ def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res : ℕ) : Prop :=
   Xpc % (2 ^ (w * 2 + 1)) ^ n = S1p + S1z + 2 * S2 ∧
   Xpc / 2 ^ (w * 2 + 1) = S0 + 2 * S1z + 1000 * S2 ∧
   X0 / 2 ^ (w * 2 + 1) + S1p = X0 % (2 ^ (w * 2 + 1)) ^ n + S0 + S2 ∧
-  Nat.IsBinarySubmask (S1z * (2 ^ w - 1)) (laneMask w n - X0 % (2 ^ (w * 2 + 1)) ^ n) ∧
+  (X0 % (2 ^ (w * 2 + 1)) ^ n + S1z * (2 ^ w - 1) + Zres = laneMask w n ∧
+    Nat.IsBinarySubmask Zres (laneMask w n)) ∧
   (X0 % (2 ^ (w * 2 + 1)) ^ n = Res + S1p ∧ Nat.IsBinarySubmask Res (laneMask w n)) ∧
   (S0 = 0 ∨ 1 < 2 ^ w) ∧ (S1z = 0 ∨ 2 < 2 ^ w) ∧ (S2 = 0 ∨ 1000 < 2 ^ w)
 
