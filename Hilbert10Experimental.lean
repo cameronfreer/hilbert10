@@ -43,6 +43,7 @@ import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
 import Hilbert10Experimental.Spike.Sequences
 import Hilbert10Experimental.Spike.SelectorMask
+import Hilbert10Experimental.Spike.SelectorSlice
 
 /-!
 # Staging area
