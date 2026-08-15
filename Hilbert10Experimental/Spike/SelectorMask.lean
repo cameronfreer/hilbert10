@@ -58,6 +58,9 @@ For a fixed program of `m` instructions, selectors `S₀, …, S_{m-1}` pack `n`
 * `Xpc % Bⁿ = ∑ₚ p · Sₚ` — the selector agrees with the program counter;
 * `Xpc / B = ∑ₚ targetₚ · Sₚ^branch` — the jump;
 * `X_r / B + ∑_{dec r} S⁺ₚ = X_r % Bⁿ + ∑_{inc r} Sₚ` — the register update, subtraction-free;
+* for each instruction, the bound on the target it *selects*:
+  `Sₚ = 0 ∨ jₚ < 2 ^ w` for an `inc`, and `S⁺ₚ = 0 ∨ jposₚ < 2 ^ w`,
+  `S⁰ₚ = 0 ∨ jzeroₚ < 2 ^ w` for a `dec`;
 * for each `dec` instruction `p` reading register `r`:
   `S⁰ₚ + S⁺ₚ = Sₚ`, both submasked by `geom B n`;
   `IsBinarySubmask (S⁰ₚ · (2 ^ w - 1)) (M % Bⁿ - X_r % Bⁿ)` — the zero branch;
@@ -69,15 +72,29 @@ because the addition may carry: at `B = 8`, `X = 8`, `S⁺ = 1`, `X'' = 7` satis
 while block `0` of `X` is zero and block `0` of `S⁺` is one. Bounding each block of `X''` below
 `2 ^ w` rules the carry out.
 
+The selected-target bounds are load-bearing for the same reason, one level up.
+`P.length < 2 ^ w` bounds instruction *indices*, but a `Program` may carry jump targets far
+larger than either `P.length` or `2 ^ w`, and `targetₚ · Sₚ` is blockwise only while
+`targetₚ < B`. Without them a large target carries between selector blocks and the jump equation
+can be satisfied spuriously. They are stated per branch, and as disjunctions, because
+`EncodedStep` bounds only the target it selects: requiring every target in the program to fit
+would be strictly stronger, and wrong, since an unreachable branch need not fit. Because a
+target is a *constant*, the bounded universal `∀ i < n, sₚ,ᵢ = 1 → jₚ < 2 ^ w` collapses to the
+disjunction `Sₚ = 0 ∨ jₚ < 2 ^ w`, which is one `ExpDioph.or`.
+
 Several instructions may read the same register: give each `dec` its own `S⁰ₚ` and `S⁺ₚ`, and the
 global selector partition puts their conditions on disjoint blocks.
 
 ## Status
 
-The primitives are proved. The **acceptance slice** — a program with an `inc` and both `dec`
-branches, verified in both directions at arbitrary run length — is **not built**, and until it
-is, the encoding above is an argument rather than a theorem. This file discharges nothing of
+The primitives are proved. The **acceptance slice** is **not built**, and until it is, the
+encoding above is an argument rather than a theorem. This file discharges nothing of
 `Aggregation`.
+
+The slice must exercise four cases: `n = 0`; an increment; both branches of a decrement; and an
+*unselected* branch whose target exceeds `2 ^ w`, confirming that the encoding does not
+accidentally demand that every target fit. A second decrement reading the same register belongs
+in a separate regression rather than the minimal slice.
 -/
 
 namespace Hilbert10
