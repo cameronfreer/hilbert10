@@ -51,19 +51,27 @@ of this development.
 
 ```
    REPred R  ──────────────────────────►  Dioph {x | R x}
-       ▲      DPRM core — in progress:            │
-       │      register machines,                  │
-       │      arithmetised runs                   │
+       ▲      DPRM core — in progress             │
+       │                                          │
        └──────────────────────────────────────────┘
                    the easy direction
 
-                    ExpDioph  ─────────►  Dioph
-        exponential Diophantine      via mathlib's Diophantineness of x ^ y
+   the core, at the granularity where the remaining gap is visible:
+
+     machine graph  ──►  semantic packed run  ──►  ExpDioph  ──►  Dioph
+                                             ▲                ▲
+                             bounded aggregation       mathlib's x ^ y
 
 
    Dioph {x | R x}  ──►  MvPolynomial (Fin n ⊕ Fin m) ℤ  ──►  PolynomialCode  ──►  NatSolvable
                             finite normal form               encoding        specialisation
 ```
+
+The first arrow of the core is closed in both directions: a partial recursive function's graph
+is the trace relation of a register machine, and that is equivalent to the existence of a single
+number packing the whole run. The second is closed for every part of that statement except one —
+a conjunction of encoded transitions over a variable number of indices. The third is mathlib's
+Diophantineness of `x ^ y`.
 
 `ExpDioph` is an internal `ℕ`-valued exponential-polynomial layer; natural-number valuations are
 what make `p ^ q` well specified, and mathlib's `pow_dioph` supplies the bridge down to `Dioph`.
@@ -79,12 +87,15 @@ The primary H10 predicate uses natural-number assignments throughout.
   predicate to `NatSolvable`;
 * an exponential-Diophantine layer with its closure lemmas, including binomial coefficients and
   binary submasks;
-* guarded block packing, and an exact exponential-Diophantine encoding of an unbounded
-  computation;
+* guarded block packing, together with an exact exponential-Diophantine encoding of one
+  unbounded computation — a decrement loop, the spike that fixed the block layout;
 * a register machine with its semantics, and the renaming and concatenation discipline used to
   combine machines.
 
-The remaining DPRM work scales the register-machine encoding to arbitrary computations.
+Arbitrary machine runs are already encoded exactly, but semantically: acceptance is
+*equivalent* to the existence of a packed run, in both directions and at arbitrary run
+length. What remains is representing the variable-length conjunction of encoded
+transitions as a single exponential-Diophantine condition.
 
 ## Repository layout
 
@@ -132,7 +143,9 @@ reasoning behind them are recorded in the module docstrings and in the issues th
 
 * Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
 * `Mathlib/NumberTheory/Dioph.lean` — the `Dioph`, `DiophFn` and `Poly` API this builds on, and
-  the source of the two TODOs this project aims to close.
+  the source of the two TODOs this project aims to close. The `Poly`-to-`MvPolynomial` TODO is
+  solved locally here, in the finite normal form and the ring map; the H10 TODO is the
+  unfinished one.
 
 ## License
 

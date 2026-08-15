@@ -25,7 +25,7 @@ rest zero — and gets one back in the same shape. `CleanPartComputesUnary` says
 `CleanPartComputesUnary.call` is what makes the convention usable. Renaming along a
 caller-supplied injection gives the callee a private scratch block that starts and ends zero,
 while every register outside the block is preserved. Controller state therefore lives *outside*
-the callee's image, which is the arrangement `prec` (#42) will need: a loop counter the callee
+the callee's image, which is the arrangement `prec` (#42) needs: a loop counter the callee
 cannot see, and a callee that cannot leak into it.
 
 The injection is still supplied by the caller, so this introduces no allocator — the standing
@@ -223,7 +223,7 @@ theorem CleanPartComputesUnary.call_halts_iff {P : Program (k + 1)} {f : ℕ →
 
 /-! ## The graph relation
 
-What #21 will arithmetise: a *trace-level* statement about the machine, with no reference to the
+What #21 arithmetises: a *trace-level* statement about the machine, with no reference to the
 function it computes. `accepts_iff` is the bridge, and it is the only place the two meet. -/
 
 /-- `P` takes the clean configuration for `x` to the clean configuration for `y`, exactly. -/

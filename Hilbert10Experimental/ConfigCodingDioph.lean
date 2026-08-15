@@ -14,8 +14,8 @@ this file proves it is expressible.
 
 The width is a *term*, not a numeral. Register values and run lengths grow with the input, so
 `w` cannot be fixed in advance — choosing it is #46's job, and by then it has to be a variable of
-the formula being built. Likewise `before` and `after` are arbitrary terms, because #47 and #48
-will instantiate them with two field lookups into a single packed run.
+the formula being built. Likewise `before` and `after` are arbitrary terms, because #49 instantiates
+them with two block lookups into a single packed run.
 
 Field indices, by contrast, *are* numerals: the program is fixed by the time this is used, so
 each register index appearing in it is a concrete number.

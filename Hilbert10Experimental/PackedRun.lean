@@ -43,7 +43,9 @@ Diophantine condition is #49; this file is semantics only.
 
 * `RegisterMachine.EncodedRun` — the packed-run predicate
 * `RegisterMachine.encodedRun_packRun` — every prefix of a run packs
-* `RegisterMachine.exists_encodedRun_of_accepts` — the endpoint #49 consumes
+* `RegisterMachine.encodedRun_sound` — and every packed run is a run
+* `RegisterMachine.accepts_iff_exists_encodedRun` — the two directions combined, and the exact
+  statement #49 represents
 -/
 
 namespace Hilbert10

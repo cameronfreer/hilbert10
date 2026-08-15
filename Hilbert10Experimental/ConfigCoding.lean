@@ -47,6 +47,7 @@ configurations packs into `BlockPacking`'s already-proved one-guard-bit layout a
 
 * `RegisterMachine.configField`, `setField` — reading and writing one base-`2 ^ w` field
 * `RegisterMachine.configCode`, `FitsConfig` — a configuration as a number, and when it fits
+* `RegisterMachine.decodeConfig` — and back, totally
 * `RegisterMachine.EncodedStep` — one step of a fixed program, as a relation on codes
 
 ## Main results
@@ -55,6 +56,9 @@ configurations packs into `BlockPacking`'s already-proved one-guard-bit layout a
 * `RegisterMachine.configCode_lt`, `configCode_injective`
 * `RegisterMachine.encodedStep_iff` — the headline: for an in-range fitting configuration,
   `EncodedStep` holds of exactly one successor, and it is the code of `step P c`
+* `RegisterMachine.configCode_decodeConfig`, `decodeConfig_configCode` — the inverse pair
+* `RegisterMachine.decodeConfig_step_of_encodedStep` — the decoded step relation, needing only
+  a bound on the *predecessor*; this is why #48 does no carry reasoning
 -/
 
 namespace Hilbert10

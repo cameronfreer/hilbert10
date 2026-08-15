@@ -38,6 +38,8 @@ large enough to hold a value, and being a field width — never have to be recon
 * `RegisterMachine.fits_runWidth` — every configuration of the prefix fits
 * `RegisterMachine.exists_width` — the packaged form: one width for the configurations, the
   program length, and every jump target in the program
+* `RegisterMachine.encodedStep_run` — the handoff: at this width, consecutive configurations of
+  a run are related by #45's step relation
 -/
 
 namespace Hilbert10
