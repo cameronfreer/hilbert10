@@ -156,15 +156,6 @@ theorem fieldsCode_smul_add_eq_iff {n m₁ m₂ : ℕ} {a c d : Fin n → ℕ}
   rw [fieldsCode_smul, fieldsCode_smul]
   exact fieldsCode_add_eq_iff h hd
 
-/-- Pointwise-bounded differences are blockwise too. The zero-branch complement
-`M % Bⁿ - X_r % Bⁿ` depends on this. -/
-theorem fieldsCode_sub (W : ℕ) {n : ℕ} {a c : Fin n → ℕ} (h : ∀ i, c i ≤ a i) :
-    fieldsCode W a - fieldsCode W c = fieldsCode W fun i => a i - c i := by
-  have key : fieldsCode W c + fieldsCode W (fun i => a i - c i) = fieldsCode W a := by
-    rw [fieldsCode_add]
-    exact congrArg _ (funext fun i => by have := h i; omega)
-  omega
-
 /-! ### Finite sums of lanes
 
 Every selector condition is a sum over the program's instructions, so the two-term lemmas are
@@ -178,6 +169,12 @@ theorem fieldsCode_sum {ι : Type} (W : ℕ) {n : ℕ} (s : Finset ι) (g : ι �
   | insert p s hp ih =>
     rw [Finset.sum_insert hp, ih, fieldsCode_add]
     exact congrArg _ (funext fun i => (Finset.sum_insert (f := fun q => g q i) hp).symm)
+
+/-- Three scaled packings added, which is the shape every selector equation takes. -/
+theorem fieldsCode_three (W : ℕ) {n : ℕ} (a b c : ℕ) (f g h : Fin n → ℕ) :
+    a * fieldsCode W f + b * fieldsCode W g + c * fieldsCode W h
+      = fieldsCode W fun i => a * f i + b * g i + c * h i := by
+  rw [fieldsCode_smul, fieldsCode_smul, fieldsCode_smul, fieldsCode_add, fieldsCode_add]
 
 theorem fieldsCode_sum_smul {ι : Type} (W : ℕ) {n : ℕ} (s : Finset ι)
     (m : ι → ℕ) (g : ι → Fin n → ℕ) :

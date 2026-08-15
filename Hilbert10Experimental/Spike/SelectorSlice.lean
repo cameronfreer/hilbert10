@@ -329,6 +329,33 @@ theorem slice_target {w S c : ℕ} (hd : S = 0 ∨ c < 2 ^ w) {i : ℕ}
   · simp [configField] at hs
   · exact h
 
+/-- The carry bound the zero-branch equation needs: three `w`-bit quantities, one of them scaled
+by a selector, still fit in one block. `2 ≤ w` comes from the program-length condition. -/
+theorem zero_branch_carry {w x s z : ℕ} (hw : 2 ≤ w) (hx : x < 2 ^ w) (hs : s ≤ 1)
+    (hz : z < 2 ^ w) : x + s * (2 ^ w - 1) + z < 2 ^ (w * 2 + 1) := by
+  have h4 : (4 : ℕ) ≤ 2 ^ w := by
+    have h : (2 : ℕ) ^ 2 ≤ 2 ^ w := Nat.pow_le_pow_right (by norm_num) hw
+    norm_num at h
+    omega
+  have hsq : 2 ^ w * 2 ^ w ≤ 2 ^ (w * 2 + 1) := by
+    rw [← pow_add]
+    exact Nat.pow_le_pow_right (by norm_num) (by omega)
+  have h3 : 3 * 2 ^ w ≤ 2 ^ w * 2 ^ w := Nat.mul_le_mul_right _ (by omega)
+  have hsb : s * (2 ^ w - 1) ≤ 2 ^ w - 1 := by
+    calc s * (2 ^ w - 1) ≤ 1 * (2 ^ w - 1) := Nat.mul_le_mul_right _ hs
+      _ = 2 ^ w - 1 := one_mul _
+  omega
+
+/-- **Package 4, the shared core.** A lane packing equal to three scaled selector packings is
+that equation in every block. Both the program-counter agreement and the jump are instances;
+so is the zero-branch equation, with the constant lane on the other side. -/
+theorem selector_eq_blockwise {W n : ℕ} {f : Fin n → ℕ} {a b c : ℕ} {g h k : Fin n → ℕ}
+    (hf : ∀ i, f i < 2 ^ W) (hbd : ∀ i, a * g i + b * h i + c * k i < 2 ^ W)
+    (heq : fieldsCode W f = a * fieldsCode W g + b * fieldsCode W h + c * fieldsCode W k)
+    (i : Fin n) : f i = a * g i + b * h i + c * k i := by
+  rw [fieldsCode_three] at heq
+  exact congrFun (fieldsCode_injective hf hbd heq) i
+
 end RegisterMachine
 
 end Hilbert10
