@@ -294,6 +294,16 @@ theorem isBinarySubmask_constMask_iff {W v : ℕ} (hv : v ≤ W) : ∀ {t X : �
       · have := hblk (i + 1) (by omega)
         rwa [configField_succ] at this
 
+/-- **Normalising a packed witness.** Every masked number is the packing of its own fields, with
+each field bounded. This is the first move in every soundness argument: apply it once per
+witness, and afterwards work only with `Fin t` functions. -/
+theorem packed_eq_fieldsCode {W v t X : ℕ} (hv : v ≤ W)
+    (h : Nat.IsBinarySubmask X ((2 ^ v - 1) * geom (2 ^ W) t)) :
+    X = fieldsCode W (fun i : Fin t => configField W X i) ∧
+      ∀ i : Fin t, configField W X i < 2 ^ v := by
+  obtain ⟨hlt, hblk⟩ := (isBinarySubmask_constMask_iff hv).mp h
+  exact ⟨(fieldsCode_configField hlt).symm, fun i => hblk i i.isLt⟩
+
 /-! ### The lane decomposition
 
 Why lanes are packed at the *outer* base `B` rather than at their own tight base: the packed run

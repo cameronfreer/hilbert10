@@ -252,6 +252,74 @@ def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res : ℕ) : Prop :=
   (X0 % (2 ^ (w * 2 + 1)) ^ n = Res + S1p ∧ Nat.IsBinarySubmask Res (laneMask w n)) ∧
   (S0 = 0 ∨ 1 < 2 ^ w) ∧ (S1z = 0 ∨ 2 < 2 ^ w) ∧ (S2 = 0 ∨ 1000 < 2 ^ w)
 
+/-! ### Soundness, in packages
+
+Rather than destructing thirteen conditions at once, each group is turned into its pointwise
+consequence separately. -/
+
+theorem two_le_of_sliceP_length_lt {w : ℕ} (hlen : sliceP.length < 2 ^ w) : 2 ≤ w := by
+  by_contra hc
+  simp only [not_le] at hc
+  have h : (2 : ℕ) ^ w ≤ 2 ^ 1 := Nat.pow_le_pow_right (by norm_num) (by omega)
+  simp only [sliceP, List.length_cons, List.length_nil] at hlen
+  omega
+
+theorem four_lt_outer {w : ℕ} (hw : 2 ≤ w) : 4 < 2 ^ (w * 2 + 1) := by
+  have h : (2 : ℕ) ^ 5 ≤ 2 ^ (w * 2 + 1) := Nat.pow_le_pow_right (by norm_num) (by omega)
+  norm_num at h
+  omega
+
+theorem bitMask_eq (w t : ℕ) : bitMask w t = (2 ^ 1 - 1) * geom (2 ^ (w * 2 + 1)) t := by
+  simp [bitMask]
+
+/-- A bit-masked packing has `0`/`1` blocks and is the packing of them. -/
+theorem selector_norm {w t S : ℕ} (h : Nat.IsBinarySubmask S (bitMask w t)) :
+    S = fieldsCode (w * 2 + 1) (fun i : Fin t => configField (w * 2 + 1) S i) ∧
+      ∀ i : Fin t, configField (w * 2 + 1) S i < 2 := by
+  have := packed_eq_fieldsCode (v := 1) (W := w * 2 + 1) (by omega) (by rwa [← bitMask_eq])
+  simpa using this
+
+/-- A lane-masked packing has `w`-bit blocks and is the packing of them. -/
+theorem lane_norm {w t X : ℕ} (h : Nat.IsBinarySubmask X (laneMask w t)) :
+    X = fieldsCode (w * 2 + 1) (fun i : Fin t => configField (w * 2 + 1) X i) ∧
+      ∀ i : Fin t, configField (w * 2 + 1) X i < 2 ^ w :=
+  packed_eq_fieldsCode (v := w) (W := w * 2 + 1) (by omega) h
+
+/-- **Package 3: the selectors are one-hot in every block.** This is the first place the
+program-length bound is used: without `2 ≤ w` the four-term sum could overflow a block and the
+global partition would not be the pointwise one. -/
+theorem slice_one_hot {w n : ℕ} (hlen : sliceP.length < 2 ^ w) {S0 S1p S1z S2 : ℕ}
+    (h0 : Nat.IsBinarySubmask S0 (bitMask w n)) (h1 : Nat.IsBinarySubmask S1p (bitMask w n))
+    (h2 : Nat.IsBinarySubmask S1z (bitMask w n)) (h3 : Nat.IsBinarySubmask S2 (bitMask w n))
+    (hsum : S0 + S1p + S1z + S2 = bitMask w n) (i : Fin n) :
+    configField (w * 2 + 1) S0 i + configField (w * 2 + 1) S1p i
+      + configField (w * 2 + 1) S1z i + configField (w * 2 + 1) S2 i = 1 := by
+  obtain ⟨e0, b0⟩ := selector_norm h0
+  obtain ⟨e1, b1⟩ := selector_norm h1
+  obtain ⟨e2, b2⟩ := selector_norm h2
+  obtain ⟨e3, b3⟩ := selector_norm h3
+  have hfour : (4 : ℕ) < 2 ^ (w * 2 + 1) := four_lt_outer (two_le_of_sliceP_length_lt hlen)
+  have hbit : bitMask w n = fieldsCode (w * 2 + 1) (fun _ : Fin n => 1) := by
+    rw [fieldsCode_const]; simp [bitMask]
+  have hkey : fieldsCode (w * 2 + 1)
+      (fun i : Fin n => configField (w * 2 + 1) S0 i + configField (w * 2 + 1) S1p i
+        + configField (w * 2 + 1) S1z i + configField (w * 2 + 1) S2 i)
+      = fieldsCode (w * 2 + 1) (fun _ : Fin n => 1) := by
+    rw [← hbit, ← hsum]
+    conv_rhs => rw [e0, e1, e2, e3]
+    rw [fieldsCode_add, fieldsCode_add, fieldsCode_add]
+  exact congrFun (fieldsCode_injective
+    (fun j => by have := b0 j; have := b1 j; have := b2 j; have := b3 j; omega)
+    (fun _ => by omega) hkey) i
+
+/-- **Package 5: a selected constant fits.** The zero-selector branch of each target disjunction
+is discharged by the block of `0` being `0`; no packing argument is needed. -/
+theorem slice_target {w S c : ℕ} (hd : S = 0 ∨ c < 2 ^ w) {i : ℕ}
+    (hs : configField (w * 2 + 1) S i = 1) : c < 2 ^ w := by
+  rcases hd with rfl | h
+  · simp [configField] at hs
+  · exact h
+
 end RegisterMachine
 
 end Hilbert10
