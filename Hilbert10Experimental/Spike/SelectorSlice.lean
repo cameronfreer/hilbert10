@@ -52,6 +52,12 @@ masks as per-block bounds, recovers `SliceStep` blockwise from the global identi
 residual packings must exist with no semantic input; and small `w` with `S₂ = 0`, where the
 target disjunction has to take its zero-selector branch, while `S₂ ≠ 0` must recover
 `1000 < 2 ^ w`. Only after that is `ExpDioph` finite plumbing.
+
+Setting the equivalence up already found one missing condition — see
+`SliceGlobalConditions` on why the program-length bound has to be listed — so no claim is made
+here that the rest is mechanical. No further mathematical ingredient is *currently identified*,
+which is a weaker statement, and the global equivalence is exactly the test that could identify
+one.
 -/
 
 namespace Hilbert10
@@ -218,14 +224,21 @@ def bitMask (w t : ℕ) : ℕ := geom (2 ^ (w * 2 + 1)) t
 
 /-- **The global selector conditions for `sliceP`.**
 
-Read in order: the two lanes are `w`-bit packings; they reassemble `R`; the four selectors are
-bit packings partitioning every block; the program counter agrees with the selector and jumps to
-the selected target; the register update is subtraction-free; the decrement's zero branch forces
-the register to vanish and its positive branch forces the register to be at least one, the latter
-needing its own masked residual; and each selected target fits.
+Read in order: the program length fits; the two lanes are `w`-bit packings; they reassemble `R`;
+the four selectors are bit packings partitioning every block; the program counter agrees with the
+selector and jumps to the selected target; the register update is subtraction-free; the
+decrement's zero branch forces the register to vanish and its positive branch forces the register
+to be at least one, the latter needing its own masked residual; and each selected target fits.
 
-Twelve conditions, and the count depends only on `sliceP`. -/
+Thirteen conditions, and the count depends only on `sliceP`.
+
+The program-length bound is not decoration and is not implied by the rest. At `n = 0` every
+selector is forced to `0` by `bitMask w 0 = 0`, so all three target disjunctions take their
+zero-selector branch and nothing else mentions `2 ^ w` from below: `w = 1`, `R = 0` satisfies
+every other condition while `sliceP.length = 3 < 2` is false. It has to be re-exported here
+because `Aggregation` bundles it on the other side. -/
 def SliceGlobalConditions (w n R Xpc X0 S0 S1p S1z S2 Res : ℕ) : Prop :=
+  sliceP.length < 2 ^ w ∧
   Nat.IsBinarySubmask Xpc (laneMask w (n + 1)) ∧
   Nat.IsBinarySubmask X0 (laneMask w (n + 1)) ∧
   R = Xpc + 2 ^ w * X0 ∧
