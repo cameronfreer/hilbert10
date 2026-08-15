@@ -42,6 +42,7 @@ import Hilbert10Experimental.RegisterMachineUnpair
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
 import Hilbert10Experimental.Spike.Sequences
+import Hilbert10Experimental.Spike.SelectorMask
 
 /-!
 # Staging area
