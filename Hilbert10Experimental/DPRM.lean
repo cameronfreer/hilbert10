@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.CodeMachine
+import Hilbert10Experimental.DiophToRE
+import Hilbert10Experimental.TupleCoding
 import Hilbert10Experimental.Spike.SelectorRegsDioph
 import Mathlib.Computability.RE
 
@@ -27,15 +29,24 @@ which is the unary case of DPRM.
 stated for `Program (k + 1)`, so the two fit with no side condition: there is no `Aggregation 0`
 to discharge, because a compiled machine always has at least one register.
 
-## Scope
+## From `ℕ` to tuples
 
-`ℕ` only. Tuples are the next file: a machine consumes one number, while an `n`-ary predicate
-receives a `Fin n → ℕ`.
+A machine consumes one number, while an `n`-ary predicate receives a `Fin n → ℕ`. The bridge is
+`TupleCoding`, used in both directions: its decoder is computable, which carries a recursively
+enumerable predicate on tuples to one on `ℕ`; its encoder's graph is Diophantine, which carries
+the resulting condition back.
+
+## The public statements
+
+`REPred.dioph` and `dioph_iff_rePred` mention only `REPred` and `Dioph`. Nothing about register
+machines, packed runs, selectors or `ExpDioph` appears in them, and the tuple coding is an
+implementation detail of the proof rather than part of the interface.
 
 ## Main results
 
 * `Nat.Partrec.graph_dioph`, `Nat.Partrec.dom_dioph`
-* `REPred.dioph_nat` — the unary case of DPRM
+* `REPred.dioph_nat` — the unary case
+* `REPred.dioph`, `dioph_iff_rePred` — **DPRM**
 -/
 
 namespace Hilbert10
@@ -94,5 +105,35 @@ theorem REPred.dioph_nat {R : ℕ → Prop} (h : REPred R) : Dioph {v : Fin 1 �
     Set.ext fun v => (hdom (v 0)).symm
   rw [hset]
   exact Nat.Partrec.dom_dioph (Partrec.nat_iff.mp hf)
+
+/-! ### From `ℕ` to tuples -/
+
+/-- **DPRM.** A recursively enumerable predicate on `Fin n`-tuples is Diophantine.
+
+The tuple is coded into one number, the unary case is applied to the decoded predicate, and the
+coding is imposed by its own Diophantine graph. -/
+theorem REPred.dioph {n : ℕ} {R : (Fin n → ℕ) → Prop} (h : REPred R) :
+    Dioph {x : Fin n → ℕ | R x} := by
+  have hRE : REPred fun z : ℕ => R (tupleDecode n z) :=
+    Partrec.comp h (computable_tupleDecode n)
+  have h1 : Dioph {v : Fin 1 → ℕ | R (tupleDecode n (v 0))} := REPred.dioph_nat hRE
+  have h2 : Dioph {u : (Fin n ⊕ Unit) → ℕ | R (tupleDecode n (u (.inr ())))} :=
+    Dioph.reindex_dioph (Fin n ⊕ Unit) (fun _ : Fin 1 => (Sum.inr () : Fin n ⊕ Unit)) h1
+  have h3 : Dioph {u : (Fin n ⊕ Unit) → ℕ |
+      tupleCode (fun i => u (.inl i)) = u (.inr ())} := (expDioph_tupleCode_graph n).dioph
+  refine ((h3.inter h2).ex_dioph).ext fun v => ?_
+  simp only [Set.mem_setOf_eq, Set.mem_inter_iff, Sum.elim_inl, Sum.elim_inr]
+  constructor
+  · rintro ⟨x, hcode, hR⟩
+    rw [← hcode] at hR
+    rwa [tupleDecode_tupleCode] at hR
+  · intro hv
+    exact ⟨fun _ => tupleCode v, rfl, by rwa [tupleDecode_tupleCode]⟩
+
+/-- **The characterisation.** Over the naturals, Diophantine and recursively enumerable coincide
+for predicates on tuples. -/
+theorem dioph_iff_rePred {n : ℕ} (R : (Fin n → ℕ) → Prop) :
+    Dioph {x : Fin n → ℕ | R x} ↔ REPred R :=
+  ⟨Dioph.rePred, REPred.dioph⟩
 
 end Hilbert10

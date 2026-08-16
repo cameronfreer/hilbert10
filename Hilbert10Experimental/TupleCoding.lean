@@ -67,11 +67,11 @@ theorem tupleDecode_tupleCode : ∀ {n : ℕ} (v : Fin n → ℕ), tupleDecode n
   | n + 1, v => by
     funext i
     refine Fin.cases ?_ ?_ i
-    · show (tupleDrop 0 (tupleCode v)).unpair.1 = v 0
+    · change (tupleDrop 0 (tupleCode v)).unpair.1 = v 0
       rw [tupleCode_succ]
       simp [tupleDrop]
     · intro j
-      show (tupleDrop ((j : ℕ) + 1) (tupleCode v)).unpair.1 = v j.succ
+      change (tupleDrop ((j : ℕ) + 1) (tupleCode v)).unpair.1 = v j.succ
       rw [tupleCode_succ]
       have : tupleDrop ((j : ℕ) + 1) (Nat.pair (v 0) (tupleCode fun i => v i.succ))
           = tupleDrop (j : ℕ) (tupleCode fun i => v i.succ) := by
