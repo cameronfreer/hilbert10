@@ -314,7 +314,60 @@ theorem of_eq {s t : ExpTerm α} : ExpDioph {v | s.eval v = t.eval v} := by
   simp only [Set.mem_setOf_eq, ExpTerm.eval_map]
   exact ⟨fun h => ⟨PEmpty.elim, by simpa using h⟩, fun ⟨_, hw⟩ => by simpa using hw⟩
 
+/-- The trivial condition. Needed as the base case of a finite conjunction, and as the branch
+a statically false side condition collapses to. -/
+theorem of_true : ExpDioph (Set.univ : Set (α → ℕ)) :=
+  (of_eq (s := (.const 0 : ExpTerm α)) (t := .const 0)).congr fun _ => by simp
+
+/-- A conjunction indexed by a list. Distinct from `ex`, whose quantifier ranges over an input
+of the problem: the length here is fixed when the condition is written down. -/
+theorem list_and {ι : Type} {S : ι → Set (α → ℕ)} (h : ∀ i, ExpDioph (S i)) :
+    ∀ l : List ι, ExpDioph {v | ∀ i ∈ l, v ∈ S i}
+  | [] => of_true.congr fun _ => by simp
+  | i :: l => (((h i).and (list_and h l)).congr fun v => by
+      simp only [Set.mem_inter_iff, Set.mem_setOf_eq, List.mem_cons]
+      constructor
+      · rintro ⟨hi, hl⟩ j (rfl | hj)
+        · exact hi
+        · exact hl j hj
+      · intro hall
+        exact ⟨hall i (Or.inl rfl), fun j hj => hall j (Or.inr hj)⟩)
+
+/-- **A finite conjunction over a fixed index type.** The number of conjuncts is determined by
+the problem, not by its input, so this adds no quantifier: it unfolds to nested `and`. -/
+theorem fin_and {ι : Type} [Finite ι] {S : ι → Set (α → ℕ)} (h : ∀ i, ExpDioph (S i)) :
+    ExpDioph {v | ∀ i, v ∈ S i} := by
+  have : Fintype ι := Fintype.ofFinite ι
+  exact (list_and h (Finset.univ : Finset ι).toList).congr fun v => by
+    simp [Finset.mem_toList]
+
 end ExpDioph
+
+/-! ### Finite sums of terms
+
+A coefficient-weighted sum over a fixed index type is a term, built by folding: again the
+length is fixed when the term is written down. -/
+
+namespace ExpTerm
+
+/-- The sum of a finite family of terms. -/
+noncomputable def sumTerm {ι : Type} [Fintype ι] (t : ι → ExpTerm α) : ExpTerm α :=
+  (((Finset.univ : Finset ι).toList).map t).foldr ExpTerm.add (ExpTerm.const 0)
+
+theorem eval_foldr_add (v : α → ℕ) :
+    ∀ l : List (ExpTerm α),
+      (l.foldr ExpTerm.add (ExpTerm.const 0)).eval v = (l.map (fun t => t.eval v)).sum
+  | [] => rfl
+  | t :: l => by
+    simp only [List.foldr_cons, List.map_cons, List.sum_cons, eval]
+    rw [eval_foldr_add v l]
+
+@[simp] theorem eval_sumTerm {ι : Type} [Fintype ι] (t : ι → ExpTerm α) (v : α → ℕ) :
+    (sumTerm t).eval v = ∑ i, (t i).eval v := by
+  rw [sumTerm, eval_foldr_add, List.map_map]
+  exact Finset.sum_map_toList Finset.univ fun i => (t i).eval v
+
+end ExpTerm
 
 /-! ### Acceptance tests
 

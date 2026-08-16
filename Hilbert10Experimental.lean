@@ -47,6 +47,7 @@ import Hilbert10Experimental.Spike.SelectorSlice
 import Hilbert10Experimental.Spike.SelectorSliceDioph
 import Hilbert10Experimental.Spike.SelectorProgram
 import Hilbert10Experimental.Spike.SelectorProgramGlobal
+import Hilbert10Experimental.Spike.SelectorProgramDioph
 
 /-!
 # Staging area
