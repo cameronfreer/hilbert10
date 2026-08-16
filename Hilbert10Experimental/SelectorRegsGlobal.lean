@@ -3,13 +3,12 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.Spike.SelectorRegs
-import Hilbert10Experimental.Spike.SelectorProgramGlobal
+import Hilbert10Experimental.SelectorRegs
 
 /-!
 # The selector encoding for many registers: the global layer
 
-#49, phase 4, second layer. `Spike/SelectorRegs` reduced the encoded step relation for an
+#49, phase 4, second layer. `SelectorRegs` reduced the encoded step relation for an
 arbitrary `P : Program (k + 1)` to `BlockStepK`. This file packs the blocks.
 
 ## The lane family

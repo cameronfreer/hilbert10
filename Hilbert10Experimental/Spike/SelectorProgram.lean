@@ -80,32 +80,6 @@ def zeroBranch : Instr 1 → ℕ
 
 end Instr
 
-/-! ### Sums against a one-hot family -/
-
-/-- A sum against an index indicator collapses to one term. -/
-theorem sum_indicator {L m : ℕ} (h : m < L) (f : Fin L → ℕ) :
-    ∑ p : Fin L, (if (p : ℕ) = m then f p else 0) = f ⟨m, h⟩ := by
-  rw [Finset.sum_congr rfl (g := fun p : Fin L => if p = ⟨m, h⟩ then f p else 0) fun p _ => ?_]
-  · simp
-  · by_cases hp : (p : ℕ) = m
-    · rw [if_pos hp, if_pos (Fin.ext hp)]
-    · rw [if_neg hp, if_neg (fun he : p = ⟨m, h⟩ => hp (by rw [he]))]
-
-/-- A sum whose family vanishes off one index collapses to that index. -/
-theorem sum_eq_of_vanishing {L : ℕ} {g : Fin L → ℕ} {q : Fin L} (h : ∀ p, p ≠ q → g p = 0) :
-    ∑ p : Fin L, g p = g q :=
-  Finset.sum_eq_single q (fun p _ hp => h p hp) (fun hq => absurd (Finset.mem_univ q) hq)
-
-/-- A family of naturals summing to `1` is `1` at one index and `0` everywhere else. -/
-theorem exists_unique_of_sum_eq_one {L : ℕ} {g : Fin L → ℕ} (h : ∑ p : Fin L, g p = 1) :
-    ∃ q, g q = 1 ∧ ∀ p, p ≠ q → g p = 0 := by
-  obtain ⟨q, -, hq⟩ := Finset.exists_ne_zero_of_sum_ne_zero (by omega : ∑ p : Fin L, g p ≠ 0)
-  have hsplit : g q + ∑ p ∈ Finset.univ.erase q, g p = 1 := by
-    rw [Finset.add_sum_erase _ _ (Finset.mem_univ q)]; exact h
-  refine ⟨q, by omega, fun p hp => ?_⟩
-  have hz : ∑ p ∈ Finset.univ.erase q, g p = 0 := by omega
-  exact (Finset.sum_eq_zero_iff.mp hz) p (Finset.mem_erase.mpr ⟨hp, Finset.mem_univ p⟩)
-
 /-! ### The blockwise conditions -/
 
 /-- **The selector conditions at one step, for an arbitrary one-register program.**

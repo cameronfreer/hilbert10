@@ -3,13 +3,13 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.Spike.SelectorProgramDioph
-import Hilbert10Experimental.Spike.SelectorRegsGlobal
+import Hilbert10Experimental.AcceptsDioph
+import Hilbert10Experimental.SelectorRegsGlobal
 
 /-!
 # `Aggregation (k + 1)`
 
-#49, phase 4, final layer. `Spike/SelectorRegsGlobal` reduced the bounded conjunction of encoded
+#49, phase 4, final layer. `SelectorRegsGlobal` reduced the bounded conjunction of encoded
 steps, for an arbitrary `P : Program (k + 1)`, to `GlobalConditionsK`. Representing that
 discharges `Aggregation` at every register count.
 

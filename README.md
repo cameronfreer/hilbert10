@@ -5,20 +5,26 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-Active development. The public spine carries reviewed results; further completed work stays in
-staging until promotion. The endpoint below is a target API rather than a status table, and
+Semantic DPRM over `ℕ` is proved in staging. Promotion into the reviewed public spine is
+pending. Remaining v1 work derives RE-completeness and undecidability of `NatSolvable`; v2
+relates natural and integer solutions.
+
+The public spine carries reviewed results; completed work stays in staging until promotion, and
 [issue #1](https://github.com/cameronfreer/hilbert10/issues/1) records current progress. The
 difference between the two libraries is a guarantee, not a build setting — see
 [verification](#verification).
 
-## Intended endpoint
+## Main result and remaining endpoints
 
-The statements this development is aimed at — a target list, not an inventory of what the
-library currently provides:
+Proved:
 
 ```lean
 theorem dioph_iff_rePred {n : ℕ} (R : (Fin n → ℕ) → Prop) : Dioph {x | R x} ↔ REPred R
+```
 
+Still open — the H10 endpoints that consume it:
+
+```lean
 theorem rePred_natSolvable : REPred NatSolvable
 theorem rePred_manyOneReducible_natSolvable {R : ℕ → Prop} : REPred R → R ≤₀ NatSolvable
 theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable
@@ -51,12 +57,12 @@ of this development.
 
 ```
    REPred R  ──────────────────────────►  Dioph {x | R x}
-       ▲      DPRM core — assembly remaining      │
+       ▲      semantic DPRM — proved              │
        │                                          │
        └──────────────────────────────────────────┘
                    the easy direction
 
-   the core, at the granularity where the remaining work is visible:
+   proof architecture:
 
      machine graph  ──►  semantic packed run  ──►  ExpDioph  ──►  Dioph
                                              ▲                ▲
@@ -79,9 +85,8 @@ transitions are replaced by a fixed number of identities between packed numbers,
 number of side conditions determined by the program and its register count rather than by the run
 length. No bounded universal quantifier is represented anywhere.
 
-What remains between here and `dioph_iff_rePred` is assembly — choosing a code, choosing its
-machine, and applying the above — together with one small bridge, since a machine consumes a
-single natural number while an `n`-ary predicate receives a tuple.
+The machine graph, selector arithmetisation, finite-tuple bridge, and final assembly are all
+proved. Route-specific machinery disappears from the public theorem.
 
 `ExpDioph` is an internal `ℕ`-valued exponential-polynomial layer; natural-number valuations are
 what make `p ^ q` well specified, and mathlib's `pow_dioph` supplies the bridge down to `Dioph`.
@@ -104,7 +109,10 @@ The primary H10 predicate uses natural-number assignments throughout.
 * a compiler from partial recursive codes to register machines, at the level of the accepted
   relation;
 * the selector encoding, which makes acceptance by an arbitrary register machine an
-  exponential-Diophantine condition.
+  exponential-Diophantine condition;
+* a finite-tuple bridge — an explicit `Nat.pair` coding whose decoder is computable and whose
+  encoder's graph is Diophantine;
+* the assembly of these into `REPred ↔ Dioph`.
 
 Acceptance by a register machine is encoded exactly and in both directions: it is *equivalent*
 to the existence of a packed run at arbitrary run length, and that packed run is described by a
@@ -159,8 +167,9 @@ reasoning behind them are recorded in the module docstrings and in the issues th
 * Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
 * `Mathlib/NumberTheory/Dioph.lean` — the `Dioph`, `DiophFn` and `Poly` API this builds on, and
   the source of the two TODOs this project aims to close. The `Poly`-to-`MvPolynomial` TODO is
-  solved locally here, in the finite normal form and the ring map; the H10 TODO is the
-  unfinished one.
+  solved locally here, in the finite normal form and the ring map. Of the H10 TODO, the semantic
+  DPRM component is now solved locally too; what remains is the natural-root endpoints,
+  promotion into the spine, and Hilbert's integer formulation.
 
 ## License
 

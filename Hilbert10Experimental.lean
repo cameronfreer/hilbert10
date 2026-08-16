@@ -42,15 +42,15 @@ import Hilbert10Experimental.RegisterMachineUnpair
 import Hilbert10Experimental.Spike.DecLoop
 import Hilbert10Experimental.Spike.DecLoopDioph
 import Hilbert10Experimental.Spike.Sequences
-import Hilbert10Experimental.Spike.SelectorMask
+import Hilbert10Experimental.SelectorMask
 import Hilbert10Experimental.Spike.SelectorSlice
 import Hilbert10Experimental.Spike.SelectorSliceDioph
 import Hilbert10Experimental.Spike.SelectorProgram
 import Hilbert10Experimental.Spike.SelectorProgramGlobal
 import Hilbert10Experimental.Spike.SelectorProgramDioph
-import Hilbert10Experimental.Spike.SelectorRegs
-import Hilbert10Experimental.Spike.SelectorRegsGlobal
-import Hilbert10Experimental.Spike.SelectorRegsDioph
+import Hilbert10Experimental.SelectorRegs
+import Hilbert10Experimental.SelectorRegsGlobal
+import Hilbert10Experimental.SelectorRegsDioph
 import Hilbert10Experimental.TupleCoding
 import Hilbert10Experimental.DPRM
 
