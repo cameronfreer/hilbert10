@@ -22,8 +22,12 @@ dependent branch index — the shape of the condition list then does not depend 
 instruction sits at `p`, only its coefficients do.
 
 The per-instruction coefficients are five numbers: `posTarget`, `zeroTarget`, `gain`, `loss`,
-`zeroBranch`. Every condition is a sum over `Fin P.length` of a coefficient times a selector,
-which is the shape `Spike/SelectorMask`'s `fieldsCode_sum_smul` already packs.
+`zeroBranch`. The *aggregate* conditions — one-hotness, the program counter, the jump, the
+register update — are each a sum over `Fin P.length` of a coefficient times a selector, which is
+the shape `Spike/SelectorMask`'s `fieldsCode_sum_smul` already packs. The target-fit implications
+and `Z p ≤ zeroBranch` are not sums: they stay as one side condition per instruction. The
+distinction matters a layer up, where the first group becomes a handful of packed identities and
+the second becomes a finite conjunction whose length is `P.length`.
 
 ## Subtraction-free, still
 
