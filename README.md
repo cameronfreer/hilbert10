@@ -51,27 +51,37 @@ of this development.
 
 ```
    REPred R  ──────────────────────────►  Dioph {x | R x}
-       ▲      DPRM core — in progress             │
+       ▲      DPRM core — assembly remaining      │
        │                                          │
        └──────────────────────────────────────────┘
                    the easy direction
 
-   the core, at the granularity where the remaining gap is visible:
+   the core, at the granularity where the remaining work is visible:
 
      machine graph  ──►  semantic packed run  ──►  ExpDioph  ──►  Dioph
                                              ▲                ▲
-                             bounded aggregation       mathlib's x ^ y
+                              selector encoding       mathlib's x ^ y
 
 
    Dioph {x | R x}  ──►  MvPolynomial (Fin n ⊕ Fin m) ℤ  ──►  PolynomialCode  ──►  NatSolvable
                             finite normal form               encoding        specialisation
 ```
 
-The first arrow of the core is closed in both directions: a partial recursive function's graph
-is the trace relation of a register machine, and that is equivalent to the existence of a single
-number packing the whole run. The second is closed for every part of that statement except one —
-a conjunction of encoded transitions over a variable number of indices. The third is mathlib's
-Diophantineness of `x ^ y`.
+All three arrows of the core are closed. A partial recursive function's graph is the trace
+relation of a register machine; that is equivalent to the existence of a single number packing
+the whole run; and acceptance by an arbitrary register machine is an exponential-Diophantine
+condition, hence Diophantine by mathlib's Diophantineness of `x ^ y`.
+
+The middle arrow was the project's deep risk, because the packed run carries a conjunction of
+encoded transitions over a *variable* number of indices, and a representation of that would have
+been a second Matiyasevich-sized theorem. It is closed by a selector encoding instead: the
+transitions are replaced by a fixed number of identities between packed numbers, plus a finite
+number of side conditions determined by the program and its register count rather than by the run
+length. No bounded universal quantifier is represented anywhere.
+
+What remains between here and `dioph_iff_rePred` is assembly — choosing a code, choosing its
+machine, and applying the above — together with one small bridge, since a machine consumes a
+single natural number while an `n`-ary predicate receives a tuple.
 
 `ExpDioph` is an internal `ℕ`-valued exponential-polynomial layer; natural-number valuations are
 what make `p ^ q` well specified, and mathlib's `pow_dioph` supplies the bridge down to `Dioph`.
@@ -90,12 +100,17 @@ The primary H10 predicate uses natural-number assignments throughout.
 * guarded block packing, together with an exact exponential-Diophantine encoding of one
   unbounded computation — a decrement loop, the spike that fixed the block layout;
 * a register machine with its semantics, and the renaming and concatenation discipline used to
-  combine machines.
+  combine machines;
+* a compiler from partial recursive codes to register machines, at the level of the accepted
+  relation;
+* the selector encoding, which makes acceptance by an arbitrary register machine an
+  exponential-Diophantine condition.
 
-Arbitrary machine runs are already encoded exactly, but semantically: acceptance is
-*equivalent* to the existence of a packed run, in both directions and at arbitrary run
-length. What remains is representing the variable-length conjunction of encoded
-transitions as a single exponential-Diophantine condition.
+Acceptance by a register machine is encoded exactly and in both directions: it is *equivalent*
+to the existence of a packed run at arbitrary run length, and that packed run is described by a
+finite system of exponential-Diophantine conditions. Both halves of the machine route therefore
+exist; joining them into the public statements is bookkeeping over the two libraries' interfaces
+rather than further mathematics.
 
 ## Repository layout
 
