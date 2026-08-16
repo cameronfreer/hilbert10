@@ -27,7 +27,8 @@ invariants — and the reason
 [#39](https://github.com/cameronfreer/hilbert10/issues/39) exists as its own issue.
 
 **Diophantine closure needs its own language.** Their `Drel`/`Dfun` classes (Definitions 2.1,
-2.3) with automated "Diophantine shape recognition" (§2.2) play the role of our
+2.3), with automated Diophantine shape recognition discharged by a `dio_auto` tactic (§2.2),
+play the role of our
 `ExpTerm`/`ExpDioph`: routine closure and witness plumbing become structural, leaving semantic
 equivalences as the real obligations. They also note that the informal literature moves between
 "several equivalent approaches to characterise these relations" (§2.1) and that a mechanisation
@@ -54,13 +55,19 @@ counterexamples rather than a remark
 identical: informal "choose the base large enough" hides the obligation, and the natural first
 choice of base is too small.
 
+This is the most useful of the six agreements, because it is the one that could most easily have
+been dismissed as a local implementation accident. Two mechanisations, on different models with
+different encodings, independently found that a paper-level encoding was short of numerical
+slack, and found it as a *soundness* problem rather than a convenience one.
+
 **Binary submasks via binomial coefficients and Lucas are the right bridge.** They prove
 `a ≼ b ↔ C(b,a) is odd` and derive bitwise operations from it, proving Lucas's theorem for the
 purpose (§5.2, Appendix B); the binomial coefficient is recovered as "the `k`-th digit of the
 development of `(1 + q)^n`" (§5.2). Those are exactly our
-`Nat.isBinarySubmask_iff_odd_choose` and `Nat.choose_eq_baseDigit`. The difference is cost, not
-content: mathlib already had Lucas and the digits API, so our layer is a few short files
-(see [lessons.md §3](lessons.md)).
+`Nat.isBinarySubmask_iff_odd_choose` and `Nat.choose_eq_baseDigit`. The mathematics is the same;
+what differs is what each library already supplied — they prove Lucas for the purpose, we
+imported it. That is a fact about the two environments, not a comparison of the two efforts;
+see [lessons.md §3](lessons.md) for why we do not draw one.
 
 **The summit theorem is short because the infrastructure is not.** Their `DPRM.v` is reported as
 170 lines (Appendix A). Our `DPRM.lean` is 139, and `TupleCoding.lean` another 156 — against an
@@ -102,11 +109,14 @@ by finitely many global identities and masks, whose number depends on the progra
 register count but never on the run length. We dissolved the bounded conjunction rather than
 representing it.
 
-**This does not refute their construction, and does not make ours stronger.** They prove the
-generic closure result — that a Diophantine relation has Diophantine reflexive-transitive
-closure — which is reusable and is a genuine theorem about arbitrary relations. We prove the
-narrower fact needed for compiled register machines. The narrow theorem was substantially
-cheaper in our environment; the general one is worth more.
+**This does not refute their construction, and neither final theorem is stronger for it.** What
+they prove at that layer — bounded-universal elimination, and that a Diophantine relation has
+Diophantine reflexive-transitive closure — is strictly more *reusable as an intermediate
+theorem*: it holds of arbitrary relations, and can be applied again elsewhere. Ours is the narrow
+fact needed for compiled register machines and does not generalise. The extra generality belongs
+to that intermediate layer specifically; their final DPRM statement is not stronger than
+`dioph_iff_rePred`. The two endpoints do differ, but in another way — Theorem 8.3 computes an
+equation where ours is semantic, as below. The narrow theorem was substantially cheaper here.
 
 ---
 

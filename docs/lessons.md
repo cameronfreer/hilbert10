@@ -89,21 +89,25 @@ hides nearly all of the soundness obligations.
 
 ---
 
-## 3. Binary masking was much cheaper here than mechanisation costs elsewhere suggest
+## 3. Formalisation cost is dependency-sensitive, so estimates do not transfer
 
-The feared coefficient-extraction theorem is
-`Hilbert10Experimental/ForMathlib/ChooseDigit.lean` — a 90-line file, of which the headline
-`Nat.choose_eq_baseDigit` is 19 lines, composed from mathlib's existing digits API
-(`Nat.digits_ofDigits`, `Nat.getD_digits`), binomial bounds and `add_pow`. Lucas-to-submask and
-the masking layer (`ForMathlib/BinarySubmask.lean`, `ForMathlib/SubmaskChoose.lean`,
-`ExpDiophChoose.lean`) were similarly small.
+Coefficient extraction initially looked like a major number-theoretic development. In the pinned
+mathlib the required ingredients were already present, and
+`Hilbert10Experimental/ForMathlib/ChooseDigit.lean` is a small adapter around the existing
+digits, binomial and arithmetic APIs — `Nat.digits_ofDigits` and `Nat.getD_digits` do the
+extraction, `add_pow` supplies the binomial theorem, and `Nat.choose_le_two_pow` the bound.
+Lucas-to-submask and the masking layer (`ForMathlib/BinarySubmask.lean`,
+`ForMathlib/SubmaskChoose.lean`, `ExpDiophChoose.lean`) went the same way.
 
-The Isabelle account reports binary-digit infrastructure as a substantial share of its effort,
-because those utilities had to be built there. Mathlib's `Nat.testBit`, digits, Lucas and
-binomial APIs changed the economics completely.
+Other mechanisations report substantial work around the same mathematical family in environments
+with different supporting libraries. Those figures are not directly comparable — the theorem
+scope differs (one digit lemma here, versus Lucas, bit operations, sparse ciphers and
+bounded-universal elimination there), the inherited libraries differ, and so do the proof
+assistants and their reporting conventions.
 
-**The lesson.** Proof-cost estimates do not transfer between libraries. A step that dominated
-one mechanisation can be a page in another, and the reverse is equally possible.
+**The lesson.** Literature-level difficulty is not a reliable estimate of marginal formalisation
+cost in a particular library. Inspect the pinned library before estimating from the literature;
+the same step can be a page or a month depending on what is already there, in either direction.
 
 ---
 
@@ -187,7 +191,7 @@ Mostly the literature was fine and our abstractions were too coarse.
 | "Digit bounds prevent the bad decrement encoding" | **False.** A no-borrow guard bit is required (`Spike/DecLoop.lean`). |
 | "Bound every jump target in the program" | **Too strong,** and incompatible with a sharp step equivalence. Only selected targets must fit. |
 | "The `n`-ary theorem follows from the unary one by reindexing" | **Incomplete.** An explicit tuple graph is required (`TupleCoding.lean`). |
-| "Binomial coefficient extraction will take weeks" | **False in this library** — most of the infrastructure was already in mathlib. |
+| "Binomial coefficient extraction will take weeks" | **Not in this library** — the ingredients were already in mathlib. The estimate came from literature-level difficulty, which does not predict marginal cost. |
 | "Fixing the representing polynomial requires classical choice" | **Imprecise.** Existential elimination into a proposition-valued reduction does not. |
 | "Unpairing requires implementing `Nat.sqrt` on the machine" | **False.** Enumerating `Nat.pair`'s shells via `pairNext` gives a simpler terminating machine with an exact step bound (`ForMathlib/PairingEnumeration.lean`, #51). |
 
@@ -206,6 +210,12 @@ External:
   — the register-machine route, and the source of the binary-digit cost comparison.
 * Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
 
+Sizes, as a snapshot rather than a benchmark: `ForMathlib/ChooseDigit.lean` is 90 lines, of
+which `Nat.choose_eq_baseDigit` is 19; `DPRM.lean` is 139 and `TupleCoding.lean` 156, against an
+import closure of 45 modules and roughly 11,700 lines. These are measurements of this repository
+at the commit that closed #23. They are not evidence that any proof here is shorter than a proof
+elsewhere — see §3 for why that comparison does not survive contact with the confounders.
+
 Internal: decisions are recorded in the issues they were made in, and the module docstrings cite
 those issues. The route decision is #15; the arithmetisation epic is #21; the aggregation
 obstacle and its dissolution are #49; the final assembly is #23. Where a claim above is about
@@ -213,6 +223,6 @@ cost or size, it is measured against the files named, at the commit that closed 
 issue.
 
 Two caveats on reading this document. First, the counterexamples are regressions in the build,
-so they stay true; the cost claims are snapshots and will drift. Second, the comparison in §1 and
-§3 rests on how the two cited papers describe their own developments — the checkable part is what
-this repository does, not what they had to do.
+so they stay true; the cost claims are snapshots and will drift. Second, the comparison in §1 rests on how
+the cited papers describe their own developments — the checkable part is what this repository
+does, not what they had to do. §3 deliberately makes no cross-project cost claim.
