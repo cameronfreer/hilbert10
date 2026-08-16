@@ -50,8 +50,10 @@ removes the time dependence and reports a fixed system of equations
 2019](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ITP.2019.33)). What was wrong
 was our own summary: the frozen comparison in
 [#15](https://github.com/cameronfreer/hilbert10/issues/15) treated the two routes as needing the
-same theorem. They do not. The direct route does; this one eliminated its specialised
-conjunction through selectors. [comparison.md](comparison.md) sets the two side by side in
+same theorem. What we actually measured is narrower — the direct-route spike
+(`Spike/Sequences.lean`) ran into bounded aggregation and did not eliminate it, and this route
+did eliminate its specialised conjunction. Whether some specialised alternative exists on the
+direct route was not settled either way. [comparison.md](comparison.md) sets the two side by side in
 detail, including where they agree.
 
 ---
@@ -187,7 +189,7 @@ Mostly the literature was fine and our abstractions were too coarse.
 
 | Belief | Status |
 |---|---|
-| "Both routes eventually need the same bounded-universal theorem" | **False.** The direct route does; the machine route eliminates its specialised conjunction through selectors (#49). |
+| "Both routes eventually need the same bounded-universal theorem" | **Not established, and false for this route.** The machine route eliminates its specialised conjunction through selectors (#49). The direct-route spike met bounded aggregation and did not eliminate it; whether it could was never settled. |
 | "Digit bounds prevent the bad decrement encoding" | **False.** A no-borrow guard bit is required (`Spike/DecLoop.lean`). |
 | "Bound every jump target in the program" | **Too strong,** and incompatible with a sharp step equivalence. Only selected targets must fit. |
 | "The `n`-ary theorem follows from the unary one by reindexing" | **Incomplete.** An explicit tuple graph is required (`TupleCoding.lean`). |

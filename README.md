@@ -116,9 +116,9 @@ The primary H10 predicate uses natural-number assignments throughout.
 
 Acceptance by a register machine is encoded exactly and in both directions: it is *equivalent*
 to the existence of a packed run at arbitrary run length, and that packed run is described by a
-finite system of exponential-Diophantine conditions. Both halves of the machine route therefore
-exist; joining them into the public statements is bookkeeping over the two libraries' interfaces
-rather than further mathematics.
+finite system of exponential-Diophantine conditions. Those layers are joined by `REPred.dioph`
+and `dioph_iff_rePred`; what remains is promotion into the public spine, not further
+mathematics.
 
 ## Repository layout
 
@@ -174,6 +174,24 @@ mechanisation of Larchey-Wendling and Forster.
   solved locally here, in the finite normal form and the ring map. Of the H10 TODO, the semantic
   DPRM component is now solved locally too; what remains is the natural-root endpoints,
   promotion into the spine, and Hilbert's integer formulation.
+
+## Development provenance
+
+This project was developed with substantial assistance from Claude-family and OpenAI GPT/Codex
+models. They were used for planning, Lean code and proof drafts, debugging, documentation, and
+cross-review of proposed designs and proofs. The workflows used
+[lean4-skills](https://github.com/cameronfreer/lean4-skills) and
+[lean-lsp-mcp](https://github.com/oOo0oOo/lean-lsp-mcp) to inspect and test against the pinned
+Lean/mathlib environment.
+
+The repository author selected the architecture, reviewed and revised the generated material,
+verified the cited claims, and takes responsibility for the resulting mathematics and code.
+Lean's kernel, the build, the import-boundary check, and the axiom audit — not model review —
+are the trust boundary.
+
+AI use is disclosed separately when code is submitted upstream, according to the receiving
+project's policy; mathlib's is
+[here](https://leanprover-community.github.io/contribute/index.html#use-of-ai).
 
 ## License
 

@@ -10,7 +10,7 @@ Theirs is the first full mechanisation of DPRM. It reaches several of our most i
 engineering conclusions independently, and its central arithmetisation is materially different
 from ours. Both facts are worth recording: the agreements are evidence that those lessons are
 about formalising this theorem rather than about Lean, and the difference is the one place where
-our route is genuinely cheaper.
+this route required a narrower theorem in this environment.
 
 Section numbers below refer to the LMCS version, and quoted phrases are from it.
 
