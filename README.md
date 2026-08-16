@@ -162,7 +162,9 @@ The milestone plan and dependency graph live in
 [issue #1](https://github.com/cameronfreer/hilbert10/issues/1). Design decisions and the
 reasoning behind them are recorded in the module docstrings and in the issues they cite.
 [docs/lessons.md](docs/lessons.md) is a retrospective on what the DPRM formalisation actually
-cost, with the counterexamples and cost claims tied to the files that support them.
+cost, with the counterexamples and cost claims tied to the files that support them;
+[docs/comparison.md](docs/comparison.md) compares the route taken here with the Coq
+mechanisation of Larchey-Wendling and Forster.
 
 ## References
 

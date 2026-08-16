@@ -51,7 +51,8 @@ removes the time dependence and reports a fixed system of equations
 was our own summary: the frozen comparison in
 [#15](https://github.com/cameronfreer/hilbert10/issues/15) treated the two routes as needing the
 same theorem. They do not. The direct route does; this one eliminated its specialised
-conjunction through selectors.
+conjunction through selectors. [comparison.md](comparison.md) sets the two side by side in
+detail, including where they agree.
 
 ---
 
