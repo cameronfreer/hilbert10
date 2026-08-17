@@ -26,3 +26,5 @@ import Hilbert10.Internal.RegisterMachinePair
 -- tranche 3c: the partial-recursive-code compiler and the packed-run interface
 import Hilbert10.Internal.CodeMachine
 import Hilbert10.Internal.AcceptsDioph
+-- tranche 4: the selector arithmetisation
+import Hilbert10.Internal.SelectorRegsDioph

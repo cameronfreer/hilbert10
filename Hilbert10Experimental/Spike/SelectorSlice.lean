@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.SelectorMask
+import Hilbert10.Internal.SelectorMask
 
 /-!
 # Acceptance slice for the selector encoding: the blockwise layer

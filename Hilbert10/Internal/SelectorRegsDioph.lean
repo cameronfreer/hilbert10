@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.Internal.AcceptsDioph
-import Hilbert10Experimental.SelectorRegsGlobal
+import Hilbert10.Internal.SelectorRegsGlobal
 
 /-!
 # `Aggregation (k + 1)`
