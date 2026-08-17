@@ -22,9 +22,22 @@ development produces a code uniform in `R`, and nothing needs one — the reduct
 `fun a => code.instantiate [a]` is computable because `code` is a constant. See
 `Specialization.lean` and #1's scope argument.
 
+## Arbitrary domains, including the empty one
+
+`REPred.manyOneReducible_natSolvable'` is the same statement for a predicate on any
+`Primcodable` type, with **no `Inhabited` hypothesis**. #26 offered two ways to get there:
+carry `[Inhabited α]`, or hand-roll the transported predicate `fun n => ∃ a, encode a = n ∧ R a`.
+Neither was needed. Nonemptiness is decided inside the proof: when `α` is inhabited, mathlib's
+`toNat` applies and `manyOneReducible_toNat` supplies the reduction; when it is empty, any
+computable function is a reduction because the equivalence it has to satisfy is vacuous.
+
+Recording that so it is not re-litigated: the case split costs two lines and keeps the
+hypothesis off the statement, which is what a completeness theorem should look like.
+
 ## Main results
 
 * `Hilbert10.REPred.manyOneReducible_natSolvable`
+* `Hilbert10.REPred.manyOneReducible_natSolvable'`
 -/
 
 namespace Hilbert10
@@ -45,5 +58,17 @@ theorem REPred.manyOneReducible_natSolvable {R : ℕ → Prop} (hR : REPred R) :
     R ≤₀ NatSolvable :=
   representsNat_manyOneReducible_natSolvable
     ((dioph_iff_exists_fin_mvPolynomial _).mp (REPred.dioph (REPred.fin_one hR)))
+
+/-- **The same, for a predicate on any `Primcodable` type.** No `Inhabited` hypothesis: the empty
+case is handled separately, where the reduction's equivalence is vacuous. -/
+theorem REPred.manyOneReducible_natSolvable' {α : Type*} [Primcodable α] {R : α → Prop}
+    (hR : REPred R) : R ≤₀ NatSolvable := by
+  by_cases hne : Nonempty α
+  · obtain ⟨a₀⟩ := hne
+    haveI : Inhabited α := ⟨a₀⟩
+    have hRE : REPred fun n : ℕ => R ((Encodable.decode (α := α) n).getD default) :=
+      Partrec.comp hR (Computable.option_getD Computable.decode (Computable.const default))
+    exact manyOneReducible_toNat.trans (REPred.manyOneReducible_natSolvable hRE)
+  · exact ⟨fun _ => ⟨[]⟩, Computable.const _, fun a => absurd ⟨a⟩ hne⟩
 
 end Hilbert10
