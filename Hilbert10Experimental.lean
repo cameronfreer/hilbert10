@@ -12,12 +12,12 @@ import Hilbert10.Internal.ForMathlib.PrimrecNat
 import Hilbert10Experimental.HaltingComplete
 import Hilbert10.Internal.ForMathlib.RightRename
 import Hilbert10Experimental.PackedRun
-import Hilbert10Experimental.PolyBridge
-import Hilbert10Experimental.NormalForm
-import Hilbert10Experimental.PolynomialCodeComp
-import Hilbert10Experimental.ExistsCodeRepresents
-import Hilbert10Experimental.Instantiate
-import Hilbert10Experimental.Specialization
+import Hilbert10.PolyBridge
+import Hilbert10.NormalForm
+import Hilbert10.PolynomialCodeComp
+import Hilbert10.ExistsCodeRepresents
+import Hilbert10.Instantiate
+import Hilbert10.Specialization
 import Hilbert10Experimental.CleanScratch
 import Hilbert10Experimental.CodeComp
 import Hilbert10Experimental.CodeMachine
@@ -26,7 +26,7 @@ import Hilbert10Experimental.CodePrec
 import Hilbert10Experimental.CodeRfind
 import Hilbert10Experimental.ConfigCoding
 import Hilbert10Experimental.ConfigCodingDioph
-import Hilbert10Experimental.DiophToRE
+import Hilbert10.DiophToRE
 import Hilbert10Experimental.ExpDioph
 import Hilbert10Experimental.ExpDiophChoose
 import Hilbert10Experimental.AcceptsDioph

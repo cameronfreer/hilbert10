@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.CodeMachine
-import Hilbert10Experimental.DiophToRE
+import Hilbert10.DiophToRE
 import Hilbert10Experimental.TupleCoding
 import Hilbert10Experimental.SelectorRegsDioph
 import Mathlib.Computability.RE

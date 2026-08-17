@@ -145,7 +145,7 @@ def compile : Nat.Partrec.Code → PolynomialCode   -- never needed
 was written. The proof fixes a representing polynomial existentially inside a proposition, and
 the eventual H10 reduction specialises that fixed code computably
 ([#1](https://github.com/cameronfreer/hilbert10/issues/1) records the scope argument;
-`Hilbert10Experimental/Specialization.lean` carries it out).
+`Hilbert10/Specialization.lean` carries it out).
 
 Two precisions worth keeping. Eliminating an existential into a `Prop` is `Exists.elim`, which
 needs no choice. And `Classical.choice` in the final axiom list does not come from that step: it

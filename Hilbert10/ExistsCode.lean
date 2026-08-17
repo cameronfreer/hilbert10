@@ -12,7 +12,7 @@ import Mathlib.Logic.Equiv.Fin.Basic
 Issue #11, core half. This module imports only #10, so its independence from the
 `Poly`/`MvPolynomial` bridge is a fact about the Lean module graph and not merely a claim
 in prose. The `RepresentsNat` corollary, which does need #5, lives in
-`Hilbert10Experimental/ExistsCodeRepresents.lean`.
+`Hilbert10/ExistsCodeRepresents.lean`.
 
 ## The variable contract
 

@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.DPRM
-import Hilbert10Experimental.Specialization
+import Hilbert10.Specialization
 
 /-!
 # H10 endpoints: recursively enumerable predicates reduce to `NatSolvable`

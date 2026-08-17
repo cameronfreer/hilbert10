@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.ExistsCode
-import Hilbert10Experimental.PolyBridge
+import Hilbert10.PolyBridge
 
 /-!
 # Coding a polynomial that represents a relation
