@@ -23,3 +23,6 @@ import Hilbert10.Internal.ExpDiophChoose
 import Hilbert10.Internal.BlockPacking
 -- tranche 3b: the register machine, its realisation contracts and macros
 import Hilbert10.Internal.RegisterMachinePair
+-- tranche 3c: the partial-recursive-code compiler and the packed-run interface
+import Hilbert10.Internal.CodeMachine
+import Hilbert10.Internal.AcceptsDioph

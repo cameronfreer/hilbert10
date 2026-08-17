@@ -3,9 +3,9 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.ConfigCodingDioph
+import Hilbert10.Internal.ConfigCodingDioph
 import Hilbert10.Internal.ExpDiophChoose
-import Hilbert10Experimental.PackedRun
+import Hilbert10.Internal.PackedRun
 
 /-!
 # The machine route, reduced to one obligation

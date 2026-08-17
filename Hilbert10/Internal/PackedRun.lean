@@ -5,7 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10.Internal.BlockPacking
 import Hilbert10.Internal.CleanScratch
-import Hilbert10Experimental.RunWidth
+import Hilbert10.Internal.RunWidth
 
 /-!
 # A whole run as one number
