@@ -51,9 +51,9 @@ import Hilbert10Experimental.Spike.SelectorProgramDioph
 import Hilbert10.Internal.SelectorRegs
 import Hilbert10.Internal.SelectorRegsGlobal
 import Hilbert10.Internal.SelectorRegsDioph
-import Hilbert10Experimental.TupleCoding
-import Hilbert10Experimental.DPRM
-import Hilbert10Experimental.Endpoints
+import Hilbert10.Internal.TupleCoding
+import Hilbert10.DPRM
+import Hilbert10.Endpoints
 
 /-!
 # Staging area

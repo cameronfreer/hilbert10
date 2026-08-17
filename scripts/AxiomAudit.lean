@@ -44,9 +44,18 @@ def headlineDecls : List Name :=
    ``Hilbert10.PolynomialCode.hasNatRoot_iff,
    ``Hilbert10.NatSolvable,
    ``Hilbert10.natSolvable_iff_arity,
-   -- the easy direction of DPRM, promoted in #52's tranche 2
+   -- DPRM, both directions (#14, #23)
    ``Hilbert10.Dioph.rePred,
-   ``Hilbert10.rePred_natSolvable]
+   ``Hilbert10.REPred.dioph,
+   ``Hilbert10.dioph_iff_rePred,
+   ``Hilbert10.Nat.Partrec.graph_dioph,
+   ``Hilbert10.Nat.Partrec.dom_dioph,
+   -- the H10 endpoints (#14, #25, #26, #27)
+   ``Hilbert10.rePred_natSolvable,
+   ``Hilbert10.REPred.manyOneReducible_natSolvable,
+   ``Hilbert10.natSolvable_re_complete,
+   ``Hilbert10.halting_manyOneReducible_natSolvable,
+   ``Hilbert10.not_computablePred_natSolvable]
 
 #eval show CoreM Unit from do
   for t in headlineDecls do

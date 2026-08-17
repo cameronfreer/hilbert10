@@ -5,7 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10.Internal.CodeMachine
 import Hilbert10.DiophToRE
-import Hilbert10Experimental.TupleCoding
+import Hilbert10.Internal.TupleCoding
 import Hilbert10.Internal.SelectorRegsDioph
 import Mathlib.Computability.RE
 
