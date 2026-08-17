@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.PolynomialCodePrimcodable
-import Hilbert10Experimental.ForMathlib.PrimrecInt
-import Hilbert10Experimental.ForMathlib.PrimrecNat
+import Hilbert10.Internal.ForMathlib.PrimrecInt
+import Hilbert10.Internal.ForMathlib.PrimrecNat
 import Mathlib.Computability.Partrec
 import Mathlib.Computability.Primrec.List
 import Mathlib.Tactic.Push
@@ -22,7 +22,7 @@ only part that needs anything about `ℤ`.
 
 `eval` is `ℤ`-valued, and at the pinned mathlib revision the computability library exposes
 no lemmas about `ℤ` at all. That layer lives in
-`Hilbert10Experimental/ForMathlib/PrimrecInt.lean` (issue #36), deliberately separate: it
+`Hilbert10/Internal/ForMathlib/PrimrecInt.lean` (issue #36), deliberately separate: it
 is a mathlib gap rather than anything about this wire format, and it must not be allowed to
 reshape `PolynomialCode` or `evalMonomial`.
 -/
@@ -59,7 +59,7 @@ private theorem evalMonomial_eq_cast (e : MonomialCode) (x : List ℕ) :
     | cons v vs => simp only [evalMonomial, natEvalMonomial, ih]; push_cast; ring
 
 /-- The negative part of a coefficient, as a natural number. Written with `natAbs` and
-`toNat` rather than `(-c).toNat` so that only lemmas already in `ForMathlib/PrimrecInt`
+`toNat` rather than `(-c).toNat` so that only lemmas already in `Internal/ForMathlib/PrimrecInt`
 are needed. -/
 private def negPart (c : ℤ) : ℕ := c.natAbs - c.toNat
 

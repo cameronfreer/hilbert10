@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.RegisterMachineMacros
-import Hilbert10Experimental.ForMathlib.PairingEnumeration
+import Hilbert10.Internal.ForMathlib.PairingEnumeration
 import Mathlib.Data.Fintype.Fin
 import Mathlib.Tactic.FinCases
 

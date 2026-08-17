@@ -95,11 +95,11 @@ hides nearly all of the soundness obligations.
 
 Coefficient extraction initially looked like a major number-theoretic development. In the pinned
 mathlib the required ingredients were already present, and
-`Hilbert10Experimental/ForMathlib/ChooseDigit.lean` is a small adapter around the existing
+`Hilbert10/Internal/ForMathlib/ChooseDigit.lean` is a small adapter around the existing
 digits, binomial and arithmetic APIs — `Nat.digits_ofDigits` and `Nat.getD_digits` do the
 extraction, `add_pow` supplies the binomial theorem, and `Nat.choose_le_two_pow` the bound.
-Lucas-to-submask and the masking layer (`ForMathlib/BinarySubmask.lean`,
-`ForMathlib/SubmaskChoose.lean`, `ExpDiophChoose.lean`) went the same way.
+Lucas-to-submask and the masking layer (`Internal/ForMathlib/BinarySubmask.lean`,
+`Internal/ForMathlib/SubmaskChoose.lean`, `ExpDiophChoose.lean`) went the same way.
 
 Other mechanisations report substantial work around the same mathematical family in environments
 with different supporting libraries. Those figures are not directly comparable — the theorem
@@ -195,7 +195,7 @@ Mostly the literature was fine and our abstractions were too coarse.
 | "The `n`-ary theorem follows from the unary one by reindexing" | **Incomplete.** An explicit tuple graph is required (`TupleCoding.lean`). |
 | "Binomial coefficient extraction will take weeks" | **Not in this library** — the ingredients were already in mathlib. The estimate came from literature-level difficulty, which does not predict marginal cost. |
 | "Fixing the representing polynomial requires classical choice" | **Imprecise.** Existential elimination into a proposition-valued reduction does not. |
-| "Unpairing requires implementing `Nat.sqrt` on the machine" | **False.** Enumerating `Nat.pair`'s shells via `pairNext` gives a simpler terminating machine with an exact step bound (`ForMathlib/PairingEnumeration.lean`, #51). |
+| "Unpairing requires implementing `Nat.sqrt` on the machine" | **False.** Enumerating `Nat.pair`'s shells via `pairNext` gives a simpler terminating machine with an exact step bound (`Internal/ForMathlib/PairingEnumeration.lean`, #51). |
 
 ---
 
@@ -212,7 +212,7 @@ External:
   — the register-machine route, and the source of the binary-digit cost comparison.
 * Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
 
-Sizes, as a snapshot rather than a benchmark: `ForMathlib/ChooseDigit.lean` is 90 lines, of
+Sizes, as a snapshot rather than a benchmark: `Internal/ForMathlib/ChooseDigit.lean` is 90 lines, of
 which `Nat.choose_eq_baseDigit` is 19; `DPRM.lean` is 139 and `TupleCoding.lean` 156, against an
 import closure of 45 modules and roughly 11,700 lines. These are measurements of this repository
 at the commit that closed #23. They are not evidence that any proof here is shorter than a proof

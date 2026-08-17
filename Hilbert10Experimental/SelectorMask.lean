@@ -5,7 +5,7 @@ Authors: Cameron Freer
 -/
 import Hilbert10Experimental.BlockPacking
 import Hilbert10Experimental.ConfigCoding
-import Hilbert10Experimental.ForMathlib.BinarySubmask
+import Hilbert10.Internal.ForMathlib.BinarySubmask
 import Mathlib.Algebra.BigOperators.Fin
 
 /-!

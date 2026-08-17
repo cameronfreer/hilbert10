@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ExpDioph
-import Hilbert10Experimental.ForMathlib.ChooseDigit
-import Hilbert10Experimental.ForMathlib.SubmaskChoose
+import Hilbert10.Internal.ForMathlib.ChooseDigit
+import Hilbert10.Internal.ForMathlib.SubmaskChoose
 
 /-!
 # Binomial coefficients and binary submasks are exponential Diophantine

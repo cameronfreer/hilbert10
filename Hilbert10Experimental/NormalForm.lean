@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.PolyBridge
-import Hilbert10Experimental.RightRename
+import Hilbert10.Internal.ForMathlib.RightRename
 
 /-!
 # The finite Diophantine normal form

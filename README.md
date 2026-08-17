@@ -129,7 +129,10 @@ mathematics.
 
 * `Hilbert10.lean` and `Hilbert10/` — the public import spine.
 * `Hilbert10Experimental/` — work awaiting promotion into the spine.
-* `Hilbert10Experimental/ForMathlib/` — self-contained additions intended for mathlib.
+* `Hilbert10/Internal/` — implementation dependencies of the public results. Importable, but
+  **not** part of the supported API: anything here may change or disappear without notice.
+  `Hilbert10/Internal/ForMathlib/` holds self-contained additions intended for mathlib, kept
+  locally under upstream-compatible names until they land there.
 * `Hilbert10Experimental/Spike/` — executable evidence supporting architectural decisions.
 * `scripts/` — the import-boundary and axiom-audit checks run by CI.
 
