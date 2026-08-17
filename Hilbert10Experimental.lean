@@ -53,6 +53,7 @@ import Hilbert10Experimental.SelectorRegsGlobal
 import Hilbert10Experimental.SelectorRegsDioph
 import Hilbert10Experimental.TupleCoding
 import Hilbert10Experimental.DPRM
+import Hilbert10Experimental.Endpoints
 
 /-!
 # Staging area
