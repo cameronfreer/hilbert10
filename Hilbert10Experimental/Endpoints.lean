@@ -34,10 +34,23 @@ computable function is a reduction because the equivalence it has to satisfy is 
 Recording that so it is not re-litigated: the case split costs two lines and keeps the
 hypothesis off the statement, which is what a completeness theorem should look like.
 
+## What the endpoints say
+
+`NatSolvable` is **many-one complete among recursively enumerable predicates**: it is itself
+recursively enumerable (#14), and every recursively enumerable predicate reduces to it. That is
+the computability-theoretic content of Hilbert's tenth problem, and it says more than
+undecidability — undecidability is the corollary obtained by reducing the halting problem.
+
+Over the naturals, and for the encoded-polynomial form of the problem. Hilbert asked about
+integer solutions; that equivalence is #28.
+
 ## Main results
 
 * `Hilbert10.REPred.manyOneReducible_natSolvable`
 * `Hilbert10.REPred.manyOneReducible_natSolvable'`
+* `Hilbert10.natSolvable_re_complete`
+* `Hilbert10.halting_manyOneReducible_natSolvable`
+* `Hilbert10.not_computablePred_natSolvable`
 -/
 
 namespace Hilbert10
@@ -70,5 +83,27 @@ theorem REPred.manyOneReducible_natSolvable' {α : Type*} [Primcodable α] {R : 
       Partrec.comp hR (Computable.option_getD Computable.decode (Computable.const default))
     exact manyOneReducible_toNat.trans (REPred.manyOneReducible_natSolvable hRE)
   · exact ⟨fun _ => ⟨[]⟩, Computable.const _, fun a => absurd ⟨a⟩ hne⟩
+
+/-! ### The endpoints
+
+`rePred_natSolvable` is the other half of completeness and lives in `DiophToRE` (#14): evaluating
+an encoded polynomial at a witness is computable, so solvability is recursively enumerable. -/
+
+/-- **`NatSolvable` is many-one complete among recursively enumerable predicates.** Together with
+`rePred_natSolvable` this is the computability-theoretic form of Hilbert's tenth problem. -/
+theorem natSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} (hR : REPred R) :
+    R ≤₀ NatSolvable :=
+  REPred.manyOneReducible_natSolvable' hR
+
+/-- **The halting problem reduces to `NatSolvable`.** An instance of completeness, and the one
+that makes the undecidability corollary immediate. -/
+theorem halting_manyOneReducible_natSolvable :
+    (fun c : Nat.Partrec.Code => (Nat.Partrec.Code.eval c 0).Dom) ≤₀ NatSolvable :=
+  natSolvable_re_complete (ComputablePred.halting_problem_re 0)
+
+/-- **Hilbert's tenth problem over the naturals is undecidable.** -/
+theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable := fun h =>
+  ComputablePred.halting_problem 0
+    (ComputablePred.computable_of_manyOneReducible halting_manyOneReducible_natSolvable h)
 
 end Hilbert10
