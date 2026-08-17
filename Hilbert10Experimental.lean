@@ -27,10 +27,10 @@ import Hilbert10Experimental.CodeRfind
 import Hilbert10Experimental.ConfigCoding
 import Hilbert10Experimental.ConfigCodingDioph
 import Hilbert10.DiophToRE
-import Hilbert10Experimental.ExpDioph
-import Hilbert10Experimental.ExpDiophChoose
+import Hilbert10.Internal.ExpDioph
+import Hilbert10.Internal.ExpDiophChoose
 import Hilbert10Experimental.AcceptsDioph
-import Hilbert10Experimental.BlockPacking
+import Hilbert10.Internal.BlockPacking
 import Hilbert10Experimental.RegisterMachine
 import Hilbert10Experimental.RegisterMachineComp
 import Hilbert10Experimental.RunWidth

@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ConfigCoding
-import Hilbert10Experimental.ExpDioph
+import Hilbert10.Internal.ExpDioph
 
 /-!
 # The encoded step relation is exponential Diophantine

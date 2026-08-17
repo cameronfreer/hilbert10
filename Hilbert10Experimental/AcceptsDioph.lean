@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10Experimental.ConfigCodingDioph
-import Hilbert10Experimental.ExpDiophChoose
+import Hilbert10.Internal.ExpDiophChoose
 import Hilbert10Experimental.PackedRun
 
 /-!

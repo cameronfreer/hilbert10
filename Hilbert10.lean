@@ -18,3 +18,6 @@ import Hilbert10.ExistsCodeRepresents
 import Hilbert10.Instantiate
 import Hilbert10.Specialization
 import Hilbert10.DiophToRE
+-- tranche 3a: the exponential-Diophantine layer and block packing
+import Hilbert10.Internal.ExpDiophChoose
+import Hilbert10.Internal.BlockPacking
