@@ -9,3 +9,12 @@ import Hilbert10.PolynomialCodePrimcodable
 import Hilbert10.PolynomialCodeDenote
 import Hilbert10.ExistsCode
 import Hilbert10.NatSolvable
+-- promoted in #52's tranche 2; the internal dependencies under `Hilbert10.Internal.*` are
+-- reached transitively, which is what puts them inside the gates' root closure
+import Hilbert10.PolyBridge
+import Hilbert10.PolynomialCodeComp
+import Hilbert10.NormalForm
+import Hilbert10.ExistsCodeRepresents
+import Hilbert10.Instantiate
+import Hilbert10.Specialization
+import Hilbert10.DiophToRE

@@ -43,7 +43,10 @@ def headlineDecls : List Name :=
    ``Hilbert10.PolynomialCode.eval_exists_code,
    ``Hilbert10.PolynomialCode.hasNatRoot_iff,
    ``Hilbert10.NatSolvable,
-   ``Hilbert10.natSolvable_iff_arity]
+   ``Hilbert10.natSolvable_iff_arity,
+   -- the easy direction of DPRM, promoted in #52's tranche 2
+   ``Hilbert10.Dioph.rePred,
+   ``Hilbert10.rePred_natSolvable]
 
 #eval show CoreM Unit from do
   for t in headlineDecls do
