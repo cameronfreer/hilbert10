@@ -5,30 +5,35 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-Semantic DPRM over `ℕ` is proved in staging. Promotion into the reviewed public spine is
-pending. Remaining v1 work derives RE-completeness and undecidability of `NatSolvable`; v2
-relates natural and integer solutions.
+All of v1's mathematics is proved in staging: semantic DPRM over `ℕ`, and with it the
+RE-completeness and undecidability of `NatSolvable`. Promotion into the reviewed public spine is
+pending; v2 relates natural and integer solutions.
 
 The public spine carries reviewed results; completed work stays in staging until promotion, and
 [issue #1](https://github.com/cameronfreer/hilbert10/issues/1) records current progress. The
 difference between the two libraries is a guarantee, not a build setting — see
 [verification](#verification).
 
-## Main result and remaining endpoints
+## Main results
 
-Proved:
+Semantic DPRM:
 
 ```lean
 theorem dioph_iff_rePred {n : ℕ} (R : (Fin n → ℕ) → Prop) : Dioph {x | R x} ↔ REPred R
 ```
 
-Still open — the H10 endpoints that consume it:
+and the H10 endpoints that consume it:
 
 ```lean
 theorem rePred_natSolvable : REPred NatSolvable
-theorem rePred_manyOneReducible_natSolvable {R : ℕ → Prop} : REPred R → R ≤₀ NatSolvable
+theorem natSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} :
+    REPred R → R ≤₀ NatSolvable
 theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable
 ```
+
+`NatSolvable` is therefore many-one complete among recursively enumerable predicates, which says
+more than undecidability: undecidability is the corollary obtained by reducing the halting
+problem. All of these are proved in staging and awaiting promotion.
 
 `NatSolvable` is solvability over `ℕ` of a finitely encoded polynomial: a predicate on
 `PolynomialCode`, which carries a `Primcodable` instance, so `REPred` and `≤₀` apply to it
