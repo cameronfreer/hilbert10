@@ -3,8 +3,8 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.RegisterMachinePair
-import Hilbert10Experimental.CleanScratch
+import Hilbert10.Internal.RegisterMachinePair
+import Hilbert10.Internal.CleanScratch
 import Mathlib.Computability.PartrecCode
 
 /-!

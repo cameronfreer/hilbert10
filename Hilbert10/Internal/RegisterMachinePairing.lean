@@ -3,7 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Hilbert10Experimental.RegisterMachineMacros
+import Hilbert10.Internal.RegisterMachineMacros
 import Hilbert10.Internal.ForMathlib.PairingEnumeration
 import Mathlib.Data.Fintype.Fin
 import Mathlib.Tactic.FinCases

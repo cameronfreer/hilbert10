@@ -21,3 +21,5 @@ import Hilbert10.DiophToRE
 -- tranche 3a: the exponential-Diophantine layer and block packing
 import Hilbert10.Internal.ExpDiophChoose
 import Hilbert10.Internal.BlockPacking
+-- tranche 3b: the register machine, its realisation contracts and macros
+import Hilbert10.Internal.RegisterMachinePair
