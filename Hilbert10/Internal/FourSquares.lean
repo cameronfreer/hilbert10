@@ -119,6 +119,16 @@ private theorem sum_eq_zero_of_nonneg : ∀ {l : List ℤ}, (∀ x ∈ l, 0 ≤ 
     · exact ha0
     · exact sum_eq_zero_of_nonneg (fun z hz => h z (by simp [hz])) has0 x hx'
 
+/-- A sum of four squares is nonnegative. Stated here so the root proof learns `0 ≤ y.getD i 0`
+from the packaged constraint without unfolding `fourSq`. -/
+theorem evalInt_fourSq_nonneg (n i : ℕ) (y : List ℤ) : 0 ≤ evalInt (fourSq n i) y := by
+  rw [evalInt_fourSq]
+  have h1 := sq_nonneg' (y.getD (n + 4 * i) 0)
+  have h2 := sq_nonneg' (y.getD (n + 4 * i + 1) 0)
+  have h3 := sq_nonneg' (y.getD (n + 4 * i + 2) 0)
+  have h4 := sq_nonneg' (y.getD (n + 4 * i + 3) 0)
+  omega
+
 /-- **The transformed code vanishes exactly when the original does and every constraint holds.**
 A sum of squares over `ℤ` is zero only if every square is. -/
 theorem evalInt_fourSquares_eq_zero_iff (p : PolynomialCode) (y : List ℤ) :

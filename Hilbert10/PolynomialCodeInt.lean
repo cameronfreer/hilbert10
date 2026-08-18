@@ -134,26 +134,29 @@ theorem evalInt_append_of_arity_le {p : PolynomialCode} {x : List ℤ} (h : p.ar
   exact List.map_congr_left fun t ht => by
     rw [evalMonomialInt_append_of_length_le (Nat.le_trans (length_le_arity ht) h)]
 
-/-- **Every integer assignment normalises to one of length exactly `p.arity`.** Pad with zeros,
+/-- **Every integer assignment normalises to any length at least the arity.** Pad with zeros,
 then truncate; both steps are invisible to the value. -/
-theorem exists_length_eq_arity_evalInt_eq (p : PolynomialCode) (x : List ℤ) :
-    ∃ y : List ℤ, y.length = p.arity ∧ p.evalInt y = p.evalInt x := by
-  refine ⟨(x ++ List.replicate p.arity 0).take p.arity, ?_, ?_⟩
+theorem exists_length_eq_evalInt_eq (p : PolynomialCode) (x : List ℤ) {m : ℕ}
+    (hm : p.arity ≤ m) : ∃ y : List ℤ, y.length = m ∧ p.evalInt y = p.evalInt x := by
+  refine ⟨(x ++ List.replicate m 0).take m, ?_, ?_⟩
   · simp only [List.length_take, List.length_append, List.length_replicate]
     omega
-  · have hsplit : (x ++ List.replicate p.arity 0)
-        = (x ++ List.replicate p.arity 0).take p.arity
-          ++ (x ++ List.replicate p.arity 0).drop p.arity := by
+  · have hsplit : (x ++ List.replicate m 0)
+        = (x ++ List.replicate m 0).take m ++ (x ++ List.replicate m 0).drop m := by
       simp
-    have hlen : p.arity ≤ ((x ++ List.replicate p.arity 0).take p.arity).length := by
+    have hlen : p.arity ≤ ((x ++ List.replicate m 0).take m).length := by
       simp only [List.length_take, List.length_append, List.length_replicate]
       omega
-    calc p.evalInt ((x ++ List.replicate p.arity 0).take p.arity)
-        = p.evalInt ((x ++ List.replicate p.arity 0).take p.arity
-            ++ (x ++ List.replicate p.arity 0).drop p.arity) :=
+    calc p.evalInt ((x ++ List.replicate m 0).take m)
+        = p.evalInt ((x ++ List.replicate m 0).take m ++ (x ++ List.replicate m 0).drop m) :=
           (evalInt_append_of_arity_le hlen _).symm
-      _ = p.evalInt (x ++ List.replicate p.arity 0) := by rw [← hsplit]
+      _ = p.evalInt (x ++ List.replicate m 0) := by rw [← hsplit]
       _ = p.evalInt x := evalInt_append_replicate_zero p x _
+
+/-- The special case used by the difference substitution. -/
+theorem exists_length_eq_arity_evalInt_eq (p : PolynomialCode) (x : List ℤ) :
+    ∃ y : List ℤ, y.length = p.arity ∧ p.evalInt y = p.evalInt x :=
+  exists_length_eq_evalInt_eq p x (Nat.le_refl _)
 
 end PolynomialCode
 
