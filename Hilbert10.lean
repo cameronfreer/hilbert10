@@ -8,6 +8,7 @@ import Hilbert10.Basic
 import Hilbert10.PolynomialCode
 import Hilbert10.PolynomialCodePrimcodable
 import Hilbert10.PolynomialCodeDenote
+import Hilbert10.PolynomialCodeInt
 import Hilbert10.PolynomialCodeComp
 import Hilbert10.Instantiate
 import Hilbert10.ExistsCode
