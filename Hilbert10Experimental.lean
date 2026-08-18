@@ -19,7 +19,6 @@ import Hilbert10.ExistsCodeRepresents
 import Hilbert10.Instantiate
 import Hilbert10.Specialization
 import Hilbert10.Internal.CleanScratch
-import Hilbert10Experimental.CodeComp
 import Hilbert10.Internal.CodeMachine
 import Hilbert10.Internal.CodePair
 import Hilbert10.Internal.CodePrec
