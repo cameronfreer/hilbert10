@@ -20,7 +20,7 @@ This fixes the convention every later milestone depends on: **inputs are the lef
 ## Implementation notes
 
 The order of the two steps matters. Finiteness of the witness block is *created* by
-`Hilbert10Experimental.exists_mvPolynomial`, whose output has finite support by
+`Hilbert10.exists_mvPolynomial` (in `PolyBridge`), whose output has finite support by
 construction; the arbitrary `β` in `Dioph` gives no finiteness on its own. Only then can
 `exists_fin_right_rename` compact that support to `Fin m`.
 

@@ -39,10 +39,13 @@ Stating the obligation as the weakest thing the endpoint actually needs is the s
 the endpoint" rule the rest of the development follows. The geometric-sum witness therefore
 stays internal to whatever proof discharges `Aggregation`.
 
-## What is not discharged, and must not be faked
+## How it is discharged, and what did not count as progress
 
 `Aggregation` is the same bounded-universal theorem the direct-route spike isolated in
-`Spike/Sequences.lean`. Two things do not count as progress on it:
+`Spike/Sequences.lean`. `SelectorRegsDioph.aggregation_succ` discharges it at every register
+count, by the selector encoding rather than by any bounded-universal representation: finitely
+many identities over one-hot selector lanes replace the quantifier outright. Two things would
+not have counted as progress, and did not happen:
 
 * adding a bounded-product or bounded-forall constructor to `ExpTerm` — that relocates the
   missing proof into new syntax;
@@ -50,17 +53,18 @@ stays internal to whatever proof discharges `Aggregation`.
   those gap factors, so the reduction is free and the representation of the variable product is
   the whole of the difficulty.
 
-Any discharge must come from an independently proved representation theorem, and attribution
-belongs at the deepest non-circular one.
+A discharge has to come from an independently proved representation theorem, and attribution
+belongs at the deepest non-circular one — here, the selector construction.
 
 ## Main definitions
 
 * `RegisterMachine.blockTerm` — outer block lookup at a **variable** index
-* `RegisterMachine.Aggregation` — the sole remaining obligation
+* `RegisterMachine.Aggregation` — the obligation, discharged in `SelectorRegsDioph`
 
 ## Main results
 
-* `RegisterMachine.expDioph_accepts` — conditional on `Aggregation`
+* `RegisterMachine.expDioph_accepts` — conditional on `Aggregation`; the unconditional form
+  is `RegisterMachine.dioph_accepts_regs`
 -/
 
 namespace Hilbert10

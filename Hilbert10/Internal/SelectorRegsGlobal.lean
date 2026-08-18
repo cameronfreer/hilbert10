@@ -36,8 +36,8 @@ new carry appears. The masks are the same two constants at the wider block.
 
 ## Scope
 
-`globalConditionsK_iff` is the equivalence. Packaging it and `Aggregation (k + 1)` are the next
-layers.
+`globalConditionsK_iff` is the equivalence. Packaging it into `Aggregation (k + 1)` is
+`SelectorRegsDioph`, the layer above.
 -/
 
 namespace Hilbert10

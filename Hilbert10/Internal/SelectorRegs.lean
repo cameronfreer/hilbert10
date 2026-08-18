@@ -34,8 +34,9 @@ only place the register count could have introduced a new bound.
 
 ## Scope
 
-`blockStepK_iff` only. Globalising the lanes, packaging them, and `Aggregation (k + 1)` are the
-next layers. The one-register development is left untouched.
+`blockStepK_iff` only. Globalising the lanes is `SelectorRegsGlobal`, and packaging them into
+`Aggregation (k + 1)` is `SelectorRegsDioph`. The one-register development is left untouched, as
+regression evidence for the route.
 -/
 
 namespace Hilbert10

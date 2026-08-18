@@ -16,7 +16,7 @@ needs.
 ## Main declarations
 
 * `MvPolynomial.toDiophPoly`: the ring homomorphism `MvPolynomial α ℤ →+* Poly α`.
-* `Poly.exists_mvPolynomial`: conversely, every `Poly` agrees with some `MvPolynomial` at
+* `exists_mvPolynomial`: conversely, every `Poly` agrees with some `MvPolynomial` at
   natural-number valuations. This is an *existence* statement, not a function: `Poly` is an
   extensional subtype whose induction principle eliminates into `Prop` only, so no
   computable extraction is available or attempted.
@@ -102,7 +102,7 @@ when `p` has a natural-number root extending `x`.
 The variable types are deliberately left general; the finite `Fin n ⊕ Fin m` shape belongs
 to the normal-form theorem (#6), not to this definition.
 
-Note this lives in the `Hilbert10Experimental` namespace rather than `MvPolynomial`: dot
+Note this lives in the `Hilbert10` namespace rather than `MvPolynomial`: dot
 notation on `MvPolynomial` is unreliable anyway, since the type unfolds to
 `AddMonoidAlgebra`. It moves to the `MvPolynomial` namespace when upstreamed. -/
 def RepresentsNat (p : MvPolynomial (α ⊕ β) ℤ) (R : (α → ℕ) → Prop) : Prop :=

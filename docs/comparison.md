@@ -39,7 +39,7 @@ registers "are hard-coded in the Diophantine representation, which means we do n
 encode the algorithm that actually computes them, which would otherwise be very painful"
 (Proposition 8.1). Our analogue is compiling `P.get p` into `ExpTerm.const` coefficients and a
 finite conjunction over the fixed program, with no lookup at evaluation time — the guardrail
-recorded in `SelectorRegsDioph.lean`'s docstring.
+recorded in `Hilbert10/Internal/SelectorRegsDioph.lean`'s docstring.
 
 **Slack in a packed representation is load-bearing, not decorative.** This is the sharpest
 convergence. Matiyasevich's sparse ciphers use base `r := 2^(2q)`; they raise it to `r := 2^(4q)`
@@ -51,9 +51,9 @@ than `2^(2q+1)` would work as well".
 That is our guard bit, our deliberately oversized `runWidth`, and our carry bounds, arrived at
 independently and for the same reason. Our version of the finding is two executable
 counterexamples rather than a remark
-(`Spike/DecLoop.lean`, `ConfigCoding.lean`; see [lessons.md §2](lessons.md)), but the lesson is
-identical: informal "choose the base large enough" hides the obligation, and the natural first
-choice of base is too small.
+(`Hilbert10Experimental/Spike/DecLoop.lean`, `Hilbert10/Internal/ConfigCoding.lean`; see
+[lessons.md §2](lessons.md)), but the lesson is identical: informal "choose the base large
+enough" hides the obligation, and the natural first choice of base is too small.
 
 This is the most useful of the six agreements, because it is the one that could most easily have
 been dismissed as a local implementation accident. Two mechanisations, on different models with
@@ -70,10 +70,10 @@ imported it. That is a fact about the two environments, not a comparison of the 
 see [lessons.md §3](lessons.md) for why we do not draw one.
 
 **The summit theorem is short because the infrastructure is not.** Their `DPRM.v` is reported as
-170 lines (Appendix A). Our `DPRM.lean` is 139, and `TupleCoding.lean` another 156 — against an
-import closure of 45 modules and roughly 11,700 lines. In both developments the final assembly
-hides the entire machine, arithmetic and representation stack, and neither line count means
-anything on its own.
+170 lines (Appendix A). Our `Hilbert10/DPRM.lean` is 139, and `Hilbert10/Internal/TupleCoding.lean`
+another 156 — against an import closure of 45 modules and roughly 11,700 lines. In both
+developments the final assembly hides the entire machine, arithmetic and representation stack,
+and neither line count means anything on its own.
 
 ---
 
@@ -130,7 +130,7 @@ equation where ours is semantic, as below. The narrow theorem was substantially 
 | Computability | synthetic — definability in Coq without axioms certifies the reductions (§2.1) | explicit mathlib `Primrec` / `Computable` / `Partrec` / `REPred` |
 | Number theory | formalises exponentiation, Lucas, sparse ciphers, bounded-∀ elimination | reuses mathlib's `pow_dioph`, Lucas, `choose` and digits |
 | Tuples | vectors and valuations identified in the exposition | explicit `tupleCode`/`tupleDecode` with a round trip and a Diophantine graph |
-| Endpoints | natural *and* integer H10 undecidability included | semantic DPRM proved; natural-root endpoints, promotion and the integer version remain |
+| Endpoints | natural *and* integer H10 undecidability included | same coverage: RE-completeness and undecidability over `ℕ` and over `ℤ`, the two related by explicit reductions |
 
 Their Theorem 8.3 is the substantive strength: *one can compute* a single equation from a machine
 recogniser, which is more than an existence statement. Ours is intentionally semantic and

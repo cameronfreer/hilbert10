@@ -34,10 +34,10 @@ run equivalent to
 The count depends on the program and its register count, never on the run length. So
 `Aggregation (k + 1)` is proved with no bounded universal quantifier represented anywhere.
 
-**Evidence.** `Hilbert10Experimental/SelectorRegsGlobal.lean` (`GlobalConditionsK`,
-`globalConditionsK_iff`) and `Hilbert10Experimental/SelectorRegsDioph.lean`
+**Evidence.** `Hilbert10/Internal/SelectorRegsGlobal.lean` (`GlobalConditionsK`,
+`globalConditionsK_iff`) and `Hilbert10/Internal/SelectorRegsDioph.lean`
 (`aggregation_succ`, `dioph_accepts_regs`). The two combinators the packaging needs —
-`ExpDioph.fin_and` and `ExpTerm.sumTerm`, both in `Hilbert10Experimental/ExpDioph.lean` — are
+`ExpDioph.fin_and` and `ExpTerm.sumTerm`, both in `Hilbert10/Internal/ExpDioph.lean` — are
 finite conjunction and finite summation at a length fixed by the program, which is why neither
 conceals an input-dependent quantifier.
 
@@ -51,9 +51,10 @@ removes the time dependence and reports a fixed system of equations
 was our own summary: the frozen comparison in
 [#15](https://github.com/cameronfreer/hilbert10/issues/15) treated the two routes as needing the
 same theorem. What we actually measured is narrower — the direct-route spike
-(`Spike/Sequences.lean`) ran into bounded aggregation and did not eliminate it, and this route
-did eliminate its specialised conjunction. Whether some specialised alternative exists on the
-direct route was not settled either way. [comparison.md](comparison.md) sets the two side by side in
+(`Hilbert10Experimental/Spike/Sequences.lean`) ran into bounded aggregation and did not eliminate
+it, and this route did eliminate its specialised conjunction. Whether some specialised
+alternative exists on the direct route was not settled either way.
+[comparison.md](comparison.md) sets the two side by side in
 detail, including where they agree.
 
 ---
@@ -72,7 +73,7 @@ See `not_sound_without_guard_bits` in `Hilbert10Experimental/Spike/DecLoop.lean`
 **An inner configuration field can overflow into the next while the packed number stays globally
 bounded.** So `EncodedStep` has to bound the *written* successor value and the jump target, not
 merely the code. The counterexample (width 2, registers `[3, 0]`) is kept as an `example` in
-`Hilbert10Experimental/ConfigCoding.lean`, immediately after `not_encodedStep_of_not_fits`.
+`Hilbert10/Internal/ConfigCoding.lean`, immediately after `not_encodedStep_of_not_fits`.
 
 A further refinement mattered: those bounds must be **conditional on the selected branch**,
 
@@ -82,9 +83,9 @@ selector = 0 ∨ target < 2 ^ w
 
 rather than imposed on every target in the program. An unreachable oversized jump must not
 invalidate an otherwise valid encoding — and the per-branch form is exactly what
-`fieldsCode_selected_smul_eq_iff` (`Hilbert10Experimental/SelectorMask.lean`) consumes.
-`Spike/SelectorSlice.lean` exists partly to keep this honest: its third instruction carries an
-oversized target that is reachable, so both regimes are exercised.
+`fieldsCode_selected_smul_eq_iff` (`Hilbert10/Internal/SelectorMask.lean`) consumes.
+`Hilbert10Experimental/Spike/SelectorSlice.lean` exists partly to keep this honest: its third
+instruction carries an oversized target that is reachable, so both regimes are exercised.
 
 **The lesson.** The informal instruction "choose the base large enough" is not wrong, but it
 hides nearly all of the soundness obligations.
@@ -98,8 +99,9 @@ mathlib the required ingredients were already present, and
 `Hilbert10/Internal/ForMathlib/ChooseDigit.lean` is a small adapter around the existing
 digits, binomial and arithmetic APIs — `Nat.digits_ofDigits` and `Nat.getD_digits` do the
 extraction, `add_pow` supplies the binomial theorem, and `Nat.choose_le_two_pow` the bound.
-Lucas-to-submask and the masking layer (`Internal/ForMathlib/BinarySubmask.lean`,
-`Internal/ForMathlib/SubmaskChoose.lean`, `ExpDiophChoose.lean`) went the same way.
+Lucas-to-submask and the masking layer (`Hilbert10/Internal/ForMathlib/BinarySubmask.lean`,
+`Hilbert10/Internal/ForMathlib/SubmaskChoose.lean`, `Hilbert10/Internal/ExpDiophChoose.lean`) went
+the same way.
 
 Other mechanisations report substantial work around the same mathematical family in environments
 with different supporting libraries. Those figures are not directly comparable — the theorem
@@ -125,7 +127,7 @@ a reindexing. That would have concealed a circularity:
 
 The honest bridge is explicit and small: a right-associated `Nat.pair` encoding, a computable
 `Nat.unpair` decoder, a round trip, and a Diophantine graph obtained from the piecewise
-polynomial graph of `Nat.pair`. See `Hilbert10Experimental/TupleCoding.lean`, whose docstring
+polynomial graph of `Nat.pair`. See `Hilbert10/Internal/TupleCoding.lean`, whose docstring
 records both traps.
 
 **The lesson.** A "standard coding" step that a paper can safely suppress is a real obligation
@@ -164,7 +166,7 @@ out.
 `PolynomialCode` gives semantics to every code, well formed or not; completeness is a separate
 theorem. `configField` and `setField` are total on every natural number, with bounds appearing
 as hypotheses on the theorems that need them rather than as a well-formedness predicate threaded
-through the development (`Hilbert10Experimental/ConfigCoding.lean`, "Total, permissive
+through the development (`Hilbert10/Internal/ConfigCoding.lean`, "Total, permissive
 semantics").
 
 **The lesson.** Make lookup total, then state exact local bounds where soundness actually needs
@@ -175,7 +177,7 @@ statement, and was explicitly rejected.
 
 ## 7. An `ℕ`-valued exponential layer was the right intermediate language
 
-`ExpTerm`/`ExpDioph` (`Hilbert10Experimental/ExpDioph.lean`) aligns with mathlib's `DiophFn`
+`ExpTerm`/`ExpDioph` (`Hilbert10/Internal/ExpDioph.lean`) aligns with mathlib's `DiophFn`
 combinators, so the bridge down to `Dioph` is one structural induction (`ExpTerm.diophFn`).
 Truncated subtraction supplies conjunction over the naturals; `div` and `mod` make digit
 extraction compositional. The layer stayed small while carrying the whole arithmetisation, and
@@ -190,12 +192,12 @@ Mostly the literature was fine and our abstractions were too coarse.
 | Belief | Status |
 |---|---|
 | "Both routes eventually need the same bounded-universal theorem" | **Not established, and false for this route.** The machine route eliminates its specialised conjunction through selectors (#49). The direct-route spike met bounded aggregation and did not eliminate it; whether it could was never settled. |
-| "Digit bounds prevent the bad decrement encoding" | **False.** A no-borrow guard bit is required (`Spike/DecLoop.lean`). |
+| "Digit bounds prevent the bad decrement encoding" | **False.** A no-borrow guard bit is required (`Hilbert10Experimental/Spike/DecLoop.lean`). |
 | "Bound every jump target in the program" | **Too strong,** and incompatible with a sharp step equivalence. Only selected targets must fit. |
-| "The `n`-ary theorem follows from the unary one by reindexing" | **Incomplete.** An explicit tuple graph is required (`TupleCoding.lean`). |
+| "The `n`-ary theorem follows from the unary one by reindexing" | **Incomplete.** An explicit tuple graph is required (`Hilbert10/Internal/TupleCoding.lean`). |
 | "Binomial coefficient extraction will take weeks" | **Not in this library** — the ingredients were already in mathlib. The estimate came from literature-level difficulty, which does not predict marginal cost. |
 | "Fixing the representing polynomial requires classical choice" | **Imprecise.** Existential elimination into a proposition-valued reduction does not. |
-| "Unpairing requires implementing `Nat.sqrt` on the machine" | **False.** Enumerating `Nat.pair`'s shells via `pairNext` gives a simpler terminating machine with an exact step bound (`Internal/ForMathlib/PairingEnumeration.lean`, #51). |
+| "Unpairing requires implementing `Nat.sqrt` on the machine" | **False.** Enumerating `Nat.pair`'s shells via `pairNext` gives a simpler terminating machine with an exact step bound (`Hilbert10/Internal/ForMathlib/PairingEnumeration.lean`, #51). |
 
 ---
 
@@ -212,9 +214,10 @@ External:
   — the register-machine route, and the source of the binary-digit cost comparison.
 * Yuri Matiyasevich, *Hilbert's Tenth Problem*, MIT Press, 1993.
 
-Sizes, as a snapshot rather than a benchmark: `Internal/ForMathlib/ChooseDigit.lean` is 90 lines, of
-which `Nat.choose_eq_baseDigit` is 19; `DPRM.lean` is 139 and `TupleCoding.lean` 156, against an
-import closure of 45 modules and roughly 11,700 lines. These are measurements of this repository
+Sizes, as a snapshot rather than a benchmark: `Hilbert10/Internal/ForMathlib/ChooseDigit.lean` is
+90 lines, of which `Nat.choose_eq_baseDigit` is 19; `Hilbert10/DPRM.lean` is 139 and
+`Hilbert10/Internal/TupleCoding.lean` 156, against an import closure of 45 modules and roughly
+11,700 lines. These are measurements of this repository
 at the commit that closed #23. They are not evidence that any proof here is shorter than a proof
 elsewhere — see §3 for why that comparison does not survive contact with the confounders.
 
@@ -225,6 +228,6 @@ cost or size, it is measured against the files named, at the commit that closed 
 issue.
 
 Two caveats on reading this document. First, the counterexamples are regressions in the build,
-so they stay true; the cost claims are snapshots and will drift. Second, the comparison in §1 rests on how
-the cited papers describe their own developments — the checkable part is what this repository
-does, not what they had to do. §3 deliberately makes no cross-project cost claim.
+so they stay true; the cost claims are snapshots and will drift. Second, the comparison in §1
+rests on how the cited papers describe their own developments — the checkable part is what this
+repository does, not what they had to do. §3 deliberately makes no cross-project cost claim.
