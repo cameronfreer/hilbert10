@@ -55,7 +55,16 @@ def headlineDecls : List Name :=
    ``Hilbert10.REPred.manyOneReducible_natSolvable,
    ``Hilbert10.natSolvable_re_complete,
    ``Hilbert10.halting_manyOneReducible_natSolvable,
-   ``Hilbert10.not_computablePred_natSolvable]
+   ``Hilbert10.not_computablePred_natSolvable,
+   -- the integer formulation, both reductions and its endpoints (#28)
+   ``Hilbert10.IntSolvable,
+   ``Hilbert10.intSolvable_iff_natSolvable_subUV,
+   ``Hilbert10.intSolvable_manyOneReducible_natSolvable,
+   ``Hilbert10.natSolvable_iff_intSolvable_fourSquares,
+   ``Hilbert10.natSolvable_manyOneReducible_intSolvable,
+   ``Hilbert10.rePred_intSolvable,
+   ``Hilbert10.intSolvable_re_complete,
+   ``Hilbert10.not_computablePred_intSolvable]
 
 #eval show CoreM Unit from do
   for t in headlineDecls do

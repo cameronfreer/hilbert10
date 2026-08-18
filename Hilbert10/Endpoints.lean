@@ -42,8 +42,9 @@ recursively enumerable (#14), and every recursively enumerable predicate reduces
 the computability-theoretic content of Hilbert's tenth problem, and it says more than
 undecidability — undecidability is the corollary obtained by reducing the halting problem.
 
-Over the naturals, and for the encoded-polynomial form of the problem. Hilbert asked about
-integer solutions; that equivalence is #28.
+The same holds for the integer formulation Hilbert actually asked about. `NatSolvable` and
+`IntSolvable` are many-one equivalent (#28), so completeness and undecidability transfer in both
+directions; neither transfer needs computability of integer evaluation.
 
 ## Main results
 
@@ -52,6 +53,8 @@ integer solutions; that equivalence is #28.
 * `Hilbert10.natSolvable_re_complete`
 * `Hilbert10.halting_manyOneReducible_natSolvable`
 * `Hilbert10.not_computablePred_natSolvable`
+* `Hilbert10.intSolvable_re_complete`
+* `Hilbert10.not_computablePred_intSolvable`
 -/
 
 namespace Hilbert10
@@ -109,8 +112,9 @@ theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable := fun h 
 
 /-! ### The integer formulation
 
-#28. The reduction lives in `IntSolvable`; recursive enumerability transfers along it, which is
-why no computability of integer *evaluation* is needed. -/
+#28. Both reductions live in `IntSolvable`; recursive enumerability transfers backwards along the
+one into `NatSolvable`, and completeness forwards along the one out of it. That is why no
+computability of integer *evaluation* is needed anywhere. -/
 
 /-- Recursive enumerability transfers backwards along a many-one reduction. -/
 theorem REPred.of_manyOneReducible {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop}
@@ -123,5 +127,22 @@ theorem REPred.of_manyOneReducible {α β : Type*} [Primcodable α] [Primcodable
 from computability of `evalInt`, which nothing needs. -/
 theorem rePred_intSolvable : REPred IntSolvable :=
   REPred.of_manyOneReducible intSolvable_manyOneReducible_natSolvable rePred_natSolvable
+
+/-- **`IntSolvable` is many-one complete among recursively enumerable predicates.** Completeness
+travels along the four-square reduction; `rePred_intSolvable` is the other half. -/
+theorem intSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} (hR : REPred R) :
+    R ≤₀ IntSolvable :=
+  (natSolvable_re_complete hR).trans natSolvable_manyOneReducible_intSolvable
+
+/-- **The halting problem reduces to `IntSolvable`.** -/
+theorem halting_manyOneReducible_intSolvable :
+    (fun c : Nat.Partrec.Code => (Nat.Partrec.Code.eval c 0).Dom) ≤₀ IntSolvable :=
+  intSolvable_re_complete (ComputablePred.halting_problem_re 0)
+
+/-- **Hilbert's tenth problem, in the form Hilbert asked it, is undecidable.** No algorithm
+decides whether an encoded polynomial has an integer root. -/
+theorem not_computablePred_intSolvable : ¬ ComputablePred IntSolvable := fun h =>
+  ComputablePred.halting_problem 0
+    (ComputablePred.computable_of_manyOneReducible halting_manyOneReducible_intSolvable h)
 
 end Hilbert10
