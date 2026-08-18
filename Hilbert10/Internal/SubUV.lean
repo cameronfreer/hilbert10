@@ -71,6 +71,39 @@ substituted; the results are appended, which is what `add` does on this represen
 def subUV (p : PolynomialCode) : PolynomialCode :=
   ⟨p.terms.flatMap fun t => (mul (const t.1) (subUVMonomialFrom p.arity 0 t.2)).terms⟩
 
+
+/-! ### Arity -/
+
+@[simp] theorem arity_diffVar (n i : ℕ) : (diffVar n i).arity = n + i + 1 := by
+  simp only [diffVar, arity_add, arity_neg, arity_X]
+  omega
+
+theorem arity_subUVMonomialFrom (n : ℕ) : ∀ (i : ℕ) (es : MonomialCode),
+    (subUVMonomialFrom n i es).arity ≤ n + i + es.length
+  | _, [] => by simp [subUVMonomialFrom]
+  | i, e :: es => by
+    refine le_trans (arity_mul_le _ _) ?_
+    have h1 : (npow (diffVar n i) e).arity ≤ n + i + 1 := by
+      refine le_trans (arity_npow_le _ e) ?_
+      simp
+    have h2 := arity_subUVMonomialFrom n (i + 1) es
+    simp only [List.length_cons, max_le_iff]
+    omega
+
+/-- **The frozen arity bound.** Every exponent vector of `p` has length at most `p.arity`, so at
+`i = 0` the helper bound is `2 * p.arity`. -/
+theorem arity_subUV_le (p : PolynomialCode) : (subUV p).arity ≤ 2 * p.arity := by
+  refine arity_le_of_forall_term_length_le fun t ht => ?_
+  simp only [subUV, List.mem_flatMap] at ht
+  obtain ⟨s, hs, hts⟩ := ht
+  have hlen : s.2.length ≤ p.arity := length_le_arity hs
+  have hb : (mul (const s.1) (subUVMonomialFrom p.arity 0 s.2)).arity ≤ 2 * p.arity := by
+    refine le_trans (arity_mul_le _ _) ?_
+    have := arity_subUVMonomialFrom p.arity 0 s.2
+    simp only [arity_const, max_le_iff]
+    omega
+  exact le_trans (length_le_arity hts) hb
+
 /-! ### Evaluation -/
 
 theorem eval_diffVar {n i : ℕ} {u v : List ℕ} (hu : u.length = n) (hi : i < n) :

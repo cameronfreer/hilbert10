@@ -171,6 +171,64 @@ private theorem sum_map_const_mul {α : Type*} (c : ℤ) (l : List α) (h : α �
   | 0, x => by simp [npow]
   | n + 1, x => by simp [npow, evalInt_npow p n x, pow_succ, mul_comm]
 
+
+/-! ### Arity
+
+Inequalities for multiplication and powers: equality fails for an empty term list, and for
+exponent zero. -/
+
+theorem length_addExponents : ∀ e f : MonomialCode,
+    (addExponents e f).length = max e.length f.length
+  | [], f => by simp
+  | e :: es, [] => by simp
+  | _ :: es, _ :: fs => by
+    simp only [addExponents, List.length_cons, length_addExponents es fs]
+    omega
+
+/-- The bound direction of `arity`: it suffices to bound every term's exponent vector. -/
+theorem arity_le_of_forall_term_length_le {p : PolynomialCode} {m : ℕ}
+    (h : ∀ t ∈ p.terms, t.2.length ≤ m) : p.arity ≤ m := by
+  obtain ⟨ts⟩ := p
+  simp only [arity]
+  induction ts with
+  | nil => simp
+  | cons t ts ih =>
+    simp only [List.map_cons, List.foldr_cons, max_le_iff]
+    exact ⟨h t (by simp), ih fun s hs => h s (by simp [hs])⟩
+
+theorem arity_mk_append (s t : List (ℤ × MonomialCode)) :
+    arity ⟨s ++ t⟩ = max (arity ⟨s⟩) (arity ⟨t⟩) := by
+  simp only [arity, List.map_append]
+  induction s with
+  | nil => simp
+  | cons a as ih => simp only [List.map_cons, List.cons_append, List.foldr_cons, ih, max_assoc]
+
+@[simp] theorem arity_const (c : ℤ) : (const c).arity = 0 := rfl
+
+@[simp] theorem arity_one : one.arity = 0 := rfl
+
+@[simp] theorem arity_X (i : ℕ) : (X i).arity = i + 1 := by
+  simp [arity, X]
+
+@[simp] theorem arity_add (p q : PolynomialCode) :
+    (add p q).arity = max p.arity q.arity := arity_mk_append _ _
+
+@[simp] theorem arity_neg (p : PolynomialCode) : (neg p).arity = p.arity := by
+  simp only [arity, neg, List.map_map, Function.comp_def]
+
+theorem arity_mul_le (p q : PolynomialCode) : (mul p q).arity ≤ max p.arity q.arity := by
+  refine arity_le_of_forall_term_length_le fun t ht => ?_
+  simp only [mul, List.mem_flatMap, List.mem_map] at ht
+  obtain ⟨a, ha, b, hb, rfl⟩ := ht
+  simp only [length_addExponents, max_le_iff]
+  exact ⟨le_max_of_le_left (length_le_arity ha), le_max_of_le_right (length_le_arity hb)⟩
+
+theorem arity_npow_le (p : PolynomialCode) : ∀ n : ℕ, (npow p n).arity ≤ p.arity
+  | 0 => by simp [npow]
+  | n + 1 => by
+    refine le_trans (arity_mul_le p (npow p n)) ?_
+    simp [arity_npow_le p n]
+
 /-! ### The same laws at a natural assignment
 
 Derived, not reproved: the natural evaluation is the integer one at a cast assignment. -/

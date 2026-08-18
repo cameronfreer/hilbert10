@@ -15,6 +15,7 @@ import Hilbert10.PolynomialCodeComp
 import Hilbert10.Instantiate
 import Hilbert10.ExistsCode
 import Hilbert10.NatSolvable
+import Hilbert10.IntSolvable
 -- the normal form and the reduction to `NatSolvable`
 import Hilbert10.PolyBridge
 import Hilbert10.NormalForm

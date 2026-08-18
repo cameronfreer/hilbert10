@@ -80,6 +80,81 @@ theorem evalInt_map_natCast (p : PolynomialCode) (x : List ℕ) :
     evalInt p (x.map (Nat.cast : ℕ → ℤ)) = eval p x := by
   simp only [evalInt, eval, evalMonomialInt_map_natCast]
 
+
+/-! ### Normalising an integer assignment
+
+The two solvability predicates quantify over arbitrary-length lists, while a block layout needs a
+fixed length. These are the integer analogues of the natural-root padding lemmas, added because
+the difference substitution consumes them — nothing more general. -/
+
+theorem evalMonomialInt_append_zeros (e : MonomialCode) (x z : List ℤ) (hz : ∀ v ∈ z, v = 0) :
+    evalMonomialInt e (x ++ z) = evalMonomialInt e x := by
+  induction e generalizing x z with
+  | nil => rfl
+  | cons a es ih =>
+    cases x with
+    | nil =>
+      cases z with
+      | nil => rfl
+      | cons c cs =>
+        obtain rfl : c = 0 := hz c (by simp)
+        have hrec : evalMonomialInt es cs = evalMonomialInt es [] := by
+          simpa using ih [] cs fun v hv => hz v (by simp [hv])
+        simp [evalMonomialInt, hrec]
+    | cons v vs =>
+      simp only [List.cons_append, evalMonomialInt]
+      rw [ih vs z hz]
+
+theorem evalInt_append_zeros (p : PolynomialCode) (x z : List ℤ) (hz : ∀ v ∈ z, v = 0) :
+    p.evalInt (x ++ z) = p.evalInt x := by
+  simp only [evalInt]
+  congr 1
+  exact List.map_congr_left fun t _ => by rw [evalMonomialInt_append_zeros t.2 x z hz]
+
+theorem evalInt_append_replicate_zero (p : PolynomialCode) (x : List ℤ) (k : ℕ) :
+    p.evalInt (x ++ List.replicate k 0) = p.evalInt x :=
+  p.evalInt_append_zeros x _ fun _ hv => List.eq_of_mem_replicate hv
+
+theorem evalMonomialInt_append_of_length_le {e : MonomialCode} {x : List ℤ}
+    (h : e.length ≤ x.length) (y : List ℤ) :
+    evalMonomialInt e (x ++ y) = evalMonomialInt e x := by
+  induction e generalizing x with
+  | nil => rfl
+  | cons a es ih =>
+    cases x with
+    | nil => simp at h
+    | cons v vs =>
+      simp only [List.cons_append, evalMonomialInt]
+      rw [ih (by simpa using h)]
+
+theorem evalInt_append_of_arity_le {p : PolynomialCode} {x : List ℤ} (h : p.arity ≤ x.length)
+    (y : List ℤ) : p.evalInt (x ++ y) = p.evalInt x := by
+  simp only [evalInt]
+  congr 1
+  exact List.map_congr_left fun t ht => by
+    rw [evalMonomialInt_append_of_length_le (Nat.le_trans (length_le_arity ht) h)]
+
+/-- **Every integer assignment normalises to one of length exactly `p.arity`.** Pad with zeros,
+then truncate; both steps are invisible to the value. -/
+theorem exists_length_eq_arity_evalInt_eq (p : PolynomialCode) (x : List ℤ) :
+    ∃ y : List ℤ, y.length = p.arity ∧ p.evalInt y = p.evalInt x := by
+  refine ⟨(x ++ List.replicate p.arity 0).take p.arity, ?_, ?_⟩
+  · simp only [List.length_take, List.length_append, List.length_replicate]
+    omega
+  · have hsplit : (x ++ List.replicate p.arity 0)
+        = (x ++ List.replicate p.arity 0).take p.arity
+          ++ (x ++ List.replicate p.arity 0).drop p.arity := by
+      simp
+    have hlen : p.arity ≤ ((x ++ List.replicate p.arity 0).take p.arity).length := by
+      simp only [List.length_take, List.length_append, List.length_replicate]
+      omega
+    calc p.evalInt ((x ++ List.replicate p.arity 0).take p.arity)
+        = p.evalInt ((x ++ List.replicate p.arity 0).take p.arity
+            ++ (x ++ List.replicate p.arity 0).drop p.arity) :=
+          (evalInt_append_of_arity_le hlen _).symm
+      _ = p.evalInt (x ++ List.replicate p.arity 0) := by rw [← hsplit]
+      _ = p.evalInt x := evalInt_append_replicate_zero p x _
+
 end PolynomialCode
 
 end Hilbert10
