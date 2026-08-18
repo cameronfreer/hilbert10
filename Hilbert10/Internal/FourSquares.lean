@@ -83,6 +83,79 @@ theorem evalInt_fourSquares (p : PolynomialCode) (y : List ℤ) :
   simp only [fourSquares, evalInt_add, evalInt_npow, evalInt_foldr_add,
     evalInt_fourSqConstraint]
 
+/-! ### The square argument, packaged once
+
+Everything about sums of squares happens here, so neither direction of the root equivalence has
+to repeat it. -/
+
+private theorem sq_nonneg' (a : ℤ) : 0 ≤ a ^ 2 := by
+  rw [pow_two, ← Int.natAbs_mul_self]
+  exact Int.natCast_nonneg _
+
+private theorem sq_eq_zero' {a : ℤ} (h : a ^ 2 = 0) : a = 0 := by
+  by_contra hne
+  rw [pow_two] at h
+  exact mul_ne_zero hne hne h
+
+private theorem list_sum_nonneg : ∀ {l : List ℤ}, (∀ x ∈ l, 0 ≤ x) → 0 ≤ l.sum
+  | [], _ => by simp
+  | a :: as, h => by
+    have hrec := list_sum_nonneg (l := as) fun x hx => h x (by simp [hx])
+    have ha := h a (by simp)
+    simp only [List.sum_cons]
+    omega
+
+private theorem sum_eq_zero_of_nonneg : ∀ {l : List ℤ}, (∀ x ∈ l, 0 ≤ x) → l.sum = 0 →
+    ∀ x ∈ l, x = 0
+  | [], _, _ => by simp
+  | a :: as, h, hs => by
+    have ha : 0 ≤ a := h a (by simp)
+    have has : 0 ≤ as.sum := list_sum_nonneg fun x hx => h x (by simp [hx])
+    have hsum : a + as.sum = 0 := by simpa using hs
+    have ha0 : a = 0 := by omega
+    have has0 : as.sum = 0 := by omega
+    intro x hx
+    rcases List.mem_cons.mp hx with rfl | hx'
+    · exact ha0
+    · exact sum_eq_zero_of_nonneg (fun z hz => h z (by simp [hz])) has0 x hx'
+
+/-- **The transformed code vanishes exactly when the original does and every constraint holds.**
+A sum of squares over `ℤ` is zero only if every square is. -/
+theorem evalInt_fourSquares_eq_zero_iff (p : PolynomialCode) (y : List ℤ) :
+    evalInt (fourSquares p) y = 0 ↔
+      evalInt p y = 0 ∧
+        ∀ i < p.arity, y.getD i 0 = evalInt (fourSq p.arity i) y := by
+  rw [evalInt_fourSquares]
+  constructor
+  · intro h
+    have hsq : (0 : ℤ) ≤ (evalInt p y) ^ 2 := sq_nonneg' _
+    have hterms : ∀ z ∈ (List.range p.arity).map fun i =>
+        (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2, (0 : ℤ) ≤ z := by
+      intro z hz
+      obtain ⟨i, -, rfl⟩ := List.mem_map.mp hz
+      exact sq_nonneg' _
+    have hsum : (0 : ℤ) ≤ ((List.range p.arity).map fun i =>
+        (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2).sum := list_sum_nonneg hterms
+    have h1 : (evalInt p y) ^ 2 = 0 := by omega
+    have h2 : ((List.range p.arity).map fun i =>
+        (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2).sum = 0 := by omega
+    refine ⟨sq_eq_zero' h1, fun i hi => ?_⟩
+    have hmem : (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2 ∈
+        (List.range p.arity).map fun i => (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2 :=
+      List.mem_map.mpr ⟨i, List.mem_range.mpr hi, rfl⟩
+    have := sum_eq_zero_of_nonneg hterms h2 _ hmem
+    have hz : y.getD i 0 - evalInt (fourSq p.arity i) y = 0 := sq_eq_zero' this
+    omega
+  · rintro ⟨hp, hc⟩
+    rw [hp]
+    have : ((List.range p.arity).map fun i =>
+        (y.getD i 0 - evalInt (fourSq p.arity i) y) ^ 2) = (List.range p.arity).map fun _ => 0 := by
+      refine List.map_congr_left fun i hi => ?_
+      rw [hc i (List.mem_range.mp hi)]
+      ring
+    rw [this]
+    simp
+
 /-! ### Arity -/
 
 theorem arity_fourSq_le (n i : ℕ) : (fourSq n i).arity ≤ n + 4 * i + 4 := by
