@@ -181,6 +181,8 @@ theorem eval_eq_evalInt (p : PolynomialCode) (x : List ℕ) :
 @[simp] theorem eval_const (c : ℤ) (x : List ℕ) : eval (const c) x = c := by
   rw [eval_eq_evalInt, evalInt_const]
 
+@[simp] theorem eval_one (x : List ℕ) : eval one x = 1 := by rw [one, eval_const]
+
 @[simp] theorem eval_add (p q : PolynomialCode) (x : List ℕ) :
     eval (add p q) x = eval p x + eval q x := by
   rw [eval_eq_evalInt, eval_eq_evalInt p, eval_eq_evalInt q, evalInt_add]
