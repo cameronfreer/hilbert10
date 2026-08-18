@@ -7,6 +7,7 @@ import Hilbert10.NatSolvable
 import Hilbert10.Internal.SubUV
 import Hilbert10.Internal.SubUVComp
 import Hilbert10.Internal.FourSquares
+import Hilbert10.Internal.FourSquaresComp
 import Mathlib.Computability.Reduce
 import Mathlib.NumberTheory.SumFourSquares
 
@@ -38,6 +39,7 @@ witness make `take` and `drop` describe the wrong blocks.
 * `Hilbert10.intSolvable_iff_natSolvable_subUV`
 * `Hilbert10.intSolvable_manyOneReducible_natSolvable`
 * `Hilbert10.natSolvable_iff_intSolvable_fourSquares`
+* `Hilbert10.natSolvable_manyOneReducible_intSolvable`
 -/
 
 namespace Hilbert10
@@ -211,6 +213,13 @@ theorem natSolvable_iff_intSolvable_fourSquares (p : PolynomialCode) :
       rw [List.take_append_drop] at this
       exact this.symm
     rw [hsplit, hp]
+
+/-- **Natural solvability reduces to integer solvability.** The computable map is the four-square
+transformation; the equivalence above is its correctness. With
+`intSolvable_manyOneReducible_natSolvable`, the two formulations of Hilbert's tenth problem for
+the wire format are many-one equivalent. -/
+theorem natSolvable_manyOneReducible_intSolvable : NatSolvable ≤₀ IntSolvable :=
+  ⟨fourSquares, computable_fourSquares, natSolvable_iff_intSolvable_fourSquares⟩
 
 /-! ### Zero-arity regression
 
