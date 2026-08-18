@@ -6,15 +6,16 @@ abstract: >-
   A Lean 4 / mathlib development of the DPRM theorem and the
   computability-theoretic form of Hilbert's tenth problem. Semantic DPRM over
   the naturals — that a predicate on tuples of naturals is Diophantine exactly
-  when it is recursively enumerable — is proved; the natural-root H10 endpoints
-  and the integer formulation are in progress.
+  when it is recursively enumerable — is proved, together with the
+  RE-completeness and undecidability of natural-root solvability. Hilbert's
+  integer formulation is in progress.
 authors:
   - family-names: Freer
     given-names: Cameron
 repository-code: "https://github.com/cameronfreer/hilbert10"
 url: "https://github.com/cameronfreer/hilbert10"
 license: Apache-2.0
-version: 0.1.0
+version: 1.0.0
 keywords:
   - Lean 4
   - mathlib
