@@ -5,11 +5,12 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-All of v1's mathematics is proved in staging: semantic DPRM over `ℕ`, and with it the
-RE-completeness and undecidability of `NatSolvable`. Promotion into the reviewed public spine is
-pending; v2 relates natural and integer solutions.
+All of v1 is **available in the public spine**: semantic DPRM over `ℕ`, and with it the
+RE-completeness and undecidability of `NatSolvable`. v2 relates natural and integer solutions.
 
-The public spine carries reviewed results; completed work stays in staging until promotion, and
+The spine is `Hilbert10.lean` and everything it imports, and it is what the CI gates cover: no
+`sorry`, no axioms beyond the three standard ones, and a strict build. What remains in staging is
+route evidence and one module bound for mathlib, neither of which the results depend on;
 [issue #1](https://github.com/cameronfreer/hilbert10/issues/1) records current progress. The
 difference between the two libraries is a guarantee, not a build setting — see
 [verification](#verification).
@@ -33,7 +34,7 @@ theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable
 
 `NatSolvable` is therefore many-one complete among recursively enumerable predicates, which says
 more than undecidability: undecidability is the corollary obtained by reducing the halting
-problem. All of these are proved in staging and awaiting promotion.
+problem. All of these are in the public spine, `#print axioms`-clean and covered by the gates.
 
 `NatSolvable` is solvability over `ℕ` of a finitely encoded polynomial: a predicate on
 `PolynomialCode`, which carries a `Primcodable` instance, so `REPred` and `≤₀` apply to it
@@ -128,7 +129,8 @@ mathematics.
 ## Repository layout
 
 * `Hilbert10.lean` and `Hilbert10/` — the public import spine.
-* `Hilbert10Experimental/` — work awaiting promotion into the spine.
+* `Hilbert10Experimental/` — work outside the spine: route evidence, and material staged for
+  upstreaming. Nothing the public results depend on.
 * `Hilbert10/Internal/` — implementation dependencies of the public results. Importable, but
   **not** part of the supported API: anything here may change or disappear without notice.
   `Hilbert10/Internal/ForMathlib/` holds self-contained additions intended for mathlib, kept
@@ -139,7 +141,8 @@ mathematics.
 "Experimental" describes promotion status, not a weaker logic or an unchecked target: both
 libraries are default build targets, so everything here typechecks. What differs is the
 guarantee, and promotion is the reviewable event — a module entering the spine is a claim that it
-is finished.
+is finished. The v1 promotion is recorded tranche by tranche in
+[issue #52](https://github.com/cameronfreer/hilbert10/issues/52).
 
 ## Verification
 
