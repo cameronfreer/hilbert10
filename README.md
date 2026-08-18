@@ -5,8 +5,9 @@ theorem and the computability-theoretic form of Hilbert's tenth problem.
 
 ## Status
 
-All of v1 is **available in the public spine**: semantic DPRM over `ℕ`, and with it the
-RE-completeness and undecidability of `NatSolvable`. v2 relates natural and integer solutions.
+All of v1 and v2 is **available in the public spine**: semantic DPRM over `ℕ`, the
+RE-completeness and undecidability of `NatSolvable`, and Hilbert's own integer formulation —
+`NatSolvable` and `IntSolvable` are many-one equivalent, so the endpoints hold in both forms.
 
 The spine is `Hilbert10.lean` and everything it imports, and it is what the CI gates cover: no
 `sorry`, no axioms beyond the three standard ones, and a strict build. What remains in staging is
@@ -38,8 +39,22 @@ problem. All of these are in the public spine, `#print axioms`-clean and covered
 
 `NatSolvable` is solvability over `ℕ` of a finitely encoded polynomial: a predicate on
 `PolynomialCode`, which carries a `Primcodable` instance, so `REPred` and `≤₀` apply to it
-directly and it is a decision problem in the ordinary sense. Hilbert asked about integer
-solutions; that equivalence is a separate layer on top of this one.
+directly and it is a decision problem in the ordinary sense.
+
+Hilbert asked about integer solutions, and that formulation is a layer on top of this one:
+
+```lean
+theorem intSolvable_manyOneReducible_natSolvable : IntSolvable ≤₀ NatSolvable
+theorem natSolvable_manyOneReducible_intSolvable : NatSolvable ≤₀ IntSolvable
+theorem intSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} :
+    REPred R → R ≤₀ IntSolvable
+theorem not_computablePred_intSolvable : ¬ ComputablePred IntSolvable
+```
+
+The two reductions are the substitution `x = u - v` and Lagrange's four-square theorem, each
+proved as an equivalence of codes and then packaged with the computability of the code
+transformation. Stating them separately from the endpoints says the sharper thing: the two
+formulations have the same many-one degree, not merely that both are undecidable.
 
 ## Scope
 
@@ -183,8 +198,8 @@ mechanisation of Larchey-Wendling and Forster.
 * `Mathlib/NumberTheory/Dioph.lean` — the `Dioph`, `DiophFn` and `Poly` API this builds on, and
   the source of the two TODOs this project aims to close. The `Poly`-to-`MvPolynomial` TODO is
   solved locally here, in the finite normal form and the ring map. Of the H10 TODO, the semantic
-  DPRM component is now solved locally too; what remains is the natural-root endpoints,
-  promotion into the spine, and Hilbert's integer formulation.
+  DPRM component, the endpoints and Hilbert's integer formulation are now solved locally too, for
+  this project's encoded wire format; upstreaming any of it is a separate question.
 
 ## Development provenance
 
