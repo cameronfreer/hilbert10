@@ -172,6 +172,7 @@ private theorem sum_map_const_mul {α : Type*} (c : ℤ) (l : List α) (h : α �
   | n + 1, x => by simp [npow, evalInt_npow p n x, pow_succ, mul_comm]
 
 
+
 /-! ### Arity
 
 Inequalities for multiplication and powers: equality fails for an empty term list, and for
@@ -228,6 +229,32 @@ theorem arity_npow_le (p : PolynomialCode) : ∀ n : ℕ, (npow p n).arity ≤ p
   | n + 1 => by
     refine le_trans (arity_mul_le p (npow p n)) ?_
     simp [arity_npow_le p n]
+
+/-! ### Index presentations, for computability
+
+The structural definitions are the ones every semantic and arity proof uses. For primitive
+recursiveness they are matched against index-based presentations, proved equal here once.
+`List.zipWith` has no `Primrec` lemma in mathlib, so exponent addition goes through
+`List.range` and `List.getD`, both of which do. -/
+
+theorem getD_addExponents : ∀ (e f : MonomialCode) (i : ℕ),
+    (addExponents e f).getD i 0 = e.getD i 0 + f.getD i 0
+  | [], f, i => by simp
+  | e :: es, [], i => by simp
+  | a :: es, b :: fs, 0 => by simp [addExponents, List.getD]
+  | a :: es, b :: fs, i + 1 => by
+    simpa [addExponents, List.getD] using getD_addExponents es fs i
+
+/-- The index presentation of exponent addition. -/
+theorem addExponents_eq_range (e f : MonomialCode) :
+    addExponents e f
+      = (List.range (max e.length f.length)).map fun i => e.getD i 0 + f.getD i 0 := by
+  refine List.ext_getElem (by simp [length_addExponents]) fun i h1 h2 => ?_
+  have hlen : i < max e.length f.length := by
+    simpa [length_addExponents] using h1
+  rw [List.getElem_map, List.getElem_range]
+  have := getD_addExponents e f i
+  rwa [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem h1, Option.getD_some] at this
 
 /-! ### The same laws at a natural assignment
 

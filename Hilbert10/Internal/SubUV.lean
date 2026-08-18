@@ -149,6 +149,30 @@ theorem eval_subUV (p : PolynomialCode) {u v : List ℕ}
       fun s => s.1 * evalMonomial s.2 (u ++ v)).sum
       = eval (mul (const t.1) (subUVMonomialFrom p.arity 0 t.2)) (u ++ v) from rfl, this, h]
 
+
+/-! ### Index presentation, for computability
+
+`subUVMonomialFrom` increments its index in the recursive call, so `Primrec.list_foldr` does not
+apply to it directly. The equivalent presentation below folds over `List.range`, where the index
+is supplied rather than threaded, and it is proved equal to the structural definition once. Every
+semantic and arity result stays on the structural one. -/
+
+theorem subUVMonomialFrom_eq_foldr (n : ℕ) : ∀ (i : ℕ) (es : MonomialCode),
+    subUVMonomialFrom n i es
+      = (((List.range es.length).map fun j => npow (diffVar n (i + j)) (es.getD j 0)).foldr
+          mul one)
+  | _, [] => by simp [subUVMonomialFrom]
+  | i, e :: es => by
+    have ih := subUVMonomialFrom_eq_foldr n (i + 1) es
+    rw [show subUVMonomialFrom n i (e :: es)
+        = mul (npow (diffVar n i) e) (subUVMonomialFrom n (i + 1) es) from rfl, ih]
+    simp only [List.length_cons, List.range_succ_eq_map, List.map_cons, List.map_map,
+      List.foldr_cons, Function.comp_def]
+    congr 2
+    exact List.map_congr_left fun a _ => by
+      rw [show i + 1 + a = i + (a + 1) from by omega]
+      simp
+
 end PolynomialCode
 
 end Hilbert10
