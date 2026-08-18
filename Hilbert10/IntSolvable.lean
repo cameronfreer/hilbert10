@@ -5,6 +5,8 @@ Authors: Cameron Freer
 -/
 import Hilbert10.NatSolvable
 import Hilbert10.Internal.SubUV
+import Hilbert10.Internal.SubUVComp
+import Mathlib.Computability.Reduce
 
 /-!
 # Integer solvability, and its equivalence with the natural version
@@ -32,6 +34,7 @@ witness make `take` and `drop` describe the wrong blocks.
 
 * `Hilbert10.IntSolvable`
 * `Hilbert10.intSolvable_iff_natSolvable_subUV`
+* `Hilbert10.intSolvable_manyOneReducible_natSolvable`
 -/
 
 namespace Hilbert10
@@ -95,5 +98,10 @@ theorem intSolvable_iff_natSolvable_subUV (p : PolynomialCode) :
       simp only [List.length_drop, hw'len]
       omega
     rw [← eval_subUV p hu hv, List.take_append_drop, hw'eval]
+
+/-- **Integer solvability reduces to natural solvability.** The computable map is the difference
+substitution; the equivalence above is its correctness. -/
+theorem intSolvable_manyOneReducible_natSolvable : IntSolvable ≤₀ NatSolvable :=
+  ⟨subUV, computable_subUV, intSolvable_iff_natSolvable_subUV⟩
 
 end Hilbert10

@@ -3,7 +3,9 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
-import Mathlib.Computability.Primrec.Basic
+import Mathlib.Computability.Primrec.List
+import Mathlib.Tactic.Ring.Basic
+import Mathlib.Tactic.Ring
 
 /-!
 # Integers are primitive recursive
@@ -100,4 +102,55 @@ theorem int_subNat : Primrec₂ fun a b : ℕ => ((a : ℤ) - b) := by
     rw [Int.negSucc_eq]
     omega
 
+/-- Integer negation is primitive recursive. Written through the positive/negative parts, since
+the shim's only integer primitive is `int_subNat`. -/
+theorem int_neg : Primrec (fun z : ℤ => -z) := by
+  have h : Primrec fun z : ℤ => ((z.natAbs - z.toNat : ℕ) : ℤ) - ((z.toNat : ℕ) : ℤ) :=
+    Primrec₂.comp (f := fun a b : ℕ => ((a : ℤ) - b)) int_subNat
+      (Primrec.nat_sub.comp int_natAbs int_toNat) int_toNat
+  exact h.of_eq fun z => by omega
+
+/-- Integer multiplication is primitive recursive. Every integer is `toNat - (natAbs - toNat)`,
+so the product expands into four natural products. -/
+theorem int_mul : Primrec₂ ((· * ·) : ℤ → ℤ → ℤ) := by
+  have key : ∀ z w : ℤ, z * w
+      = ((z.toNat * w.toNat + (z.natAbs - z.toNat) * (w.natAbs - w.toNat) : ℕ) : ℤ)
+        - ((z.toNat * (w.natAbs - w.toNat) + (z.natAbs - z.toNat) * w.toNat : ℕ) : ℤ) := by
+    intro z w
+    set a := z.toNat with ha
+    set b := z.natAbs - z.toNat with hb
+    set c := w.toNat with hc
+    set d := w.natAbs - w.toNat with hd
+    have hz : z = (a : ℤ) - (b : ℤ) := by omega
+    have hw : w = (c : ℤ) - (d : ℤ) := by omega
+    rw [hz, hw]
+    push_cast
+    ring
+  have h : Primrec fun q : ℤ × ℤ =>
+      ((q.1.toNat * q.2.toNat + (q.1.natAbs - q.1.toNat) * (q.2.natAbs - q.2.toNat) : ℕ) : ℤ)
+        - ((q.1.toNat * (q.2.natAbs - q.2.toNat)
+            + (q.1.natAbs - q.1.toNat) * q.2.toNat : ℕ) : ℤ) := by
+    have hpz : Primrec fun q : ℤ × ℤ => q.1.toNat := int_toNat.comp Primrec.fst
+    have hmz : Primrec fun q : ℤ × ℤ => q.1.natAbs - q.1.toNat :=
+      Primrec.nat_sub.comp (int_natAbs.comp Primrec.fst) (int_toNat.comp Primrec.fst)
+    have hpw : Primrec fun q : ℤ × ℤ => q.2.toNat := int_toNat.comp Primrec.snd
+    have hmw : Primrec fun q : ℤ × ℤ => q.2.natAbs - q.2.toNat :=
+      Primrec.nat_sub.comp (int_natAbs.comp Primrec.snd) (int_toNat.comp Primrec.snd)
+    exact Primrec₂.comp (f := fun a b : ℕ => ((a : ℤ) - b)) int_subNat
+      (Primrec.nat_add.comp (Primrec.nat_mul.comp hpz hpw) (Primrec.nat_mul.comp hmz hmw))
+      (Primrec.nat_add.comp (Primrec.nat_mul.comp hpz hmw) (Primrec.nat_mul.comp hmz hpw))
+  exact h.of_eq fun q => (key q.1 q.2).symm
+
+/-- Building a list of zeros is primitive recursive. -/
+theorem list_replicate_zero : Primrec fun i : ℕ => List.replicate i (0 : ℕ) := by
+  have h := Primrec.nat_rec' (f := fun i : ℕ => i) (g := fun _ : ℕ => ([] : List ℕ))
+    (h := fun _ (q : ℕ × List ℕ) => 0 :: q.2) Primrec.id (Primrec.const ([] : List ℕ))
+    (Primrec₂.comp Primrec.list_cons (Primrec.const 0) (Primrec.snd.comp Primrec.snd))
+  refine h.of_eq fun i => ?_
+  induction i with
+  | zero => rfl
+  | succ n ih => simp only [List.replicate_succ, ← ih]
+
 end Primrec
+
+

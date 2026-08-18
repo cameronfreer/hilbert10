@@ -11,6 +11,7 @@ import Hilbert10.PolynomialCodeDenote
 import Hilbert10.PolynomialCodeInt
 import Hilbert10.Internal.CodeAlgebra
 import Hilbert10.Internal.SubUV
+import Hilbert10.Internal.SubUVComp
 import Hilbert10.PolynomialCodeComp
 import Hilbert10.Instantiate
 import Hilbert10.ExistsCode

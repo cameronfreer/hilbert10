@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.DPRM
+import Hilbert10.IntSolvable
 import Hilbert10.Specialization
 
 /-!
@@ -105,5 +106,22 @@ theorem halting_manyOneReducible_natSolvable :
 theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable := fun h =>
   ComputablePred.halting_problem 0
     (ComputablePred.computable_of_manyOneReducible halting_manyOneReducible_natSolvable h)
+
+/-! ### The integer formulation
+
+#28. The reduction lives in `IntSolvable`; recursive enumerability transfers along it, which is
+why no computability of integer *evaluation* is needed. -/
+
+/-- Recursive enumerability transfers backwards along a many-one reduction. -/
+theorem REPred.of_manyOneReducible {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop}
+    {q : β → Prop} (h : p ≤₀ q) (hq : REPred q) : REPred p := by
+  obtain ⟨f, hf, hfp⟩ := h
+  refine (Partrec.comp hq hf).of_eq fun a => ?_
+  rw [propext (hfp a)]
+
+/-- **Integer solvability is recursively enumerable.** Obtained from the reduction rather than
+from computability of `evalInt`, which nothing needs. -/
+theorem rePred_intSolvable : REPred IntSolvable :=
+  REPred.of_manyOneReducible intSolvable_manyOneReducible_natSolvable rePred_natSolvable
 
 end Hilbert10
