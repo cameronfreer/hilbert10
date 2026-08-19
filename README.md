@@ -133,13 +133,14 @@ The primary H10 predicate uses natural-number assignments throughout.
   exponential-Diophantine condition;
 * a finite-tuple bridge — an explicit `Nat.pair` coding whose decoder is computable and whose
   encoder's graph is Diophantine;
-* the assembly of these into `REPred ↔ Dioph`.
+* the assembly of these into `REPred ↔ Dioph`;
+* the integer formulation: a small code algebra, the substitution `x = u - v`, the four-square
+  constraint transformation, and the two reductions they certify.
 
 Acceptance by a register machine is encoded exactly and in both directions: it is *equivalent*
 to the existence of a packed run at arbitrary run length, and that packed run is described by a
 finite system of exponential-Diophantine conditions. Those layers are joined by `REPred.dioph`
-and `dioph_iff_rePred`; what remains is promotion into the public spine, not further
-mathematics.
+and `dioph_iff_rePred`, and all of them are in the public spine.
 
 ## Repository layout
 
@@ -157,7 +158,8 @@ mathematics.
 libraries are default build targets, so everything here typechecks. What differs is the
 guarantee, and promotion is the reviewable event — a module entering the spine is a claim that it
 is finished. The v1 promotion is recorded tranche by tranche in
-[issue #52](https://github.com/cameronfreer/hilbert10/issues/52).
+[issue #52](https://github.com/cameronfreer/hilbert10/issues/52); v2's modules were written
+inside the spine from the start.
 
 ## Verification
 
