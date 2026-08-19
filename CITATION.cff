@@ -7,15 +7,18 @@ abstract: >-
   computability-theoretic form of Hilbert's tenth problem. Semantic DPRM over
   the naturals — that a predicate on tuples of naturals is Diophantine exactly
   when it is recursively enumerable — is proved, together with the
-  RE-completeness and undecidability of natural-root solvability. Hilbert's
-  integer formulation is in progress.
+  RE-completeness and undecidability of solvability for a finitely encoded
+  polynomial, over the naturals and over the integers. The two formulations
+  are shown many-one equivalent, by the substitution x = u - v in one
+  direction and Lagrange's four-square theorem in the other, so Hilbert's own
+  question about integer solutions is covered.
 authors:
   - family-names: Freer
     given-names: Cameron
 repository-code: "https://github.com/cameronfreer/hilbert10"
 url: "https://github.com/cameronfreer/hilbert10"
 license: Apache-2.0
-version: 1.0.0
+version: 2.0.0
 keywords:
   - Lean 4
   - mathlib
