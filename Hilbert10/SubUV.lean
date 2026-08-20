@@ -27,9 +27,23 @@ The helper contracts are strengthened with `i` for that reason: evaluation assum
 `i + es.length ≤ n`, and the arity bound is `n + i + es.length`. At `i = 0` every exponent vector
 of `p` has length at most `p.arity`, which gives the frozen `2 * p.arity` bound immediately.
 
+## Public, unlike its computability
+
+`subUV` is one of the two reductions between the natural and integer formulations, and its
+evaluation and arity theorems are meaningful on their own — so this file is API. What turns the
+transformation into a many-one reduction is `Primrec subUV`, which is unsupported machinery and
+stays in `Internal/SubUVComp.lean`, together with the index presentation that exists only to
+prove it.
+
 ## Main definitions
 
+* `Hilbert10.PolynomialCode.diffList`
 * `Hilbert10.PolynomialCode.subUV`
+
+## Main results
+
+* `Hilbert10.PolynomialCode.eval_subUV`
+* `Hilbert10.PolynomialCode.arity_subUV_le`
 -/
 
 namespace Hilbert10
@@ -56,6 +70,16 @@ theorem drop_diffList : ∀ (i : ℕ) (u v : List ℕ), i < u.length → i < v.l
   | i + 1, a :: u, b :: v, hu, hv => by
     have ih := drop_diffList i u v (by simpa using hu) (by simpa using hv)
     simpa [List.getD] using ih
+
+/-- Every integer assignment is a difference of two natural ones, componentwise. -/
+theorem diffList_toNat (y : List ℤ) :
+    diffList (y.map Int.toNat) (y.map fun z => (-z).toNat) = y := by
+  induction y with
+  | nil => rfl
+  | cons a as ih =>
+    simp only [List.map_cons, diffList_cons, ih]
+    congr 1
+    omega
 
 /-- The variable `xᵢ` after substitution: `uᵢ - vᵢ`, at the frozen block layout. -/
 def diffVar (n i : ℕ) : PolynomialCode := add (X i) (neg (X (n + i)))
@@ -149,29 +173,6 @@ theorem eval_subUV (p : PolynomialCode) {u v : List ℕ}
       fun s => s.1 * evalMonomial s.2 (u ++ v)).sum
       = eval (mul (const t.1) (subUVMonomialFrom p.arity 0 t.2)) (u ++ v) from rfl, this, h]
 
-
-/-! ### Index presentation, for computability
-
-`subUVMonomialFrom` increments its index in the recursive call, so `Primrec.list_foldr` does not
-apply to it directly. The equivalent presentation below folds over `List.range`, where the index
-is supplied rather than threaded, and it is proved equal to the structural definition once. Every
-semantic and arity result stays on the structural one. -/
-
-theorem subUVMonomialFrom_eq_foldr (n : ℕ) : ∀ (i : ℕ) (es : MonomialCode),
-    subUVMonomialFrom n i es
-      = (((List.range es.length).map fun j => npow (diffVar n (i + j)) (es.getD j 0)).foldr
-          mul one)
-  | _, [] => by simp [subUVMonomialFrom]
-  | i, e :: es => by
-    have ih := subUVMonomialFrom_eq_foldr n (i + 1) es
-    rw [show subUVMonomialFrom n i (e :: es)
-        = mul (npow (diffVar n i) e) (subUVMonomialFrom n (i + 1) es) from rfl, ih]
-    simp only [List.length_cons, List.range_succ_eq_map, List.map_cons, List.map_map,
-      List.foldr_cons, Function.comp_def]
-    congr 2
-    exact List.map_congr_left fun a _ => by
-      rw [show i + 1 + a = i + (a + 1) from by omega]
-      simp
 
 end PolynomialCode
 

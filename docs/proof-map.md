@@ -152,12 +152,16 @@ uniform `Code → PolynomialCode` compiler exists here, and none is needed — s
 | the predicate | `IntSolvable` | `IntSolvable.lean` |
 | code arithmetic | `const`, `X`, `add`, `neg`, `mul`, `npow` and their evaluation laws | `Internal/CodeAlgebra.lean` |
 | … is primitive recursive | `primrec₂_add`, `primrec₂_mul`, `primrec₂_npow`, … | `Internal/CodeAlgebraComp.lean` |
-| `x = u - v` | `eval_subUV`, `arity_subUV_le` | `Internal/SubUV.lean` |
+| `x = u - v` | `eval_subUV`, `arity_subUV_le` | `SubUV.lean` (public) |
 | … is primitive recursive | `primrec_subUV` | `Internal/SubUVComp.lean` |
-| four squares | `evalInt_fourSquares_eq_zero_iff`, `arity_fourSquares_le` | `Internal/FourSquares.lean` |
+| four squares | `evalInt_fourSquares_eq_zero_iff`, `arity_fourSquares_le` | `FourSquares.lean` (public) |
 | … is primitive recursive | `primrec_fourSquares` | `Internal/FourSquaresComp.lean` |
 | the two equivalences | `intSolvable_iff_natSolvable_subUV`, `natSolvable_iff_intSolvable_fourSquares` | `IntSolvable.lean` |
 | the two reductions | `intSolvable_manyOneReducible_natSolvable`, `natSolvable_manyOneReducible_intSolvable` | `IntSolvable.lean` |
+
+The two transformations are public: they are the reductions themselves, and their evaluation and
+arity theorems stand alone. Their computability proofs are not — those are what turn a
+transformation into a many-one reduction, and they stay internal.
 
 Each direction is stated first as an equivalence of *codes* and only then packaged with the
 computability of the transformation, so the arithmetic can be checked without reading a

@@ -4,9 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.NatSolvable
-import Hilbert10.Internal.SubUV
+import Hilbert10.SubUV
 import Hilbert10.Internal.SubUVComp
-import Hilbert10.Internal.FourSquares
+import Hilbert10.FourSquares
 import Hilbert10.Internal.FourSquaresComp
 import Mathlib.Computability.Reduce
 import Mathlib.NumberTheory.SumFourSquares
@@ -51,20 +51,6 @@ def IntSolvable (p : PolynomialCode) : Prop := ∃ x : List ℤ, p.evalInt x = 0
 
 theorem intSolvable_iff (p : PolynomialCode) :
     IntSolvable p ↔ ∃ x : List ℤ, p.evalInt x = 0 := Iff.rfl
-
-namespace PolynomialCode
-
-/-- Every integer assignment is a difference of two natural ones, componentwise. -/
-theorem diffList_toNat (y : List ℤ) :
-    diffList (y.map Int.toNat) (y.map fun z => (-z).toNat) = y := by
-  induction y with
-  | nil => rfl
-  | cons a as ih =>
-    simp only [List.map_cons, diffList_cons, ih]
-    congr 1
-    omega
-
-end PolynomialCode
 
 /-- **The reduction, as an equivalence of codes.** An integer root of `p` is exactly a natural
 root of the difference-substituted code. -/

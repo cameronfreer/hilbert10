@@ -30,9 +30,22 @@ For `n := p.arity`, the transformed code uses `5 * n` variables:
 * `0 .. n-1` — the original `xᵢ`;
 * `n + 4i .. n + 4i + 3` — the four-square witnesses for `xᵢ`.
 
+## Public, unlike its computability
+
+`fourSquares` is one of the two reductions between the natural and integer formulations, and the
+square argument below is meaningful on its own — so this file is API. `Primrec fourSquares` is
+what turns the transformation into a many-one reduction; it is unsupported machinery and stays in
+`Internal/FourSquaresComp.lean`.
+
 ## Main definitions
 
+* `Hilbert10.PolynomialCode.fourSq`
 * `Hilbert10.PolynomialCode.fourSquares`
+
+## Main results
+
+* `Hilbert10.PolynomialCode.evalInt_fourSquares_eq_zero_iff`
+* `Hilbert10.PolynomialCode.arity_fourSquares_le`
 -/
 
 namespace Hilbert10
@@ -56,7 +69,7 @@ def fourSquares (p : PolynomialCode) : PolynomialCode :=
 
 /-! ### Evaluation -/
 
-theorem evalInt_foldr_add {α : Type*} (l : List α) (f : α → PolynomialCode) (y : List ℤ) :
+private theorem evalInt_foldr_add {α : Type*} (l : List α) (f : α → PolynomialCode) (y : List ℤ) :
     evalInt ((l.map f).foldr add zero) y = (l.map fun i => evalInt (f i) y).sum := by
   induction l with
   | nil => simp [zero]
@@ -184,7 +197,7 @@ theorem arity_fourSqConstraint_le (n i : ℕ) :
   simp only [arity_add, arity_neg, arity_X, max_le_iff]
   exact ⟨le_max_left _ _, le_trans (arity_fourSq_le n i) (le_max_right _ _)⟩
 
-theorem arity_foldr_add_le {α : Type*} (l : List α) (f : α → PolynomialCode) (m : ℕ)
+private theorem arity_foldr_add_le {α : Type*} (l : List α) (f : α → PolynomialCode) (m : ℕ)
     (h : ∀ a ∈ l, (f a).arity ≤ m) : (((l.map f).foldr add zero)).arity ≤ m := by
   induction l with
   | nil => simp [zero, arity]

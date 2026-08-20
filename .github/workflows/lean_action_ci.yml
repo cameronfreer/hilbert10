@@ -32,3 +32,10 @@ jobs:
       # audited when it is promoted into the spine.
       - name: Verify axiom hygiene
         run: lake env lean scripts/AxiomAudit.lean
+
+      # API hygiene: the *statements* of public results must not mention constants owned by
+      # `Hilbert10.Internal.*` or `Hilbert10Experimental.*`. Proofs may use internal
+      # machinery freely — only the interface is constrained, so that promoting or
+      # rewriting the route cannot silently change what the library promises.
+      - name: Verify API hygiene
+        run: lake env lean scripts/ApiLeakageAudit.lean
