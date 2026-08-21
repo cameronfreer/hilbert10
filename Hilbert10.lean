@@ -27,6 +27,10 @@ import Hilbert10.NormalForm
 import Hilbert10.ExistsCodeRepresents
 import Hilbert10.Specialization
 -- DPRM and the H10 endpoints
+import Hilbert10.Computability
 import Hilbert10.DiophToRE
 import Hilbert10.DPRM
+import Hilbert10.DerivedDioph
 import Hilbert10.Endpoints
+-- worked examples, kept as regressions
+import Hilbert10.Examples.DerivedDioph

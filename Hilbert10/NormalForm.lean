@@ -26,6 +26,17 @@ construction; the arbitrary `β` in `Dioph` gives no finiteness on its own. Only
 
 Witnesses outside the range of the compacting injection are unused, so the reverse
 inclusion extends a `Fin m`-tuple back to a `β`-tuple with `Function.extend`.
+
+## An arbitrary finite input type
+
+`dioph_iff_exists_finite_mvPolynomial` is the same statement for any `Finite` input type,
+transported along an equivalence with `Fin n`. Two conventions are forced rather than chosen:
+
+* the hypothesis is `Finite`, not `Fintype` — the proof needs only an equivalence, the conclusion
+  is a `Prop`, and mathlib's `unusedFintypeInType` linter rejects a `Fintype` restatement;
+* the input type is `Type`, not `Type*` — mathlib's `Dioph.reindex_dioph` keeps source and target
+  in one universe, so transporting an arbitrary input type to `Fin n` forces `Type 0`. `Dioph`
+  itself is universe-polymorphic; its closure API is not.
 -/
 
 namespace Hilbert10
@@ -78,5 +89,49 @@ theorem dioph_iff_exists_fin_mvPolynomial (R : (Fin n → ℕ) → Prop) :
     change R x ↔ _
     rw [hp x]
     exact exists_congr fun y => by rw [toDiophPoly_apply, ← sum_elim_cast]
+
+/-- **The normal form at any finite input type.** Transport of `dioph_iff_exists_fin_mvPolynomial`
+along an equivalence `α ≃ Fin n`, on both the `Dioph` side (by reindexing) and the polynomial side
+(by renaming). -/
+theorem dioph_iff_exists_finite_mvPolynomial {α : Type} [Finite α] (R : (α → ℕ) → Prop) :
+    Dioph {x : α → ℕ | R x} ↔
+      ∃ (m : ℕ) (p : MvPolynomial (α ⊕ Fin m) ℤ), RepresentsNat p R := by
+  obtain ⟨n, ⟨e⟩⟩ := Finite.exists_equiv_fin α
+  have hcomp : ∀ x : α → ℕ, (x ∘ e.symm) ∘ e = x := fun x => funext fun a => by simp
+  constructor
+  · intro hD
+    -- reindex the Diophantine set to `Fin n`, apply the frozen normal form, rename back
+    have hFin : Dioph {v : Fin n → ℕ | R (v ∘ e)} :=
+      Dioph.reindex_dioph (S := {x : α → ℕ | R x}) (Fin n) e hD
+    obtain ⟨m, q, hq⟩ := (dioph_iff_exists_fin_mvPolynomial _).mp hFin
+    refine ⟨m, rename (Sum.map e.symm id) q, fun x => ?_⟩
+    have hx := hq (x ∘ e.symm)
+    dsimp only at hx
+    rw [hcomp] at hx
+    refine hx.trans (exists_congr fun y => ?_)
+    rw [eval_rename]
+    have hfun : (Sum.elim (fun i : α => ((x i : ℕ) : ℤ)) fun j : Fin m => ((y j : ℕ) : ℤ))
+        ∘ Sum.map e.symm id
+        = Sum.elim (fun i : Fin n => (((x ∘ e.symm) i : ℕ) : ℤ))
+            fun j : Fin m => ((y j : ℕ) : ℤ) := by
+      funext i
+      cases i <;> rfl
+    rw [hfun]
+  · rintro ⟨m, p, hp⟩
+    -- rename the polynomial to `Fin n` inputs, apply the frozen normal form, reindex back
+    have hFin : Dioph {v : Fin n → ℕ | R (v ∘ e)} := by
+      refine (dioph_iff_exists_fin_mvPolynomial _).mpr ⟨m, rename (Sum.map e id) p, fun v => ?_⟩
+      refine (hp (v ∘ e)).trans (exists_congr fun y => ?_)
+      rw [eval_rename]
+      have hfun : (Sum.elim (fun i : Fin n => ((v i : ℕ) : ℤ)) fun j : Fin m => ((y j : ℕ) : ℤ))
+          ∘ Sum.map e id
+          = Sum.elim (fun i : α => (((v ∘ e) i : ℕ) : ℤ)) fun j : Fin m => ((y j : ℕ) : ℤ) := by
+        funext i
+        cases i <;> rfl
+      rw [hfun]
+    have hback := Dioph.reindex_dioph (S := {v : Fin n → ℕ | R (v ∘ e)}) α e.symm hFin
+    refine Dioph.ext hback fun x => ?_
+    simp only [Set.mem_setOf_eq]
+    rw [hcomp]
 
 end Hilbert10

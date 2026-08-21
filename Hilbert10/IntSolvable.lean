@@ -40,6 +40,7 @@ witness make `take` and `drop` describe the wrong blocks.
 * `Hilbert10.intSolvable_manyOneReducible_natSolvable`
 * `Hilbert10.natSolvable_iff_intSolvable_fourSquares`
 * `Hilbert10.natSolvable_manyOneReducible_intSolvable`
+* `Hilbert10.natSolvable_manyOneEquiv_intSolvable`
 -/
 
 namespace Hilbert10
@@ -206,6 +207,11 @@ transformation; the equivalence above is its correctness. With
 the wire format are many-one equivalent. -/
 theorem natSolvable_manyOneReducible_intSolvable : NatSolvable ≤₀ IntSolvable :=
   ⟨fourSquares, computable_fourSquares, natSolvable_iff_intSolvable_fourSquares⟩
+
+/-- **The two formulations have the same many-one degree.** Packaged with mathlib's
+`ManyOneEquiv`, so that downstream results can transport reducibility facts along it. -/
+theorem natSolvable_manyOneEquiv_intSolvable : ManyOneEquiv NatSolvable IntSolvable :=
+  ⟨natSolvable_manyOneReducible_intSolvable, intSolvable_manyOneReducible_natSolvable⟩
 
 /-! ### Zero-arity regression
 

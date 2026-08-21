@@ -3,6 +3,7 @@ Copyright (c) 2026 Cameron Freer. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
+import Hilbert10.Computability
 import Hilbert10.DPRM
 import Hilbert10.IntSolvable
 import Hilbert10.Specialization
@@ -113,15 +114,9 @@ theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable := fun h 
 /-! ### The integer formulation
 
 #28. Both reductions live in `IntSolvable`; recursive enumerability transfers backwards along the
-one into `NatSolvable`, and completeness forwards along the one out of it. That is why no
-computability of integer *evaluation* is needed anywhere. -/
-
-/-- Recursive enumerability transfers backwards along a many-one reduction. -/
-theorem REPred.of_manyOneReducible {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop}
-    {q : β → Prop} (h : p ≤₀ q) (hq : REPred q) : REPred p := by
-  obtain ⟨f, hf, hfp⟩ := h
-  refine (Partrec.comp hq hf).of_eq fun a => ?_
-  rw [propext (hfp a)]
+one into `NatSolvable` (by `REPred.of_manyOneReducible`, which is deliberately below DPRM in
+`Computability`), and completeness forwards along the one out of it. That is why no computability
+of integer *evaluation* is needed anywhere. -/
 
 /-- **Integer solvability is recursively enumerable.** Obtained from the reduction rather than
 from computability of `evalInt`, which nothing needs. -/

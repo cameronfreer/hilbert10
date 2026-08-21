@@ -64,7 +64,15 @@ def headlineDecls : List Name :=
    ``Hilbert10.natSolvable_manyOneReducible_intSolvable,
    ``Hilbert10.rePred_intSolvable,
    ``Hilbert10.intSolvable_re_complete,
-   ``Hilbert10.not_computablePred_intSolvable]
+   ``Hilbert10.not_computablePred_intSolvable,
+   ``Hilbert10.natSolvable_manyOneEquiv_intSolvable,
+   -- the derived Diophantine API, all strictly post-DPRM (#53)
+   ``Hilbert10.REPred.of_manyOneReducible,
+   ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,
+   ``Hilbert10.Dioph.of_manyOneReducible,
+   ``Hilbert10.ComputablePred.dioph,
+   ``Hilbert10.Computable.graph_dioph,
+   ``Hilbert10.Nat.Partrec.range_dioph]
 
 #eval show CoreM Unit from do
   for t in headlineDecls do
