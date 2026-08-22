@@ -11,14 +11,17 @@ abstract: >-
   polynomial, over the naturals and over the integers. The two formulations
   are shown many-one equivalent, by the substitution x = u - v in one
   direction and Lagrange's four-square theorem in the other, so Hilbert's own
-  question about integer solutions is covered.
+  question about integer solutions is covered. The library also exposes the
+  reusable consequences of the theorem: a derived computability-Diophantine
+  API, a normal form at any finite input type, and the two code
+  transformations that relate the formulations.
 authors:
   - family-names: Freer
     given-names: Cameron
 repository-code: "https://github.com/cameronfreer/hilbert10"
 url: "https://github.com/cameronfreer/hilbert10"
 license: Apache-2.0
-version: 2.0.0
+version: 2.1.0
 keywords:
   - Lean 4
   - mathlib
