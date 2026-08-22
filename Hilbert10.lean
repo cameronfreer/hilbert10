@@ -9,13 +9,9 @@ import Hilbert10.PolynomialCode
 import Hilbert10.PolynomialCodePrimcodable
 import Hilbert10.PolynomialCodeDenote
 import Hilbert10.PolynomialCodeInt
-import Hilbert10.Internal.CodeAlgebra
-import Hilbert10.Internal.CodeAlgebraComp
 -- the two reductions between the natural and integer formulations
 import Hilbert10.SubUV
-import Hilbert10.Internal.SubUVComp
 import Hilbert10.FourSquares
-import Hilbert10.Internal.FourSquaresComp
 import Hilbert10.PolynomialCodeComp
 import Hilbert10.Instantiate
 import Hilbert10.ExistsCode

@@ -9,7 +9,9 @@ The roadmap should cite it as provenance for design choices, never as a status p
   toolchain `leanprover/lean4:v4.34.0-rc1` — read from Tau Ceti's `lake-manifest.json` and
   `lean-toolchain`.
 
-Every claim below was produced by building or by an environment sweep, not by reading source.
+Every claim below was produced by building, by an environment sweep, or by targeted source
+search — the duplicate ledger and the body-use check use the last of these deliberately, since a
+clean build cannot show that an upstream equivalent exists under another name.
 
 ---
 
