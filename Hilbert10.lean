@@ -28,5 +28,6 @@ import Hilbert10.DiophToRE
 import Hilbert10.DPRM
 import Hilbert10.DerivedDioph
 import Hilbert10.Endpoints
--- worked examples, kept as regressions
+-- regressions: every headline at its advertised type, and worked examples
+import Hilbert10.Examples.Headlines
 import Hilbert10.Examples.DerivedDioph

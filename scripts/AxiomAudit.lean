@@ -44,6 +44,11 @@ def headlineDecls : List Name :=
    ``Hilbert10.PolynomialCode.hasNatRoot_iff,
    ``Hilbert10.NatSolvable,
    ``Hilbert10.natSolvable_iff_arity,
+   -- integer semantics of the wire format, and presentation independence (v2.2)
+   ``Hilbert10.PolynomialCode.evalInt_denote,
+   ``Hilbert10.natSolvable_iff_of_denote_eq,
+   ``Hilbert10.intSolvable_iff_of_denote_eq,
+   ``Hilbert10.intSolvable_iff_arity,
    -- DPRM, both directions (#14, #23)
    ``Hilbert10.Dioph.rePred,
    ``Hilbert10.REPred.dioph,
@@ -56,6 +61,7 @@ def headlineDecls : List Name :=
    ``Hilbert10.natSolvable_re_complete,
    ``Hilbert10.halting_manyOneReducible_natSolvable,
    ``Hilbert10.not_computablePred_natSolvable,
+   ``Hilbert10.not_rePred_not_natSolvable,
    -- the integer formulation, both reductions and its endpoints (#28)
    ``Hilbert10.IntSolvable,
    ``Hilbert10.intSolvable_iff_natSolvable_subUV,
@@ -65,12 +71,14 @@ def headlineDecls : List Name :=
    ``Hilbert10.rePred_intSolvable,
    ``Hilbert10.intSolvable_re_complete,
    ``Hilbert10.not_computablePred_intSolvable,
+   ``Hilbert10.not_rePred_not_intSolvable,
    ``Hilbert10.natSolvable_manyOneEquiv_intSolvable,
-   -- the derived Diophantine API, all strictly post-DPRM (#53)
+   -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,
    ``Hilbert10.Dioph.of_manyOneReducible,
    ``Hilbert10.ComputablePred.dioph,
+   ``Hilbert10.computablePred_iff_dioph_compl_dioph,
    ``Hilbert10.Computable.graph_dioph,
    ``Hilbert10.Nat.Partrec.range_dioph]
 

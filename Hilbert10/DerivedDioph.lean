@@ -30,7 +30,7 @@ reintroduce the tuple-coding problem in a new API, this time with no proof oblig
 ## Main results
 
 * `Hilbert10.Dioph.of_manyOneReducible`
-* `Hilbert10.ComputablePred.dioph`
+* `Hilbert10.ComputablePred.dioph`, `Hilbert10.computablePred_iff_dioph_compl_dioph`
 * `Hilbert10.Computable.graph_dioph`
 * `Hilbert10.Nat.Partrec.range_dioph`
 -/
@@ -49,6 +49,14 @@ theorem Dioph.of_manyOneReducible {n m : ℕ} {R : (Fin n → ℕ) → Prop} {S 
 theorem ComputablePred.dioph {n : ℕ} {R : (Fin n → ℕ) → Prop} (hR : ComputablePred R) :
     Dioph {x | R x} :=
   REPred.dioph hR.to_re
+
+/-- **A predicate on tuples is computable exactly when it and its complement are both
+Diophantine.** Post's theorem, read through DPRM: a decision procedure is a pair of root searches,
+one for the predicate and one for its negation. -/
+theorem computablePred_iff_dioph_compl_dioph {n : ℕ} (R : (Fin n → ℕ) → Prop) :
+    ComputablePred R ↔ Dioph {x | R x} ∧ Dioph {x | ¬ R x} :=
+  ComputablePred.computable_iff_re_compl_re'.trans
+    (and_congr (dioph_iff_rePred R).symm (dioph_iff_rePred fun x => ¬ R x).symm)
 
 /-- **The graph of a computable function is Diophantine**, unary case.
 

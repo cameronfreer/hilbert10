@@ -23,9 +23,9 @@ rather than merely coexist.
 ## Computability is not proved here
 
 `primrec₂_eval` exists because `NatSolvable`'s recursive enumerability needs it. The integer
-analogue has no consumer yet: `rePred_intSolvable` is expected to follow from
-`IntSolvable ≤₀ NatSolvable` and recursive enumerability of the natural version, since recursive
-enumerability transfers along many-one reductions. If some later step does need
+analogue has no consumer: `rePred_intSolvable` is proved from `IntSolvable ≤₀ NatSolvable` and
+recursive enumerability of the natural version, since recursive enumerability transfers along
+many-one reductions (`REPred.of_manyOneReducible`). If some later step does need
 `Primrec₂ evalInt`, it should be added then — the sign handling it requires is real work, and
 speculative work here is exactly what #28 says to avoid.
 

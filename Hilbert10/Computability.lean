@@ -20,13 +20,14 @@ The import direction is the point:
 Computability  →  DPRM  →  DerivedDioph  →  endpoints and examples
 ```
 
-`REPred.of_manyOneReducible` is convenient enough to be reached for anywhere, and one of the
-places it must *not* be reached for is inside the DPRM proof, where "recursive enumerability
-transfers along a computable map" is close enough to the theorem being proved to invite a circle.
-Keeping it here, below `DPRM`, makes the permitted direction visible in the import graph rather
-than in a comment. The post-DPRM consequences live in `DerivedDioph`, above it.
+`REPred.of_manyOneReducible` is pure computability theory: it is proved from `Partrec.comp`
+and may be used anywhere, the DPRM proof included. What must *not* be used inside DPRM is its
+Diophantine shadow, `Dioph.of_manyOneReducible`, since that goes through DPRM itself. Placing this
+module below `DPRM` and the shadow in `DerivedDioph` above it makes the two directions visible in
+the import graph rather than in a comment: the pre-DPRM closure sits here, the post-DPRM
+consequences there.
 
-Its two consumers are the integer formulation (`rePred_intSolvable`) and that derived layer.
+Its consumers are the integer formulation (`rePred_intSolvable`) and that derived layer.
 
 ## Main results
 

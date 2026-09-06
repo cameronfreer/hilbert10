@@ -6,7 +6,7 @@ declaration in the public spine, and every path is a file in this repository. Th
 explained in the module docstrings; this document only says where things are and what depends on
 what.
 
-The spine is `Hilbert10.lean` and its import closure: 55 modules, about 13,200 lines. The gates
+The spine is `Hilbert10.lean` and its import closure: 60 modules, about 13,900 lines. The gates
 that cover it are described in [README](../README.md#verification);
 [lessons.md](lessons.md) is the retrospective and [comparison.md](comparison.md) the comparison
 with the Coq mechanisation.
@@ -40,12 +40,17 @@ with the Coq mechanisation.
 | `natSolvable_re_complete` | `Hilbert10/Endpoints.lean` |
 | `halting_manyOneReducible_natSolvable` | `Hilbert10/Endpoints.lean` |
 | `not_computablePred_natSolvable` | `Hilbert10/Endpoints.lean` |
+| `not_rePred_not_natSolvable` | `Hilbert10/Endpoints.lean` |
 | `rePred_intSolvable` | `Hilbert10/Endpoints.lean` |
 | `intSolvable_re_complete` | `Hilbert10/Endpoints.lean` |
 | `not_computablePred_intSolvable` | `Hilbert10/Endpoints.lean` |
+| `not_rePred_not_intSolvable` | `Hilbert10/Endpoints.lean` |
 
 Undecidability is a corollary of completeness in both cases: the halting problem is recursively
-enumerable, so it reduces, and `ComputablePred.computable_of_manyOneReducible` finishes.
+enumerable, so it reduces, and `ComputablePred.computable_of_manyOneReducible` finishes. That
+insolubility is not recursively enumerable is the same fact read through
+`ComputablePred.computable_iff_re_compl_re'`: solvability is enumerable, so its complement cannot
+be.
 
 ---
 
@@ -57,15 +62,16 @@ needs about it is proved once, at the bottom of the spine.
 | Concern | Result | Module |
 |---|---|---|
 | encoding | `instance : Primcodable PolynomialCode`, `primrec_terms`, `primrec_arity` | `PolynomialCodePrimcodable.lean` |
-| semantics | `eval`, `evalInt`, `eval_eq_evalInt` | `PolynomialCode.lean`, `PolynomialCodeInt.lean` |
-| agreement with `MvPolynomial` | `denote`, `eval_denote` | `PolynomialCodeDenote.lean` |
+| semantics | `eval`, `evalInt`, `evalInt_map_natCast` | `PolynomialCode.lean`, `PolynomialCodeInt.lean` |
+| agreement with `MvPolynomial` | `denote`, `evalInt_denote`, `eval_denote` | `PolynomialCodeDenote.lean` |
+| only the denotation matters | `evalInt_eq_of_denote_eq`, `eval_eq_of_denote_eq` | `PolynomialCodeDenote.lean` |
 | every finite polynomial has a code | `exists_code`, `eval_exists_code` | `ExistsCode.lean` |
-| the decision problem | `NatSolvable`, `hasNatRoot_iff`, `natSolvable_iff_arity` | `NatSolvable.lean` |
+| the decision problem | `NatSolvable`, `hasNatRoot_iff`, `natSolvable_iff_arity`, `natSolvable_iff_of_denote_eq` | `NatSolvable.lean` |
 | substituting inputs | `instantiate`, `eval_instantiate`, `computable₂_instantiate` | `Instantiate.lean` |
 | evaluation is computable | `primrec₂_eval`, `computable₂_eval` | `PolynomialCodeComp.lean` |
 
-`eval_denote` is where `Classical.choice` enters the spine — through `MvPolynomial`, not through
-any nonuniform choice of code. `Instantiate` is what makes the reduction computable in the input.
+`evalInt_denote` is where `Classical.choice` enters the spine — through `MvPolynomial`, not through
+any nonuniform choice of code; `eval_denote` is its restriction along the cast. `Instantiate` is what makes the reduction computable in the input.
 
 ---
 
@@ -100,10 +106,10 @@ computable decoder — `tupleCode`, `tupleDecode_tupleCode`, `computable_tupleDe
 
 | Layer | Module |
 |---|---|
-| machines, configurations, `Accepts` | `Internal/RegisterMachine.lean` |
+| machines, configurations, `Halts` | `Internal/RegisterMachine.lean` |
 | macros and program composition | `Internal/RegisterMachineMacros.lean`, `Internal/RegisterMachineRealises.lean` |
 | pairing and unpairing, by shell enumeration | `Internal/RegisterMachinePair*.lean`, `Internal/RegisterMachineUnpair.lean`, `Internal/ForMathlib/PairingEnumeration.lean` |
-| scratch discipline | `Internal/CleanScratch.lean` (`CleanPartComputesUnary`) |
+| scratch discipline and the graph relation | `Internal/CleanScratch.lean` (`CleanPartComputesUnary`, `Accepts`) |
 | the five `Nat.Partrec.Code` constructors | `Internal/CodePair.lean`, `Internal/CodePrec.lean`, `Internal/CodeRfind.lean` |
 | the interface | `Internal/CodeMachine.lean` |
 
@@ -149,7 +155,7 @@ uniform `Code → PolynomialCode` compiler exists here, and none is needed — s
 
 | Step | Result | Module |
 |---|---|---|
-| the predicate | `IntSolvable` | `IntSolvable.lean` |
+| the predicate | `IntSolvable`, `intSolvable_iff_arity`, `intSolvable_iff_of_denote_eq` | `IntSolvable.lean` |
 | code arithmetic | `const`, `X`, `add`, `neg`, `mul`, `npow` and their evaluation laws | `Internal/CodeAlgebra.lean` |
 | … is primitive recursive | `primrec₂_add`, `primrec₂_mul`, `primrec₂_npow`, … | `Internal/CodeAlgebraComp.lean` |
 | `x = u - v` | `eval_subUV`, `arity_subUV_le` | `SubUV.lean` (public) |
@@ -170,7 +176,29 @@ because what a many-one reduction needs is the code map, not the evaluator.
 
 ---
 
-## 6. What the spine takes from mathlib
+## 6. The derived API, above DPRM
+
+Consequences of `dioph_iff_rePred` for consumers, none of which the DPRM proof may use. The
+import direction is the design: `Computability.lean` sits *below* `DPRM.lean` and holds the pure
+computability fact, `DerivedDioph.lean` sits *above* it and holds the Diophantine consequences.
+
+| Step | Result | Module |
+|---|---|---|
+| RE transfers backwards along `≤₀` (pre-DPRM) | `REPred.of_manyOneReducible` | `Computability.lean` |
+| the normal form at any finite input type | `dioph_iff_exists_finite_mvPolynomial` | `NormalForm.lean` |
+| Diophantine sets are closed under `≤₀` | `Dioph.of_manyOneReducible` | `DerivedDioph.lean` |
+| computable predicates are Diophantine | `ComputablePred.dioph` | `DerivedDioph.lean` |
+| Post's theorem, read through DPRM | `computablePred_iff_dioph_compl_dioph` | `DerivedDioph.lean` |
+| graphs and ranges | `Computable.graph_dioph`, `Nat.Partrec.range_dioph` | `DerivedDioph.lean` |
+| every headline at its advertised type | `example`s only | `Examples/Headlines.lean` |
+| divisibility both ways, primality | `prime_dioph` | `Examples/DerivedDioph.lean` |
+
+The domains are `Fin n → ℕ`, not arbitrary `Primcodable` types: transporting across an opaque
+encoding would need a Diophantine encoding contract, and none is stated here.
+
+---
+
+## 7. What the spine takes from mathlib
 
 Load-bearing inputs, all at the pinned revision:
 
@@ -189,7 +217,7 @@ Four small shims are staged for upstream and used internally in the meantime:
 
 ---
 
-## 7. What is *not* in the spine
+## 8. What is *not* in the spine
 
 `Hilbert10Experimental.lean` imports `Hilbert10` plus nine modules kept as route evidence: the
 one-register and fixed-slice selector spikes, the decrement-loop counterexamples, the
@@ -199,14 +227,14 @@ depends on any of it.
 
 ---
 
-## 8. Snapshot
+## 9. Snapshot
 
-Measured at the commit that closed #28, not a benchmark:
+Measured at v2.2.0, not a benchmark:
 
 | | |
 |---|---|
-| spine modules | 55 |
-| spine lines | ~13,200 |
-| headline declarations audited | 24 |
+| spine modules | 60 |
+| spine lines | ~13,900 |
+| headline declarations audited | 38 |
 | axioms used | `propext`, `Classical.choice`, `Quot.sound` |
 | `sorry` in the spine | none |

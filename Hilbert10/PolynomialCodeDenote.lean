@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.PolynomialCode
+import Hilbert10.PolynomialCodeInt
 import Mathlib.Algebra.MvPolynomial.Variables
 import Mathlib.Data.List.GetD
 
@@ -17,8 +18,13 @@ states its contract against.
 ## Main results
 
 * `denote`: the `MvPolynomial ℕ ℤ` denoted by a code.
-* `eval_denote`: evaluating the denotation agrees with `eval`, for **every** assignment
-  list, under the same zero-default convention `eval` uses.
+* `evalInt_denote`, `eval_denote`: evaluating the denotation agrees with `evalInt` and with
+  `eval`, for **every** assignment list, under the same zero-default convention both use. The
+  integer statement is the primary one, since the denotation has integer coefficients; the
+  natural one is its restriction along the cast.
+* `evalInt_eq_of_denote_eq`, `eval_eq_of_denote_eq`: codes with the same denotation evaluate
+  alike, which is what makes the permissive format harmless — duplicate terms and trailing
+  zero exponents change the code but not the denotation.
 * `denote_singleton`, `denote_append`: #11 needs algebraic equality of denotations, not
   merely agreement of evaluations, so the compositional structure is exposed.
 * `vars_denote_subset`: `p.denote.vars ⊆ Finset.range p.arity`, an **upper bound only** —
@@ -162,12 +168,16 @@ theorem denoteMonomial_set :
   intro e k hk
   simpa [denoteMonomial] using aux e 0 k hk
 
-/-! ### Evaluation -/
+/-! ### Evaluation
 
-private theorem eval_denoteMonomialFrom (x : List ℕ) :
+The integer evaluation is the one proved by induction: the denotation has integer coefficients,
+so an integer assignment is its natural argument. The natural evaluation then agrees because it
+is the integer one restricted along the cast (`evalInt_map_natCast`). -/
+
+private theorem evalInt_denoteMonomialFrom (x : List ℤ) :
     ∀ (e : MonomialCode) (i : ℕ),
-      MvPolynomial.eval (fun j => ((x.getD j 0 : ℕ) : ℤ)) (denoteMonomialFrom i e) =
-        evalMonomial e (x.drop i) := by
+      MvPolynomial.eval (fun j => x.getD j 0) (denoteMonomialFrom i e) =
+        evalMonomialInt e (x.drop i) := by
   intro e
   induction e with
   | nil => intro i; simp [denoteMonomialFrom]
@@ -176,22 +186,49 @@ private theorem eval_denoteMonomialFrom (x : List ℕ) :
     simp only [denoteMonomialFrom, map_mul, map_pow, eval_X, ih]
     by_cases hi : i < x.length
     · rw [List.drop_eq_getElem_cons hi]
-      simp only [evalMonomial, List.getD_eq_getElem _ _ hi]
+      simp only [evalMonomialInt, List.getD_eq_getElem _ _ hi]
     · have hnil : x.drop i = [] := List.drop_eq_nil_of_le (le_of_not_gt hi)
       have hnil' : x.drop (i + 1) = [] := List.drop_eq_nil_of_le (by omega)
       rw [hnil, hnil', List.getD_eq_default _ _ (le_of_not_gt hi)]
-      simp only [evalMonomial, Nat.cast_zero]
+      simp only [evalMonomialInt]
 
-/-- Evaluating the denotation agrees with `eval`, for every assignment list. Variables past
-the end of the list are read as `0` on both sides. -/
-theorem eval_denote (p : PolynomialCode) (x : List ℕ) :
-    MvPolynomial.eval (fun i => ((x.getD i 0 : ℕ) : ℤ)) p.denote = p.eval x := by
-  simp only [denote, PolynomialCode.eval]
+/-- **Evaluating the denotation agrees with `evalInt`**, for every integer assignment list.
+Variables past the end of the list are read as `0` on both sides. -/
+theorem evalInt_denote (p : PolynomialCode) (x : List ℤ) :
+    MvPolynomial.eval (fun i => x.getD i 0) p.denote = p.evalInt x := by
+  simp only [denote, evalInt]
   induction p.terms with
   | nil => simp
   | cons t ts ih =>
     simp only [List.map_cons, List.sum_cons, map_add, map_mul, eval_C, ih]
-    rw [denoteMonomial, eval_denoteMonomialFrom x t.2 0, List.drop_zero]
+    rw [denoteMonomial, evalInt_denoteMonomialFrom x t.2 0, List.drop_zero]
+
+/-- **Evaluating the denotation agrees with `eval`**, for every natural assignment list: the
+integer statement, restricted along the cast. -/
+theorem eval_denote (p : PolynomialCode) (x : List ℕ) :
+    MvPolynomial.eval (fun i => ((x.getD i 0 : ℕ) : ℤ)) p.denote = p.eval x := by
+  have hx : (fun i => ((x.getD i 0 : ℕ) : ℤ)) = fun i => (x.map (Nat.cast : ℕ → ℤ)).getD i 0 := by
+    funext i
+    rw [List.getD_eq_getElem?_getD, List.getD_eq_getElem?_getD, List.getElem?_map]
+    cases x[i]? <;> simp
+  rw [← evalInt_map_natCast, ← evalInt_denote, hx]
+
+/-! ### Only the denotation matters
+
+The consequence the permissive format is entitled to: two codes that denote the same polynomial
+evaluate alike, at every assignment. Duplicate terms (`denote_duplicate`) and trailing zero
+exponents (`denoteMonomial_append_replicate_zero`) are the two ways the format lets codes
+differ without their denotations differing. -/
+
+/-- Codes with the same denotation take the same integer values. -/
+theorem evalInt_eq_of_denote_eq {p q : PolynomialCode} (h : p.denote = q.denote) (x : List ℤ) :
+    p.evalInt x = q.evalInt x := by
+  rw [← evalInt_denote, ← evalInt_denote, h]
+
+/-- Codes with the same denotation take the same natural values. -/
+theorem eval_eq_of_denote_eq {p q : PolynomialCode} (h : p.denote = q.denote) (x : List ℕ) :
+    p.eval x = q.eval x := by
+  rw [← eval_denote, ← eval_denote, h]
 
 /-! ### Variables
 

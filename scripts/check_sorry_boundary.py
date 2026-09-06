@@ -11,8 +11,12 @@ Policy:
 3. Promotion into the root spine requires removing all sorries and passing the axiom
    audit. Promotion is the reviewable event: a file appearing in the transitive closure of
    `Hilbert10.lean` is a claim that it is finished.
+4. Every source file under `Hilbert10/` is in that closure. The audits only see what the
+   root reaches, so a file that lives in the production tree but is imported by nothing
+   would be built by Lake yet audited by no one. Such a file is either unfinished (it
+   belongs in `Hilbert10Experimental`) or forgotten (the root should import it).
 
-This script checks 1 and 2. It computes the import closure from the source text rather
+This script checks 1, 2 and 4. It computes the import closure from the source text rather
 than from build artefacts, so it works on a clean checkout and cannot be fooled by a
 stale `.lake`. Being a source-text check it is the cheap first line of defence, not the
 only one: `sorryAx` is an axiom, so `scripts/AxiomAudit.lean` independently rejects any
@@ -142,13 +146,23 @@ def main() -> int:
                   f"not be imported by the production root spine", file=sys.stderr)
             status = 1
 
+    # (4) the spine covers the whole production tree
+    for p in sorted((root / ROOT_MODULE).rglob("*.lean")):
+        mod = ".".join(p.relative_to(root).with_suffix("").parts)
+        if mod not in spine:
+            print(f"{p.relative_to(root)}: not reachable from {ROOT_MODULE}.lean — every "
+                  f"module under {ROOT_MODULE}/ must be in the audited spine (import it, "
+                  f"or stage it under {EXPERIMENTAL_PREFIX}/)", file=sys.stderr)
+            status = 1
+
     # Informational: what is staged outside the spine.
     exp_dir = root / "Hilbert10Experimental"
     staged = sorted(p.relative_to(root) for p in exp_dir.rglob("*.lean")) if exp_dir.is_dir() else []
     n_sorry = sum(1 for p in staged if sorries_in(root / p))
 
     if status == 0:
-        print(f"check_sorry_boundary: {len(spine)} spine module(s) sorry-free; "
+        print(f"check_sorry_boundary: {len(spine)} spine module(s) sorry-free, covering "
+              f"{ROOT_MODULE}/; "
               f"{len(staged)} experimental module(s) outside the spine "
               f"({n_sorry} containing sorries)")
     return status

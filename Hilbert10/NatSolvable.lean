@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.PolynomialCodePrimcodable
+import Hilbert10.PolynomialCodeDenote
 
 /-!
 # Hilbert's tenth problem as a decision problem
@@ -85,6 +86,13 @@ theorem natSolvable_iff_arity (p : PolynomialCode) :
     NatSolvable p ↔ ∃ x : List ℕ, x.length = p.arity ∧ p.eval x = 0 :=
   PolynomialCode.hasNatRoot_iff p
 
+/-- **Solvability depends only on the denoted polynomial.** This is the promise the permissive
+wire format makes: duplicate terms, trailing zero exponents and any other presentation choice
+that leaves `denote` unchanged cannot change whether a root exists. -/
+theorem natSolvable_iff_of_denote_eq {p q : PolynomialCode} (h : p.denote = q.denote) :
+    NatSolvable p ↔ NatSolvable q :=
+  exists_congr fun x => by rw [PolynomialCode.eval_eq_of_denote_eq h]
+
 /-! ### Sanity checks -/
 
 /-- The tie to `HasNatRoot` is definitional, not an equivalence to be maintained. -/
@@ -92,5 +100,16 @@ example (p : PolynomialCode) : NatSolvable p ↔ p.HasNatRoot := Iff.rfl
 
 /-- A solvable instance: `x₀ ^ 2 + x₁ ^ 2 - 25` has the root `[3, 4]`. -/
 example : NatSolvable ⟨[(1, [2]), (1, [0, 2]), (-25, [])]⟩ := ⟨[3, 4], by decide⟩
+
+/-- Duplicate terms do not affect solvability: they denote the combined term. -/
+example (c d : ℤ) (e : MonomialCode) :
+    NatSolvable ⟨[(c, e), (d, e)]⟩ ↔ NatSolvable ⟨[(c + d, e)]⟩ :=
+  natSolvable_iff_of_denote_eq (PolynomialCode.denote_duplicate c d e)
+
+/-- Trailing zero exponents do not affect solvability, though they inflate `arity`. -/
+example (c : ℤ) (e : MonomialCode) (k : ℕ) :
+    NatSolvable ⟨[(c, e ++ List.replicate k 0)]⟩ ↔ NatSolvable ⟨[(c, e)]⟩ :=
+  natSolvable_iff_of_denote_eq (by
+    simp [PolynomialCode.denote, PolynomialCode.denoteMonomial_append_replicate_zero])
 
 end Hilbert10

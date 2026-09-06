@@ -31,6 +31,7 @@ theorem rePred_natSolvable : REPred NatSolvable
 theorem natSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} :
     REPred R → R ≤₀ NatSolvable
 theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable
+theorem not_rePred_not_natSolvable : ¬ REPred fun p => ¬ NatSolvable p
 ```
 
 `NatSolvable` is therefore many-one complete among recursively enumerable predicates, which says
@@ -49,6 +50,7 @@ theorem natSolvable_manyOneReducible_intSolvable : NatSolvable ≤₀ IntSolvabl
 theorem intSolvable_re_complete {α : Type*} [Primcodable α] {R : α → Prop} :
     REPred R → R ≤₀ IntSolvable
 theorem not_computablePred_intSolvable : ¬ ComputablePred IntSolvable
+theorem not_rePred_not_intSolvable : ¬ REPred fun p => ¬ IntSolvable p
 ```
 
 The two reductions are the substitution `x = u - v` and Lagrange's four-square theorem, each
@@ -152,7 +154,8 @@ and `dioph_iff_rePred`, and all of them are in the public spine.
   `Hilbert10/Internal/ForMathlib/` holds self-contained additions intended for mathlib, kept
   locally under upstream-compatible names until they land there.
 * `Hilbert10Experimental/Spike/` — executable evidence supporting architectural decisions.
-* `scripts/` — the import-boundary and axiom-audit checks run by CI.
+* `scripts/` — the boundary, axiom and API-hygiene checks run by CI, and `gates.sh`, which
+  runs the build and all of them.
 
 "Experimental" describes promotion status, not a weaker logic or an unchecked target: both
 libraries are default build targets, so everything here typechecks. What differs is the
@@ -163,16 +166,23 @@ inside the spine from the start.
 
 ## Verification
 
-Three CI gates:
+Four CI gates, run together by `scripts/gates.sh`:
 
 * both libraries build, the spine additionally under `warningAsError`;
-* `scripts/check_sorry_boundary.py` — the spine is free of `sorry` and imports nothing from
-  staging;
+* `scripts/check_sorry_boundary.py` — the spine is free of `sorry`, imports nothing from
+  staging, and covers every file under `Hilbert10/`, so nothing in the production tree escapes
+  the two audits below;
 * `scripts/AxiomAudit.lean` — an environment sweep over every declaration owned by a spine
   module, private and compiler-generated ones included, rejecting anything beyond `propext`,
-  `Classical.choice` and `Quot.sound`.
+  `Classical.choice` and `Quot.sound`;
+* `scripts/ApiLeakageAudit.lean` — the *statements* of public declarations mention no constant
+  owned by `Hilbert10.Internal.*` or the staging library, so the interface cannot depend on
+  route-specific machinery even where the proofs do.
 
-The last two gate the spine only. Staged work is audited when it is promoted, which is what makes
+The last three gate the spine only. The headline audit protects declarations by name; their
+*types* are protected by `Hilbert10/Examples/Headlines.lean`, which applies every headline at
+its documented signature, so a changed statement fails the build rather than slipping past the
+audit. Staged work is audited when it is promoted, which is what makes
 promotion mean something.
 
 ## Building

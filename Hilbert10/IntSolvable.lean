@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.NatSolvable
+import Hilbert10.PolynomialCodeDenote
 import Hilbert10.SubUV
 import Hilbert10.Internal.SubUVComp
 import Hilbert10.FourSquares
@@ -35,7 +36,8 @@ witness make `take` and `drop` describe the wrong blocks.
 
 ## Main results
 
-* `Hilbert10.IntSolvable`
+* `Hilbert10.IntSolvable`, `Hilbert10.intSolvable_iff_arity`,
+  `Hilbert10.intSolvable_iff_of_denote_eq`
 * `Hilbert10.intSolvable_iff_natSolvable_subUV`
 * `Hilbert10.intSolvable_manyOneReducible_natSolvable`
 * `Hilbert10.natSolvable_iff_intSolvable_fourSquares`
@@ -52,6 +54,23 @@ def IntSolvable (p : PolynomialCode) : Prop := ∃ x : List ℤ, p.evalInt x = 0
 
 theorem intSolvable_iff (p : PolynomialCode) :
     IntSolvable p ↔ ∃ x : List ℤ, p.evalInt x = 0 := Iff.rfl
+
+/-- An integer root may always be taken to have length exactly `arity`, matching
+`natSolvable_iff_arity`. -/
+theorem intSolvable_iff_arity (p : PolynomialCode) :
+    IntSolvable p ↔ ∃ x : List ℤ, x.length = p.arity ∧ p.evalInt x = 0 := by
+  constructor
+  · rintro ⟨x, hx⟩
+    obtain ⟨y, hy, hyx⟩ := p.exists_length_eq_evalInt_eq x (m := p.arity) le_rfl
+    exact ⟨y, hy, hyx.trans hx⟩
+  · rintro ⟨x, _, hx⟩
+    exact ⟨x, hx⟩
+
+/-- **Integer solvability depends only on the denoted polynomial**, as
+`natSolvable_iff_of_denote_eq` says for the natural version. -/
+theorem intSolvable_iff_of_denote_eq {p q : PolynomialCode} (h : p.denote = q.denote) :
+    IntSolvable p ↔ IntSolvable q :=
+  exists_congr fun x => by rw [PolynomialCode.evalInt_eq_of_denote_eq h]
 
 /-- **The reduction, as an equivalence of codes.** An integer root of `p` is exactly a natural
 root of the difference-substituted code. -/

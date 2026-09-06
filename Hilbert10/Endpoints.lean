@@ -53,9 +53,9 @@ directions; neither transfer needs computability of integer evaluation.
 * `Hilbert10.REPred.manyOneReducible_natSolvable'`
 * `Hilbert10.natSolvable_re_complete`
 * `Hilbert10.halting_manyOneReducible_natSolvable`
-* `Hilbert10.not_computablePred_natSolvable`
+* `Hilbert10.not_computablePred_natSolvable`, `Hilbert10.not_rePred_not_natSolvable`
 * `Hilbert10.intSolvable_re_complete`
-* `Hilbert10.not_computablePred_intSolvable`
+* `Hilbert10.not_computablePred_intSolvable`, `Hilbert10.not_rePred_not_intSolvable`
 -/
 
 namespace Hilbert10
@@ -111,6 +111,13 @@ theorem not_computablePred_natSolvable : ¬ ComputablePred NatSolvable := fun h 
   ComputablePred.halting_problem 0
     (ComputablePred.computable_of_manyOneReducible halting_manyOneReducible_natSolvable h)
 
+/-- **Insolubility is not recursively enumerable.** Solvability is (`rePred_natSolvable`), so if
+its complement were too the problem would be decidable. This is the precise sense in which a
+search for roots cannot be complemented by a search for certificates that none exist. -/
+theorem not_rePred_not_natSolvable : ¬ REPred fun p => ¬ NatSolvable p := fun h =>
+  not_computablePred_natSolvable
+    (ComputablePred.computable_iff_re_compl_re'.2 ⟨rePred_natSolvable, h⟩)
+
 /-! ### The integer formulation
 
 #28. Both reductions live in `IntSolvable`; recursive enumerability transfers backwards along the
@@ -139,5 +146,11 @@ decides whether an encoded polynomial has an integer root. -/
 theorem not_computablePred_intSolvable : ¬ ComputablePred IntSolvable := fun h =>
   ComputablePred.halting_problem 0
     (ComputablePred.computable_of_manyOneReducible halting_manyOneReducible_intSolvable h)
+
+/-- **Integer insolubility is not recursively enumerable**, for the same reason as the natural
+version. -/
+theorem not_rePred_not_intSolvable : ¬ REPred fun p => ¬ IntSolvable p := fun h =>
+  not_computablePred_intSolvable
+    (ComputablePred.computable_iff_re_compl_re'.2 ⟨rePred_intSolvable, h⟩)
 
 end Hilbert10
