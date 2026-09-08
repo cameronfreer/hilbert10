@@ -12,11 +12,14 @@ import Hilbert10.PolynomialCodeInt
 -- the two reductions between the natural and integer formulations
 import Hilbert10.SubUV
 import Hilbert10.FourSquares
+-- finite systems, by sums of squares
+import Hilbert10.SumSquares
 import Hilbert10.PolynomialCodeComp
 import Hilbert10.Instantiate
 import Hilbert10.ExistsCode
 import Hilbert10.NatSolvable
 import Hilbert10.IntSolvable
+import Hilbert10.Systems
 -- the normal form and the reduction to `NatSolvable`
 import Hilbert10.PolyBridge
 import Hilbert10.NormalForm

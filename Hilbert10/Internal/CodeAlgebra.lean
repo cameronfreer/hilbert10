@@ -292,6 +292,27 @@ theorem getD_map_natCast (x : List ℕ) (i : ℕ) :
 @[simp] theorem eval_X (i : ℕ) (x : List ℕ) : eval (X i) x = ((x.getD i 0 : ℕ) : ℤ) := by
   rw [eval_eq_evalInt, evalInt_X, getD_map_natCast]
 
+/-! ### Folded sums
+
+Both `fourSquares` and the sum-of-squares transformation build a sum of codes by
+`foldr add zero`, so its evaluation and arity laws are stated once. -/
+
+/-- Evaluating a folded sum of codes is the sum of the evaluations. -/
+theorem evalInt_foldr_add {α : Type*} (l : List α) (f : α → PolynomialCode) (y : List ℤ) :
+    evalInt ((l.map f).foldr add zero) y = (l.map fun i => evalInt (f i) y).sum := by
+  induction l with
+  | nil => simp [zero]
+  | cons a as ih => simp only [List.map_cons, List.foldr_cons, evalInt_add, ih, List.sum_cons]
+
+/-- A folded sum's arity is bounded by any common bound on its summands. -/
+theorem arity_foldr_add_le {α : Type*} (l : List α) (f : α → PolynomialCode) (m : ℕ)
+    (h : ∀ a ∈ l, (f a).arity ≤ m) : (((l.map f).foldr add zero)).arity ≤ m := by
+  induction l with
+  | nil => simp [zero, arity]
+  | cons a as ih =>
+    simp only [List.map_cons, List.foldr_cons, arity_add, max_le_iff]
+    exact ⟨h a (by simp), ih fun b hb => h b (by simp [hb])⟩
+
 end PolynomialCode
 
 end Hilbert10

@@ -69,12 +69,6 @@ def fourSquares (p : PolynomialCode) : PolynomialCode :=
 
 /-! ### Evaluation -/
 
-private theorem evalInt_foldr_add {α : Type*} (l : List α) (f : α → PolynomialCode) (y : List ℤ) :
-    evalInt ((l.map f).foldr add zero) y = (l.map fun i => evalInt (f i) y).sum := by
-  induction l with
-  | nil => simp [zero]
-  | cons a as ih => simp only [List.map_cons, List.foldr_cons, evalInt_add, ih, List.sum_cons]
-
 @[simp] theorem evalInt_fourSq (n i : ℕ) (y : List ℤ) :
     evalInt (fourSq n i) y
       = (y.getD (n + 4 * i) 0) ^ 2 + (y.getD (n + 4 * i + 1) 0) ^ 2
@@ -196,14 +190,6 @@ theorem arity_fourSqConstraint_le (n i : ℕ) :
   refine le_trans (arity_npow_le _ 2) ?_
   simp only [arity_add, arity_neg, arity_X, max_le_iff]
   exact ⟨le_max_left _ _, le_trans (arity_fourSq_le n i) (le_max_right _ _)⟩
-
-private theorem arity_foldr_add_le {α : Type*} (l : List α) (f : α → PolynomialCode) (m : ℕ)
-    (h : ∀ a ∈ l, (f a).arity ≤ m) : (((l.map f).foldr add zero)).arity ≤ m := by
-  induction l with
-  | nil => simp [zero, arity]
-  | cons a as ih =>
-    simp only [List.map_cons, List.foldr_cons, arity_add, max_le_iff]
-    exact ⟨h a (by simp), ih fun b hb => h b (by simp [hb])⟩
 
 /-- **The frozen arity bound.** -/
 theorem arity_fourSquares_le (p : PolynomialCode) : (fourSquares p).arity ≤ 5 * p.arity := by

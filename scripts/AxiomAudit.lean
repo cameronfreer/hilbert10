@@ -73,6 +73,16 @@ def headlineDecls : List Name :=
    ``Hilbert10.not_computablePred_intSolvable,
    ``Hilbert10.not_rePred_not_intSolvable,
    ``Hilbert10.natSolvable_manyOneEquiv_intSolvable,
+   -- finite systems with a shared assignment (#53)
+   ``Hilbert10.SystemNatSolvable,
+   ``Hilbert10.SystemIntSolvable,
+   ``Hilbert10.PolynomialCode.evalInt_sumSquaresCode,
+   ``Hilbert10.PolynomialCode.evalInt_sumSquaresCode_eq_zero_iff,
+   ``Hilbert10.PolynomialCode.arity_sumSquaresCode_le,
+   ``Hilbert10.systemNatSolvable_iff_natSolvable_sumSquaresCode,
+   ``Hilbert10.systemIntSolvable_iff_intSolvable_sumSquaresCode,
+   ``Hilbert10.natSolvable_manyOneEquiv_systemNatSolvable,
+   ``Hilbert10.intSolvable_manyOneEquiv_systemIntSolvable,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

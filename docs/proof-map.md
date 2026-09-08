@@ -174,6 +174,22 @@ computability of the transformation, so the arithmetic can be checked without re
 computability proof. Computability of `evalInt` is deliberately absent: nothing consumes it,
 because what a many-one reduction needs is the code map, not the evaluator.
 
+### 5.1 Finite systems with a shared assignment (#53)
+
+| Step | Result | Module |
+|---|---|---|
+| the predicates | `SystemNatSolvable`, `SystemIntSolvable` | `Systems.lean` |
+| the sum of squares | `sumSquaresCode`, `systemArity`, `evalInt_sumSquaresCode`, `eval_sumSquaresCode` | `SumSquares.lean` (public) |
+| a sum of squares vanishes iff every summand does | `evalInt_sumSquaresCode_eq_zero_iff`, `eval_sumSquaresCode_eq_zero_iff`, `arity_sumSquaresCode_le` | `SumSquares.lean` |
+| … is primitive recursive | `primrec_sumSquaresCode` | `Internal/SumSquaresComp.lean` |
+| the equivalences, same witness | `systemNatSolvable_iff_natSolvable_sumSquaresCode`, `systemIntSolvable_iff_intSolvable_sumSquaresCode` | `Systems.lean` |
+| the same many-one degree | `natSolvable_manyOneEquiv_systemNatSolvable`, `intSolvable_manyOneEquiv_systemIntSolvable` | `Systems.lean` |
+
+One assignment serves every member of the system; the contradictory pair `x₀ = 0`, `x₀ = 1`
+(each solvable, jointly not) is the regression that pins that contract. The folded-sum laws
+`evalInt_foldr_add` and `arity_foldr_add_le` in `Internal/CodeAlgebra.lean` now serve both this
+transformation and `fourSquares`.
+
 ---
 
 ## 6. The derived API, above DPRM

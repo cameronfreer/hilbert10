@@ -58,6 +58,14 @@ proved as an equivalence of codes and then packaged with the computability of th
 transformation. Stating them separately from the endpoints says the sharper thing: the two
 formulations have the same many-one degree, not merely that both are undecidable.
 
+Finite systems of equations, with one assignment shared by every member, reduce to single
+equations by a sum of squares and back by the singleton map:
+
+```lean
+theorem natSolvable_manyOneEquiv_systemNatSolvable : ManyOneEquiv NatSolvable SystemNatSolvable
+theorem intSolvable_manyOneEquiv_systemIntSolvable : ManyOneEquiv IntSolvable SystemIntSolvable
+```
+
 ## Scope
 
 DPRM is developed as a **semantic** theorem: for each recursively enumerable predicate there

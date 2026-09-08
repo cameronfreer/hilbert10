@@ -7,6 +7,8 @@ import Hilbert10.PolynomialCodeDenote
 import Hilbert10.ExistsCode
 import Hilbert10.NatSolvable
 import Hilbert10.IntSolvable
+import Hilbert10.SumSquares
+import Hilbert10.Systems
 import Hilbert10.NormalForm
 import Hilbert10.Computability
 import Hilbert10.DPRM
@@ -145,6 +147,45 @@ example (R : Empty → Prop) (hR : REPred R) : R ≤₀ IntSolvable :=
 example : ¬ ComputablePred IntSolvable := not_computablePred_intSolvable
 
 example : ¬ REPred fun p => ¬ IntSolvable p := not_rePred_not_intSolvable
+
+/-! ### Finite systems with a shared assignment -/
+
+example (ps : List PolynomialCode) : SystemNatSolvable ps ↔ ∃ x : List ℕ, ∀ p ∈ ps, p.eval x = 0 :=
+  Iff.rfl
+
+example (ps : List PolynomialCode) :
+    SystemIntSolvable ps ↔ ∃ x : List ℤ, ∀ p ∈ ps, p.evalInt x = 0 :=
+  Iff.rfl
+
+example (ps : List PolynomialCode) (x : List ℤ) :
+    PolynomialCode.evalInt (PolynomialCode.sumSquaresCode ps) x =
+      (ps.map fun p => (p.evalInt x) ^ 2).sum :=
+  PolynomialCode.evalInt_sumSquaresCode ps x
+
+example (ps : List PolynomialCode) (x : List ℕ) :
+    PolynomialCode.eval (PolynomialCode.sumSquaresCode ps) x =
+      (ps.map fun p => (p.eval x) ^ 2).sum :=
+  PolynomialCode.eval_sumSquaresCode ps x
+
+example (ps : List PolynomialCode) (x : List ℤ) :
+    PolynomialCode.evalInt (PolynomialCode.sumSquaresCode ps) x = 0 ↔ ∀ p ∈ ps, p.evalInt x = 0 :=
+  PolynomialCode.evalInt_sumSquaresCode_eq_zero_iff ps x
+
+example (ps : List PolynomialCode) :
+    (PolynomialCode.sumSquaresCode ps).arity ≤ PolynomialCode.systemArity ps :=
+  PolynomialCode.arity_sumSquaresCode_le ps
+
+example (ps : List PolynomialCode) :
+    SystemNatSolvable ps ↔ NatSolvable (PolynomialCode.sumSquaresCode ps) :=
+  systemNatSolvable_iff_natSolvable_sumSquaresCode ps
+
+example (ps : List PolynomialCode) :
+    SystemIntSolvable ps ↔ IntSolvable (PolynomialCode.sumSquaresCode ps) :=
+  systemIntSolvable_iff_intSolvable_sumSquaresCode ps
+
+example : ManyOneEquiv NatSolvable SystemNatSolvable := natSolvable_manyOneEquiv_systemNatSolvable
+
+example : ManyOneEquiv IntSolvable SystemIntSolvable := intSolvable_manyOneEquiv_systemIntSolvable
 
 /-! ### The derived Diophantine API -/
 
