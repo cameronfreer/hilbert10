@@ -83,6 +83,13 @@ def headlineDecls : List Name :=
    ``Hilbert10.systemIntSolvable_iff_intSolvable_sumSquaresCode,
    ``Hilbert10.natSolvable_manyOneEquiv_systemNatSolvable,
    ``Hilbert10.intSolvable_manyOneEquiv_systemIntSolvable,
+   -- degree, and the quadratic gates with their allocation contract (#57, checkpoint 1)
+   ``Hilbert10.PolynomialCode.totalDegree_denote_le,
+   ``Hilbert10.PolynomialCode.degreeBound_sumSquaresCode_le,
+   ``Hilbert10.Gate.evalInt_code_eq_zero_iff,
+   ``Hilbert10.Gate.eval_code_eq_zero_iff,
+   ``Hilbert10.Gate.degreeBound_code_le,
+   ``Hilbert10.exists_extension,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

@@ -190,6 +190,24 @@ One assignment serves every member of the system; the contradictory pair `x₀ =
 `evalInt_foldr_add` and `arity_foldr_add_le` in `Internal/CodeAlgebra.lean` now serve both this
 transformation and `fourSquares`.
 
+### 5.2 Degree, and the quadratic gates (#57, first checkpoint)
+
+| Step | Result | Module |
+|---|---|---|
+| the syntactic bound | `degreeBound`, `systemDegreeBound`, `degreeBound_le_iff` | `Degree.lean` |
+| it dominates the denotation | `totalDegree_denote_le` (via `totalDegree_denoteMonomial_le`) | `Degree.lean`, `PolynomialCodeDenote.lean` |
+| degree laws of the code algebra | `degreeBound_add_le`, `degreeBound_mul_le`, `degreeBound_npow_le`, `degreeBound_foldr_add_le` | `Internal/CodeAlgebraDegree.lean` |
+| the four gate codes and their semantics | `constGate`, `eqGate`, `addGate`, `mulGate`; `evalInt_*_eq_zero_iff`, `eval_*_eq_zero_iff` | `QuadraticGates.lean` |
+| gates are quadratic | `degreeBound_mulGate_le`, `Gate.degreeBound_code_le` | `QuadraticGates.lean` |
+| sums of squares double the degree | `degreeBound_sumSquaresCode_le` | `QuadraticGates.lean` |
+| the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` | `QuadraticGates.lean` |
+
+`degreeBound` ignores cancellation, so it is a bound and not a degree; `totalDegree_denote_le`
+is what makes "degree at most four" a statement about the polynomial. The allocation contract —
+each gate writes a fresh variable and reads only below it — is what turns soundness of the
+quadratic lowering into an induction, and `exists_extension` is that induction, over any semiring
+so natural inputs extend to natural auxiliaries.
+
 ---
 
 ## 6. The derived API, above DPRM

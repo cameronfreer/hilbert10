@@ -9,6 +9,8 @@ import Hilbert10.NatSolvable
 import Hilbert10.IntSolvable
 import Hilbert10.SumSquares
 import Hilbert10.Systems
+import Hilbert10.Degree
+import Hilbert10.QuadraticGates
 import Hilbert10.NormalForm
 import Hilbert10.Computability
 import Hilbert10.DPRM
@@ -186,6 +188,28 @@ example (ps : List PolynomialCode) :
 example : ManyOneEquiv NatSolvable SystemNatSolvable := natSolvable_manyOneEquiv_systemNatSolvable
 
 example : ManyOneEquiv IntSolvable SystemIntSolvable := intSolvable_manyOneEquiv_systemIntSolvable
+
+/-! ### Degree, and the quadratic gates -/
+
+example (p : PolynomialCode) : p.denote.totalDegree ≤ p.degreeBound :=
+  PolynomialCode.totalDegree_denote_le p
+
+example (ps : List PolynomialCode) :
+    (PolynomialCode.sumSquaresCode ps).degreeBound ≤ 2 * PolynomialCode.systemDegreeBound ps :=
+  PolynomialCode.degreeBound_sumSquaresCode_le ps
+
+example (g : Gate) (x : List ℤ) : PolynomialCode.evalInt g.code x = 0 ↔ g.Holds x :=
+  Gate.evalInt_code_eq_zero_iff g x
+
+example (g : Gate) (x : List ℕ) : PolynomialCode.eval g.code x = 0 ↔ g.Holds x :=
+  Gate.eval_code_eq_zero_iff g x
+
+example (g : Gate) : g.code.degreeBound ≤ 2 := Gate.degreeBound_code_le g
+
+example {R : Type} [Semiring R] (gs : List Gate) (n : ℕ) (h : WellOrdered n gs) (x : List R)
+    (hx : x.length = n) :
+    ∃ y : List R, y.length = n + gs.length ∧ y.take n = x ∧ ∀ g ∈ gs, g.Holds y :=
+  exists_extension gs n h x hx
 
 /-! ### The derived Diophantine API -/
 

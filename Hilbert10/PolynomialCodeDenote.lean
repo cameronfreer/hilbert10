@@ -230,6 +230,26 @@ theorem eval_eq_of_denote_eq {p q : PolynomialCode} (h : p.denote = q.denote) (x
     p.eval x = q.eval x := by
   rw [← eval_denote, ← eval_denote, h]
 
+/-! ### Total degree
+
+The sum of a monomial's exponents bounds the total degree of its denotation (with equality, but
+the bound is what the degree accounting in `Degree.lean` consumes). -/
+
+private theorem totalDegree_denoteMonomialFrom_le (e : MonomialCode) (i : ℕ) :
+    (denoteMonomialFrom i e).totalDegree ≤ e.sum := by
+  induction e generalizing i with
+  | nil => simp [denoteMonomialFrom]
+  | cons a es ih =>
+    simp only [denoteMonomialFrom, List.sum_cons]
+    refine (totalDegree_mul _ _).trans ?_
+    rw [totalDegree_X_pow]
+    exact Nat.add_le_add_left (ih (i + 1)) a
+
+/-- The total degree of a monomial's denotation is at most the sum of its exponents. -/
+theorem totalDegree_denoteMonomial_le (e : MonomialCode) :
+    (denoteMonomial e).totalDegree ≤ e.sum :=
+  totalDegree_denoteMonomialFrom_le e 0
+
 /-! ### Variables
 
 An upper bound only. `arity` is the maximum exponent-vector length, so trailing zero
