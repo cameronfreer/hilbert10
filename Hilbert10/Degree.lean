@@ -59,6 +59,10 @@ theorem systemDegreeBound_le_iff (ps : List PolynomialCode) (d : ℕ) :
     systemDegreeBound ps ≤ d ↔ ∀ p ∈ ps, p.degreeBound ≤ d := by
   simp only [systemDegreeBound, foldr_max_le_iff, List.forall_mem_map]
 
+theorem systemArity_le_iff (ps : List PolynomialCode) (m : ℕ) :
+    systemArity ps ≤ m ↔ ∀ p ∈ ps, p.arity ≤ m := by
+  simp only [systemArity, foldr_max_le_iff, List.forall_mem_map]
+
 theorem degreeBound_le_systemDegreeBound {p : PolynomialCode} {ps : List PolynomialCode}
     (h : p ∈ ps) : p.degreeBound ≤ systemDegreeBound ps :=
   (systemDegreeBound_le_iff ps _).mp le_rfl p h

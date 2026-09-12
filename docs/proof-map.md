@@ -203,6 +203,10 @@ transformation and `fourSquares`.
 | the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` (completeness) | `QuadraticGates.lean` |
 | lowering, stage one: a monomial | `compileMonomial`; `compileMonomial_wellOrdered`, `compileMonomial_next`, `compileMonomial_out_lt`, `compileMonomial_sound` (soundness, any semiring) | `QuadraticLowering.lean` |
 | lowering, stage two: the polynomial into two accumulators | `compilePoly`; `compilePoly_wellOrdered`, `compilePoly_length` (`1 + Σ (exponent sum + 4)`), `compilePoly_sound` (`evalInt p y = y[pos] − y[neg]`), `compilePoly_sound_nat` | `QuadraticLowering.lean` |
+| lowering, stage three: the system | `quadraticSystem` (gates as equations, then the terminal equality `pos = neg`), `gateCount`; `quadraticSystem_eval_zero_iff` | `QuadraticLowering.lean` |
+| extension correctness | `evalInt_eq_zero_iff_exists_aux`, `eval_eq_zero_iff_exists_aux` (completeness forward via `exists_extension`, soundness backward via `compilePoly_sound`; the suffix is invisible to `p` by `evalInt_append_of_arity_le`) | `QuadraticLowering.lean` |
+| root equivalence, unrestricted | `intSolvable_iff_systemIntSolvable_quadraticSystem`, `natSolvable_iff_systemNatSolvable_quadraticSystem` | `QuadraticLowering.lean` |
+| bounds | `systemDegreeBound_quadraticSystem_le` (`≤ 2`), `systemArity_quadraticSystem_le` (`≤ p.arity + gateCount p`), `quadraticSystem_length` (`= gateCount p + 1`) | `QuadraticLowering.lean` |
 
 `degreeBound` ignores cancellation, so it is a bound and not a degree; `totalDegree_denote_le`
 is what makes "degree at most four" a statement about the polynomial. The allocation contract —
@@ -210,7 +214,10 @@ each gate writes a fresh variable and reads only below it — is what turns soun
 quadratic lowering into an induction. `exists_extension` is *completeness* — the gates can be
 satisfied, over any semiring so natural inputs extend to natural auxiliaries — and the
 `_sound` theorems of the lowering are *soundness*: any satisfying assignment, of any length,
-reads the intended value from the output wire.
+reads the intended value from the output wire. The terminal equality is a constraint, not a
+gate: it allocates no wire and takes no part in `WellOrdered`, and it is the only thing relating
+the two accumulators — the constants `1` and `−1` are the regressions that would pass without
+it.
 
 ---
 

@@ -97,6 +97,12 @@ def headlineDecls : List Name :=
    ``Hilbert10.compilePoly_length,
    ``Hilbert10.compilePoly_sound,
    ``Hilbert10.compilePoly_sound_nat,
+   ``Hilbert10.evalInt_eq_zero_iff_exists_aux,
+   ``Hilbert10.eval_eq_zero_iff_exists_aux,
+   ``Hilbert10.intSolvable_iff_systemIntSolvable_quadraticSystem,
+   ``Hilbert10.natSolvable_iff_systemNatSolvable_quadraticSystem,
+   ``Hilbert10.systemDegreeBound_quadraticSystem_le,
+   ``Hilbert10.systemArity_quadraticSystem_le,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

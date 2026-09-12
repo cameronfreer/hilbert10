@@ -4,13 +4,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Cameron Freer
 -/
 import Hilbert10.QuadraticGates
+import Hilbert10.Systems
 
 /-!
 # Quadratic lowering: compiling expressions to well-ordered gate lists
 
-Issue #57, second checkpoint. This module will hold the transformation from one polynomial
-equation to a quadratic system. Its first stage is **one monomial**; the second compiles the
-**whole polynomial** into two accumulators, below.
+Issue #57, second checkpoint: the transformation from one polynomial equation to a system of
+equations of degree at most two. Its first stage is **one monomial**; the second compiles the
+**whole polynomial** into two accumulators; the third turns the gates into equations, appends
+the terminal equality, and proves root equivalence over `ℕ` and `ℤ` with the bounds.
 Compiling an exponent vector returns a gate list, the wire carrying the monomial's value, and
 the next unused wire. The contract has three parts, and each later stage (powers, weighted
 terms, the two accumulators) composes them without reopening the allocation argument:
@@ -44,6 +46,12 @@ semiring, so one soundness proof serves `ℤ` and `ℕ`; `evalMonomialInt_eq_mon
   `compilePoly_next`, `compilePoly_pos_lt`, `compilePoly_neg_lt`
 * `Hilbert10.compilePoly_sound` (`evalInt p y = y[pos] − y[neg]` at any satisfying `y`) and
   `compilePoly_sound_nat`
+* `Hilbert10.quadraticSystem`, `gateCount`; `quadraticSystem_eval_zero_iff` (pointwise semantics),
+  `evalInt_eq_zero_iff_exists_aux` (extension correctness), and the two root equivalences
+  `intSolvable_iff_systemIntSolvable_quadraticSystem`,
+  `natSolvable_iff_systemNatSolvable_quadraticSystem`
+* `Hilbert10.systemDegreeBound_quadraticSystem_le` (`≤ 2`), `systemArity_quadraticSystem_le`
+  (`≤ p.arity + gateCount p`), `quadraticSystem_length` (`gateCount p + 1`)
 -/
 
 namespace Hilbert10
@@ -502,6 +510,178 @@ theorem compilePoly_sound_nat (p : PolynomialCode) (n : ℕ) (y : List ℕ)
   rw [← evalInt_map_natCast, compilePoly_sound p n (y.map Nat.cast)
     (fun g hg => (Gate.holds_map_natCast g y).mpr (h g hg)), getD_map_natCast, getD_map_natCast]
 
+/-! ### The quadratic system
+
+The defining gates become equations, and one more equation — the terminal equality of the two
+accumulators — is appended. That last equation is a *constraint*, not a gate: it allocates no
+wire, takes no part in `WellOrdered`, and is exactly what relates the accumulators. Without it
+every nonzero constant would be "solvable". -/
+
+/-- The number of auxiliary variables the lowering allocates. -/
+def gateCount (p : PolynomialCode) : ℕ := (compilePoly p p.arity).gates.length
+
+/-- **The quadratic system of a polynomial**: its defining gates as equations, then the terminal
+equality `pos = neg`. Allocation starts at `p.arity`, so the original variables are a prefix. -/
+def quadraticSystem (p : PolynomialCode) : List PolynomialCode :=
+  (compilePoly p p.arity).gates.map Gate.code ++
+    [eqGate (compilePoly p p.arity).pos (compilePoly p p.arity).neg]
+
+theorem quadraticSystem_length (p : PolynomialCode) :
+    (quadraticSystem p).length = gateCount p + 1 := by
+  simp [quadraticSystem, gateCount]
+
+/-- **Pointwise semantics over `ℤ`**: the system vanishes at `y` exactly when every defining
+gate holds and the two accumulators agree. -/
+theorem quadraticSystem_eval_zero_iff (p : PolynomialCode) (y : List ℤ) :
+    (∀ q ∈ quadraticSystem p, evalInt q y = 0) ↔
+      (∀ g ∈ (compilePoly p p.arity).gates, g.Holds y) ∧
+        y.getD (compilePoly p p.arity).pos 0 = y.getD (compilePoly p p.arity).neg 0 := by
+  simp only [quadraticSystem, List.forall_mem_append, List.forall_mem_map,
+    List.forall_mem_cons, List.mem_nil_iff, false_implies, implies_true, and_true,
+    Gate.evalInt_code_eq_zero_iff, evalInt_eqGate_eq_zero_iff]
+
+/-- **Pointwise semantics over `ℕ`.** -/
+theorem quadraticSystem_eval_zero_iff_nat (p : PolynomialCode) (y : List ℕ) :
+    (∀ q ∈ quadraticSystem p, eval q y = 0) ↔
+      (∀ g ∈ (compilePoly p p.arity).gates, g.Holds y) ∧
+        y.getD (compilePoly p p.arity).pos 0 = y.getD (compilePoly p p.arity).neg 0 := by
+  simp only [quadraticSystem, List.forall_mem_append, List.forall_mem_map,
+    List.forall_mem_cons, List.mem_nil_iff, false_implies, implies_true, and_true,
+    Gate.eval_code_eq_zero_iff, eval_eqGate_eq_zero_iff]
+
+/-! ### Extension correctness
+
+Freshness guarantees the gates can be satisfied; the polynomial's arity guarantees that the
+auxiliary suffix is invisible to it. Both are needed, and they are used at different steps. -/
+
+/-- **Extension correctness over `ℤ`**: an exact-arity assignment is a root exactly when some
+auxiliary suffix of length `gateCount p` makes the whole system vanish. -/
+theorem evalInt_eq_zero_iff_exists_aux (p : PolynomialCode) (x : List ℤ)
+    (hx : x.length = p.arity) :
+    evalInt p x = 0 ↔
+      ∃ aux : List ℤ, aux.length = gateCount p ∧
+        ∀ q ∈ quadraticSystem p, evalInt q (x ++ aux) = 0 := by
+  have hwo := compilePoly_wellOrdered p p.arity le_rfl
+  constructor
+  · intro h0
+    obtain ⟨y, hy, hyx, hg⟩ := exists_extension _ _ hwo x hx
+    refine ⟨y.drop p.arity, ?_, ?_⟩
+    · simp [hy, gateCount]
+    · have hsplit : x ++ y.drop p.arity = y := by rw [← hyx, List.take_append_drop]
+      rw [hsplit, quadraticSystem_eval_zero_iff]
+      refine ⟨hg, ?_⟩
+      have hs := compilePoly_sound p p.arity y hg
+      have hval : evalInt p y = 0 := by
+        rw [← hsplit, evalInt_append_of_arity_le (by rw [hx])]
+        exact h0
+      rw [hval] at hs
+      exact sub_eq_zero.mp hs.symm
+  · rintro ⟨aux, -, hsys⟩
+    rw [quadraticSystem_eval_zero_iff] at hsys
+    obtain ⟨hg, heq⟩ := hsys
+    have hs := compilePoly_sound p p.arity (x ++ aux) hg
+    rw [evalInt_append_of_arity_le (by rw [hx]), heq, sub_self] at hs
+    exact hs
+
+/-- **Extension correctness over `ℕ`**: natural inputs get natural auxiliaries. -/
+theorem eval_eq_zero_iff_exists_aux (p : PolynomialCode) (x : List ℕ)
+    (hx : x.length = p.arity) :
+    eval p x = 0 ↔
+      ∃ aux : List ℕ, aux.length = gateCount p ∧
+        ∀ q ∈ quadraticSystem p, eval q (x ++ aux) = 0 := by
+  have hwo := compilePoly_wellOrdered p p.arity le_rfl
+  constructor
+  · intro h0
+    obtain ⟨y, hy, hyx, hg⟩ := exists_extension _ _ hwo x hx
+    refine ⟨y.drop p.arity, ?_, ?_⟩
+    · simp [hy, gateCount]
+    · have hsplit : x ++ y.drop p.arity = y := by rw [← hyx, List.take_append_drop]
+      rw [hsplit, quadraticSystem_eval_zero_iff_nat]
+      refine ⟨hg, ?_⟩
+      have hs := compilePoly_sound_nat p p.arity y hg
+      have hval : eval p y = 0 := by
+        rw [← hsplit, eval_append_of_arity_le (by rw [hx])]
+        exact h0
+      rw [hval] at hs
+      exact_mod_cast sub_eq_zero.mp hs.symm
+  · rintro ⟨aux, -, hsys⟩
+    rw [quadraticSystem_eval_zero_iff_nat] at hsys
+    obtain ⟨hg, heq⟩ := hsys
+    have hs := compilePoly_sound_nat p p.arity (x ++ aux) hg
+    rw [eval_append_of_arity_le (by rw [hx]), heq, sub_self] at hs
+    exact hs
+
+/-! ### Root equivalence, unrestricted
+
+Forward, the source witness is normalised to exact arity and extended. Backward, the entire
+satisfying assignment is the source witness: `compilePoly_sound` holds at any length, and the
+polynomial does not see the suffix, so no prefix has to be reconstructed. -/
+
+/-- **A polynomial has an integer root exactly when its quadratic system does.** -/
+theorem intSolvable_iff_systemIntSolvable_quadraticSystem (p : PolynomialCode) :
+    IntSolvable p ↔ SystemIntSolvable (quadraticSystem p) := by
+  constructor
+  · intro h
+    obtain ⟨x, hx, h0⟩ := (intSolvable_iff_arity p).mp h
+    obtain ⟨aux, -, hsys⟩ := (evalInt_eq_zero_iff_exists_aux p x hx).mp h0
+    exact ⟨x ++ aux, hsys⟩
+  · rintro ⟨y, hy⟩
+    rw [quadraticSystem_eval_zero_iff] at hy
+    obtain ⟨hg, heq⟩ := hy
+    refine ⟨y, ?_⟩
+    rw [compilePoly_sound p p.arity y hg, heq, sub_self]
+
+/-- **A polynomial has a natural root exactly when its quadratic system does.** -/
+theorem natSolvable_iff_systemNatSolvable_quadraticSystem (p : PolynomialCode) :
+    NatSolvable p ↔ SystemNatSolvable (quadraticSystem p) := by
+  constructor
+  · intro h
+    obtain ⟨x, hx, h0⟩ := (natSolvable_iff_arity p).mp h
+    obtain ⟨aux, -, hsys⟩ := (eval_eq_zero_iff_exists_aux p x hx).mp h0
+    exact ⟨x ++ aux, hsys⟩
+  · rintro ⟨y, hy⟩
+    rw [quadraticSystem_eval_zero_iff_nat] at hy
+    obtain ⟨hg, heq⟩ := hy
+    refine ⟨y, ?_⟩
+    rw [compilePoly_sound_nat p p.arity y hg, heq, sub_self]
+
+/-! ### Bounds -/
+
+/-- **Every equation of the system is quadratic.** -/
+theorem systemDegreeBound_quadraticSystem_le (p : PolynomialCode) :
+    systemDegreeBound (quadraticSystem p) ≤ 2 := by
+  rw [systemDegreeBound_le_iff]
+  simp only [quadraticSystem, List.forall_mem_append, List.forall_mem_map, List.forall_mem_cons,
+    List.mem_nil_iff, false_implies, implies_true, and_true]
+  exact ⟨fun g _ => Gate.degreeBound_code_le g, (degreeBound_eqGate_le _ _).trans one_le_two⟩
+
+/-- In a well-ordered list starting at `n`, every gate writes below `n + length` and reads below
+what it writes. -/
+theorem WellOrdered.out_lt_and_reads_lt {n : ℕ} :
+    ∀ {gs : List Gate}, WellOrdered n gs →
+      ∀ g ∈ gs, g.out < n + gs.length ∧ ∀ r ∈ g.reads, r < g.out
+  | [], _, g, hg => by simp at hg
+  | g' :: gs, ⟨⟨hout, hreads⟩, hwo⟩, g, hg => by
+    rcases List.mem_cons.mp hg with rfl | hg'
+    · exact ⟨by simp [hout], by rw [hout]; exact hreads⟩
+    · obtain ⟨h1, h2⟩ := WellOrdered.out_lt_and_reads_lt hwo g hg'
+      exact ⟨by simp only [List.length_cons]; omega, h2⟩
+
+/-- **The system uses at most `p.arity + gateCount p` variables.** -/
+theorem systemArity_quadraticSystem_le (p : PolynomialCode) :
+    systemArity (quadraticSystem p) ≤ p.arity + gateCount p := by
+  have hwo := compilePoly_wellOrdered p p.arity le_rfl
+  have hnext := compilePoly_next p p.arity
+  rw [systemArity_le_iff]
+  simp only [quadraticSystem, List.forall_mem_append, List.forall_mem_map, List.forall_mem_cons,
+    List.mem_nil_iff, false_implies, implies_true, and_true, gateCount]
+  refine ⟨fun g hg => ?_, ?_⟩
+  · obtain ⟨hout, hreads⟩ := hwo.out_lt_and_reads_lt g hg
+    exact (Gate.arity_code_le g hreads).trans (by omega)
+  · have hp := compilePoly_pos_lt p p.arity le_rfl
+    have hn := compilePoly_neg_lt p p.arity le_rfl
+    exact (arity_eqGate_le _ _).trans (by omega)
+
 /-! ### Regression examples -/
 
 /-- The empty exponent vector: one wire, holding `1`. -/
@@ -548,5 +728,39 @@ example : ([0, 1, 1, 1, 1] : List ℤ).getD (compilePoly ⟨[(-1, [])]⟩ 0).pos
 
 /-- The count formula on `x₀ − 1` from wire `1`: `1 + (1 + 4) + (0 + 4)`. -/
 example : (compilePoly ⟨[(1, [1]), (-1, [])]⟩ 1).gates.length = 10 := by decide
+
+/-- **The first end-to-end rejections**: the constants `1` and `−1`, one per accumulator branch.
+Without the terminal constraint both systems would be satisfiable. -/
+example : ¬ SystemNatSolvable (quadraticSystem ⟨[(1, [])]⟩) := by
+  rw [← natSolvable_iff_systemNatSolvable_quadraticSystem]
+  rintro ⟨x, hx⟩
+  simp [eval, evalMonomial] at hx
+
+example : ¬ SystemIntSolvable (quadraticSystem ⟨[(-1, [])]⟩) := by
+  rw [← intSolvable_iff_systemIntSolvable_quadraticSystem]
+  rintro ⟨x, hx⟩
+  simp [evalInt, evalMonomialInt] at hx
+
+/-- The empty polynomial is satisfiable, and its system is one zero wire and the terminal equality
+of that wire with itself. -/
+example : SystemNatSolvable (quadraticSystem ⟨[]⟩) :=
+  (natSolvable_iff_systemNatSolvable_quadraticSystem _).mp ⟨[], rfl⟩
+example : quadraticSystem ⟨[]⟩ = [constGate 0 0, eqGate 0 0] := rfl
+
+/-- **Cancellation**: `x₀ − x₀`. Both accumulators are nonzero at `x₀ = 3`, yet the terminal
+equality holds; the system is satisfied at the extension `[3, 0, 1, 3, 1, 3, 3, 1, 3, 1, 3, 3]`,
+where the positive accumulator (wire `6`) and the negative one (wire `11`) both read `3`. -/
+example : ∀ q ∈ quadraticSystem ⟨[(1, [1]), (-1, [1])]⟩,
+    evalInt q ([3, 0, 1, 3, 1, 3, 3, 1, 3, 1, 3, 3] : List ℤ) = 0 := by
+  decide
+example : SystemIntSolvable (quadraticSystem ⟨[(1, [1]), (-1, [1])]⟩) :=
+  ⟨[3, 0, 1, 3, 1, 3, 3, 1, 3, 1, 3, 3], by decide⟩
+
+/-- The bounds, instantiated on `x₀² + x₁ − 5`: `gateCount = 1 + 6 + 5 + 4 = 16`, so seventeen
+equations of degree at most two, in at most `2 + 16` variables. -/
+example : gateCount ⟨[(1, [2]), (1, [0, 1]), (-5, [])]⟩ = 16 := by decide
+example : (quadraticSystem ⟨[(1, [2]), (1, [0, 1]), (-5, [])]⟩).length = 17 := by decide
+example : systemDegreeBound (quadraticSystem ⟨[(1, [2]), (1, [0, 1]), (-5, [])]⟩) = 2 := by
+  decide
 
 end Hilbert10

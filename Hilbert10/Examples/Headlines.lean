@@ -255,6 +255,38 @@ example (p : PolynomialCode) (n : ℕ) (y : List ℕ)
       ((y.getD (compilePoly p n).pos 0 : ℕ) : ℤ) - ((y.getD (compilePoly p n).neg 0 : ℕ) : ℤ) :=
   compilePoly_sound_nat p n y h
 
+/-- Extension correctness: an exact-arity root extends by `gateCount p` auxiliaries. -/
+example (p : PolynomialCode) (x : List ℤ) (hx : x.length = p.arity) :
+    PolynomialCode.evalInt p x = 0 ↔
+      ∃ aux : List ℤ, aux.length = gateCount p ∧
+        ∀ q ∈ quadraticSystem p, PolynomialCode.evalInt q (x ++ aux) = 0 :=
+  evalInt_eq_zero_iff_exists_aux p x hx
+
+example (p : PolynomialCode) (x : List ℕ) (hx : x.length = p.arity) :
+    PolynomialCode.eval p x = 0 ↔
+      ∃ aux : List ℕ, aux.length = gateCount p ∧
+        ∀ q ∈ quadraticSystem p, PolynomialCode.eval q (x ++ aux) = 0 :=
+  eval_eq_zero_iff_exists_aux p x hx
+
+/-- Root equivalence with the quadratic system, both domains. -/
+example (p : PolynomialCode) : IntSolvable p ↔ SystemIntSolvable (quadraticSystem p) :=
+  intSolvable_iff_systemIntSolvable_quadraticSystem p
+
+example (p : PolynomialCode) : NatSolvable p ↔ SystemNatSolvable (quadraticSystem p) :=
+  natSolvable_iff_systemNatSolvable_quadraticSystem p
+
+/-- The bounds: degree at most two, `p.arity + gateCount p` variables, `gateCount p + 1`
+equations. -/
+example (p : PolynomialCode) : PolynomialCode.systemDegreeBound (quadraticSystem p) ≤ 2 :=
+  systemDegreeBound_quadraticSystem_le p
+
+example (p : PolynomialCode) :
+    PolynomialCode.systemArity (quadraticSystem p) ≤ p.arity + gateCount p :=
+  systemArity_quadraticSystem_le p
+
+example (p : PolynomialCode) : (quadraticSystem p).length = gateCount p + 1 :=
+  quadraticSystem_length p
+
 /-! ### The derived Diophantine API -/
 
 example {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop} {q : β → Prop}
