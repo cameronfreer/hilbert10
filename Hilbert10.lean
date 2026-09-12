@@ -22,6 +22,7 @@ import Hilbert10.NatSolvable
 import Hilbert10.IntSolvable
 import Hilbert10.Systems
 import Hilbert10.QuadraticGates
+import Hilbert10.QuadraticLowering
 -- the normal form and the reduction to `NatSolvable`
 import Hilbert10.PolyBridge
 import Hilbert10.NormalForm

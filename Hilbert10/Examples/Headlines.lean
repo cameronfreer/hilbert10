@@ -11,6 +11,7 @@ import Hilbert10.SumSquares
 import Hilbert10.Systems
 import Hilbert10.Degree
 import Hilbert10.QuadraticGates
+import Hilbert10.QuadraticLowering
 import Hilbert10.NormalForm
 import Hilbert10.Computability
 import Hilbert10.DPRM
@@ -210,6 +211,26 @@ example {R : Type} [Semiring R] (gs : List Gate) (n : ℕ) (h : WellOrdered n gs
     (hx : x.length = n) :
     ∃ y : List R, y.length = n + gs.length ∧ y.take n = x ∧ ∀ g ∈ gs, g.Holds y :=
   exists_extension gs n h x hx
+
+/-- The one-monomial compiler: well ordered from `n` when the monomial reads below `n`. -/
+example (e : MonomialCode) (n : ℕ) (h : e.length ≤ n) :
+    WellOrdered n (compileMonomial e n).gates :=
+  compileMonomial_wellOrdered e n h
+
+/-- Bookkeeping: the next unused wire, exactly. -/
+example (e : MonomialCode) (n : ℕ) : (compileMonomial e n).next = n + 1 + e.sum :=
+  compileMonomial_next e n
+
+/-- Soundness: any satisfying assignment reads the monomial's value from the output wire. -/
+example (e : MonomialCode) (n : ℕ) (x : List ℤ)
+    (h : ∀ g ∈ (compileMonomial e n).gates, g.Holds x) :
+    x.getD (compileMonomial e n).out 0 = PolynomialCode.evalMonomialInt e x :=
+  compileMonomial_sound_int e n x h
+
+example (e : MonomialCode) (n : ℕ) (x : List ℕ)
+    (h : ∀ g ∈ (compileMonomial e n).gates, g.Holds x) :
+    ((x.getD (compileMonomial e n).out 0 : ℕ) : ℤ) = PolynomialCode.evalMonomial e x :=
+  compileMonomial_sound_nat e n x h
 
 /-! ### The derived Diophantine API -/
 

@@ -90,6 +90,9 @@ def headlineDecls : List Name :=
    ``Hilbert10.Gate.eval_code_eq_zero_iff,
    ``Hilbert10.Gate.degreeBound_code_le,
    ``Hilbert10.exists_extension,
+   -- quadratic lowering, stage one: a monomial (#57, checkpoint 2)
+   ``Hilbert10.compileMonomial_wellOrdered,
+   ``Hilbert10.compileMonomial_sound,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

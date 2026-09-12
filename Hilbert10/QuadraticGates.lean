@@ -167,6 +167,7 @@ inductive Gate
   | add (out i j : ℕ)
   /-- `x_out = x_i * x_j`. -/
   | mul (out i j : ℕ)
+  deriving DecidableEq, Repr
 
 namespace Gate
 

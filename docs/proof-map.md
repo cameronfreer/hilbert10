@@ -200,13 +200,16 @@ transformation and `fourSquares`.
 | the four gate codes and their semantics | `constGate`, `eqGate`, `addGate`, `mulGate`; `evalInt_*_eq_zero_iff`, `eval_*_eq_zero_iff` | `QuadraticGates.lean` |
 | gates are quadratic | `degreeBound_mulGate_le`, `Gate.degreeBound_code_le` | `QuadraticGates.lean` |
 | sums of squares double the degree | `degreeBound_sumSquaresCode_le` | `QuadraticGates.lean` |
-| the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` | `QuadraticGates.lean` |
+| the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` (completeness) | `QuadraticGates.lean` |
+| lowering, stage one: a monomial | `compileMonomial`; `compileMonomial_wellOrdered`, `compileMonomial_next`, `compileMonomial_out_lt`, `compileMonomial_sound` (soundness, any semiring) | `QuadraticLowering.lean` |
 
 `degreeBound` ignores cancellation, so it is a bound and not a degree; `totalDegree_denote_le`
 is what makes "degree at most four" a statement about the polynomial. The allocation contract —
 each gate writes a fresh variable and reads only below it — is what turns soundness of the
-quadratic lowering into an induction, and `exists_extension` is that induction, over any semiring
-so natural inputs extend to natural auxiliaries.
+quadratic lowering into an induction. `exists_extension` is *completeness* — the gates can be
+satisfied, over any semiring so natural inputs extend to natural auxiliaries — and the
+`_sound` theorems of the lowering are *soundness*: any satisfying assignment, of any length,
+reads the intended value from the output wire.
 
 ---
 
