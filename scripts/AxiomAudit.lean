@@ -93,6 +93,10 @@ def headlineDecls : List Name :=
    -- quadratic lowering, stage one: a monomial (#57, checkpoint 2)
    ``Hilbert10.compileMonomial_wellOrdered,
    ``Hilbert10.compileMonomial_sound,
+   ``Hilbert10.compilePoly_wellOrdered,
+   ``Hilbert10.compilePoly_length,
+   ``Hilbert10.compilePoly_sound,
+   ``Hilbert10.compilePoly_sound_nat,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

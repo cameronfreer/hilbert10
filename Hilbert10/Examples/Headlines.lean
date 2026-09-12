@@ -232,6 +232,29 @@ example (e : MonomialCode) (n : ℕ) (x : List ℕ)
     ((x.getD (compileMonomial e n).out 0 : ℕ) : ℤ) = PolynomialCode.evalMonomial e x :=
   compileMonomial_sound_nat e n x h
 
+/-- The whole polynomial: well ordered when allocation starts at or above the arity. -/
+example (p : PolynomialCode) (n : ℕ) (h : p.arity ≤ n) :
+    WellOrdered n (compilePoly p n).gates :=
+  compilePoly_wellOrdered p n h
+
+/-- Exact gate count: one zero wire, then `exponent sum + 4` per term. -/
+example (p : PolynomialCode) (n : ℕ) :
+    (compilePoly p n).gates.length = 1 + (p.terms.map fun t => t.2.sum + 4).sum :=
+  compilePoly_length p n
+
+/-- Soundness over `ℤ`, at any satisfying assignment: the value is `pos − neg`. -/
+example (p : PolynomialCode) (n : ℕ) (y : List ℤ)
+    (h : ∀ g ∈ (compilePoly p n).gates, g.Holds y) :
+    PolynomialCode.evalInt p y = y.getD (compilePoly p n).pos 0 - y.getD (compilePoly p n).neg 0 :=
+  compilePoly_sound p n y h
+
+/-- Soundness over `ℕ`, through the cast rather than truncated subtraction. -/
+example (p : PolynomialCode) (n : ℕ) (y : List ℕ)
+    (h : ∀ g ∈ (compilePoly p n).gates, g.Holds y) :
+    PolynomialCode.eval p y =
+      ((y.getD (compilePoly p n).pos 0 : ℕ) : ℤ) - ((y.getD (compilePoly p n).neg 0 : ℕ) : ℤ) :=
+  compilePoly_sound_nat p n y h
+
 /-! ### The derived Diophantine API -/
 
 example {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop} {q : β → Prop}

@@ -202,6 +202,7 @@ transformation and `fourSquares`.
 | sums of squares double the degree | `degreeBound_sumSquaresCode_le` | `QuadraticGates.lean` |
 | the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` (completeness) | `QuadraticGates.lean` |
 | lowering, stage one: a monomial | `compileMonomial`; `compileMonomial_wellOrdered`, `compileMonomial_next`, `compileMonomial_out_lt`, `compileMonomial_sound` (soundness, any semiring) | `QuadraticLowering.lean` |
+| lowering, stage two: the polynomial into two accumulators | `compilePoly`; `compilePoly_wellOrdered`, `compilePoly_length` (`1 + Σ (exponent sum + 4)`), `compilePoly_sound` (`evalInt p y = y[pos] − y[neg]`), `compilePoly_sound_nat` | `QuadraticLowering.lean` |
 
 `degreeBound` ignores cancellation, so it is a bound and not a degree; `totalDegree_denote_le`
 is what makes "degree at most four" a statement about the polynomial. The allocation contract —

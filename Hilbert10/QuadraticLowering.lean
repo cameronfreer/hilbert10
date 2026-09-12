@@ -9,7 +9,8 @@ import Hilbert10.QuadraticGates
 # Quadratic lowering: compiling expressions to well-ordered gate lists
 
 Issue #57, second checkpoint. This module will hold the transformation from one polynomial
-equation to a quadratic system; its first stage, and the only one so far, is **one monomial**.
+equation to a quadratic system. Its first stage is **one monomial**; the second compiles the
+**whole polynomial** into two accumulators, below.
 Compiling an exponent vector returns a gate list, the wire carrying the monomial's value, and
 the next unused wire. The contract has three parts, and each later stage (powers, weighted
 terms, the two accumulators) composes them without reopening the allocation argument:
@@ -33,11 +34,16 @@ semiring, so one soundness proof serves `ℤ` and `ℕ`; `evalMonomialInt_eq_mon
 ## Main definitions
 
 * `Hilbert10.Compiled`, `Hilbert10.mulPow`, `Hilbert10.compileMonomial`
+* `Hilbert10.CompiledPoly`, `Hilbert10.compileTerm`, `Hilbert10.compilePoly`
 
 ## Main results
 
 * `Hilbert10.compileMonomial_wellOrdered`, `compileMonomial_next`, `compileMonomial_out_lt`
 * `Hilbert10.compileMonomial_sound`, and its `ℤ` and `ℕ` readings
+* `Hilbert10.compilePoly_wellOrdered`, `compilePoly_length` (exact: `1 + Σ (exponent sum + 4)`),
+  `compilePoly_next`, `compilePoly_pos_lt`, `compilePoly_neg_lt`
+* `Hilbert10.compilePoly_sound` (`evalInt p y = y[pos] − y[neg]` at any satisfying `y`) and
+  `compilePoly_sound_nat`
 -/
 
 namespace Hilbert10
@@ -275,6 +281,227 @@ theorem compileMonomial_sound_nat (e : MonomialCode) (n : ℕ) (x : List ℕ)
     ((x.getD (compileMonomial e n).out 0 : ℕ) : ℤ) = evalMonomial e x := by
   rw [compileMonomial_sound e n x h, evalMonomial_eq_monomialValue]
 
+/-! ### The whole polynomial, with two accumulators
+
+A polynomial is compiled in one pass. The state carries the gates so far, the next unused wire,
+and the two accumulator wires: `pos` collects the terms with nonnegative coefficient, `neg` those
+with negative coefficient, each as a sum of `|c| · monomial`. Both start at one wire holding
+`0`. Zero coefficients are processed like any other; skipping them would be an optimisation
+with no role in correctness.
+
+The invariant `evalInt p y = y[pos] − y[neg]` is stated over `ℤ` for *any* satisfying
+assignment, and the natural reading is obtained through the cast — never through truncated
+subtraction. -/
+
+/-- A partially or fully compiled polynomial. -/
+structure CompiledPoly where
+  /-- The defining gates so far. -/
+  gates : List Gate
+  /-- The wire accumulating the terms with nonnegative coefficient. -/
+  pos : ℕ
+  /-- The wire accumulating the terms with negative coefficient. -/
+  neg : ℕ
+  /-- The next unused wire. -/
+  next : ℕ
+  deriving DecidableEq, Repr
+
+/-- The gates one term adds: its monomial, a constant holding `|c|`, their product, and the
+addition into the accumulator its sign selects. -/
+def termGates (s : CompiledPoly) (t : ℤ × MonomialCode) : List Gate :=
+  let cm := compileMonomial t.2 s.next
+  cm.gates ++ [Gate.const cm.next t.1.natAbs, Gate.mul (cm.next + 1) cm.out cm.next,
+    Gate.add (cm.next + 2) (if 0 ≤ t.1 then s.pos else s.neg) (cm.next + 1)]
+
+/-- Compile one term onto the state. -/
+def compileTerm (s : CompiledPoly) (t : ℤ × MonomialCode) : CompiledPoly :=
+  let cm := compileMonomial t.2 s.next
+  { gates := s.gates ++ termGates s t
+    pos := if 0 ≤ t.1 then cm.next + 2 else s.pos
+    neg := if 0 ≤ t.1 then s.neg else cm.next + 2
+    next := cm.next + 3 }
+
+/-- Compile a term list onto the state, left to right. -/
+def compileTerms (s : CompiledPoly) : List (ℤ × MonomialCode) → CompiledPoly
+  | [] => s
+  | t :: ts => compileTerms (compileTerm s t) ts
+
+/-- **Compile a polynomial**, allocating from `next`: a zero wire that both accumulators start
+from, then the terms in order. -/
+def compilePoly (p : PolynomialCode) (next : ℕ) : CompiledPoly :=
+  compileTerms ⟨[Gate.const next 0], next, next, next + 1⟩ p.terms
+
+theorem termGates_length (s : CompiledPoly) (t : ℤ × MonomialCode) :
+    (termGates s t).length = t.2.sum + 4 := by
+  simp only [termGates, List.length_append, compileMonomial_length, List.length_cons,
+    List.length_nil]
+  omega
+
+theorem termGates_wellOrdered (s : CompiledPoly) (t : ℤ × MonomialCode) (hpos : s.pos < s.next)
+    (hneg : s.neg < s.next) (he : t.2.length ≤ s.next) : WellOrdered s.next (termGates s t) := by
+  have hout := compileMonomial_out_lt t.2 s.next
+  have hnext := compileMonomial_next t.2 s.next
+  simp only [termGates, wellOrdered_append, compileMonomial_length]
+  refine ⟨compileMonomial_wellOrdered _ _ he, ?_⟩
+  by_cases hc : 0 ≤ t.1 <;>
+    simp only [hc, if_true, if_false, WellOrdered, Gate.Fresh, Gate.out, Gate.reads,
+      List.forall_mem_cons, List.mem_nil_iff, false_implies, implies_true, and_true] <;>
+    omega
+
+/-- **Soundness of one term**: any assignment satisfying its gates moves `pos − neg` by exactly
+`c · monomial`. -/
+theorem termGates_sound (s : CompiledPoly) (t : ℤ × MonomialCode) (y : List ℤ)
+    (h : ∀ g ∈ termGates s t, g.Holds y) :
+    y.getD (compileTerm s t).pos 0 - y.getD (compileTerm s t).neg 0 =
+      y.getD s.pos 0 - y.getD s.neg 0 + t.1 * evalMonomialInt t.2 y := by
+  simp only [termGates, List.forall_mem_append, List.forall_mem_cons, List.mem_nil_iff,
+    false_implies, implies_true, and_true] at h
+  obtain ⟨hm, hk, hmul, hadd⟩ := h
+  have hout := compileMonomial_sound_int t.2 s.next y hm
+  simp only [Gate.Holds, Gate.out, Gate.value] at hk hmul hadd
+  simp only [compileTerm]
+  rw [Int.natCast_natAbs] at hk
+  by_cases hc : 0 ≤ t.1
+  · simp only [hc, if_true] at hadd ⊢
+    rw [hadd, hmul, hout, hk, abs_of_nonneg hc]
+    ring
+  · simp only [hc, if_false] at hadd ⊢
+    rw [hadd, hmul, hout, hk, abs_of_neg (lt_of_not_ge hc)]
+    ring
+
+theorem mem_gates_compileTerms (s : CompiledPoly) :
+    ∀ ts, ∀ g ∈ s.gates, g ∈ (compileTerms s ts).gates
+  | [], _, hg => hg
+  | t :: ts, g, hg =>
+    mem_gates_compileTerms (compileTerm s t) ts g (by simp [compileTerm, hg])
+
+/-- The invariant carried along the fold: well ordered from `n`, exact bookkeeping, and both
+accumulators already allocated. -/
+structure CompiledPoly.Inv (n : ℕ) (s : CompiledPoly) : Prop where
+  wellOrdered : WellOrdered n s.gates
+  next_eq : s.next = n + s.gates.length
+  pos_lt : s.pos < s.next
+  neg_lt : s.neg < s.next
+
+theorem CompiledPoly.Inv.compileTerm {n : ℕ} {s : CompiledPoly} (hs : s.Inv n)
+    {t : ℤ × MonomialCode} (he : t.2.length ≤ n) : (Hilbert10.compileTerm s t).Inv n where
+  wellOrdered := by
+    simp only [Hilbert10.compileTerm, wellOrdered_append]
+    rw [← hs.next_eq]
+    exact ⟨hs.wellOrdered, termGates_wellOrdered s t hs.pos_lt hs.neg_lt
+      (he.trans (by rw [hs.next_eq]; exact Nat.le_add_right n _))⟩
+  next_eq := by
+    have := compileMonomial_next t.2 s.next
+    simp only [Hilbert10.compileTerm, List.length_append, termGates_length, hs.next_eq] at this ⊢
+    omega
+  pos_lt := by
+    have := compileMonomial_next t.2 s.next
+    have := hs.pos_lt
+    simp only [Hilbert10.compileTerm]
+    split_ifs <;> omega
+  neg_lt := by
+    have := compileMonomial_next t.2 s.next
+    have := hs.neg_lt
+    simp only [Hilbert10.compileTerm]
+    split_ifs <;> omega
+
+theorem CompiledPoly.Inv.compileTerms {n : ℕ} :
+    ∀ (ts : List (ℤ × MonomialCode)) {s : CompiledPoly}, s.Inv n → (∀ t ∈ ts, t.2.length ≤ n) →
+      (Hilbert10.compileTerms s ts).Inv n
+  | [], _, hs, _ => hs
+  | t :: ts, s, hs, h =>
+    CompiledPoly.Inv.compileTerms ts (hs.compileTerm (h t (by simp)))
+      fun u hu => h u (by simp [hu])
+
+theorem compileTerms_length (s : CompiledPoly) :
+    ∀ ts : List (ℤ × MonomialCode),
+      (compileTerms s ts).gates.length = s.gates.length + (ts.map fun t => t.2.sum + 4).sum
+  | [] => by simp [compileTerms]
+  | t :: ts => by
+    change (compileTerms (compileTerm s t) ts).gates.length = _
+    rw [compileTerms_length (compileTerm s t) ts]
+    simp only [compileTerm, List.length_append, termGates_length, List.map_cons, List.sum_cons]
+    omega
+
+theorem compileTerms_next (s : CompiledPoly) :
+    ∀ ts : List (ℤ × MonomialCode),
+      (compileTerms s ts).next = s.next + (ts.map fun t => t.2.sum + 4).sum
+  | [] => by simp [compileTerms]
+  | t :: ts => by
+    change (compileTerms (compileTerm s t) ts).next = _
+    rw [compileTerms_next (compileTerm s t) ts]
+    simp only [compileTerm, compileMonomial_next, List.map_cons, List.sum_cons]
+    omega
+
+/-- **Soundness of the fold**: any satisfying assignment moves `pos − neg` by exactly the value
+of the terms compiled. -/
+theorem compileTerms_sound (y : List ℤ) :
+    ∀ (ts : List (ℤ × MonomialCode)) (s : CompiledPoly),
+      (∀ g ∈ (compileTerms s ts).gates, g.Holds y) →
+        y.getD (compileTerms s ts).pos 0 - y.getD (compileTerms s ts).neg 0 =
+          y.getD s.pos 0 - y.getD s.neg 0 + evalInt ⟨ts⟩ y
+  | [], s, _ => by simp [compileTerms]
+  | t :: ts, s, h => by
+    have h1 : ∀ g ∈ termGates s t, g.Holds y := fun g hg =>
+      h g (mem_gates_compileTerms _ ts g (by simp [compileTerm, hg]))
+    have e1 := termGates_sound s t y h1
+    have e2 := compileTerms_sound y ts (compileTerm s t) h
+    simp only [compileTerms] at e2 ⊢
+    rw [e2, e1, evalInt_mk_cons]
+    ring
+
+/-! ### The polynomial-level contracts -/
+
+theorem compilePoly_inv (p : PolynomialCode) (n : ℕ) (h : p.arity ≤ n) :
+    (compilePoly p n).Inv n := by
+  have h0 : CompiledPoly.Inv n ⟨[Gate.const n 0], n, n, n + 1⟩ :=
+    ⟨by simp [WellOrdered, Gate.Fresh, Gate.reads, Gate.out], rfl, Nat.lt_succ_self n,
+      Nat.lt_succ_self n⟩
+  exact CompiledPoly.Inv.compileTerms p.terms h0 fun t ht => (length_le_arity ht).trans h
+
+/-- **Well-ordering**, given that allocation starts at or above the arity. -/
+theorem compilePoly_wellOrdered (p : PolynomialCode) (n : ℕ) (h : p.arity ≤ n) :
+    WellOrdered n (compilePoly p n).gates :=
+  (compilePoly_inv p n h).wellOrdered
+
+/-- **Exact bookkeeping**: one zero wire, then `exponent sum + 4` gates per term. -/
+theorem compilePoly_length (p : PolynomialCode) (n : ℕ) :
+    (compilePoly p n).gates.length = 1 + (p.terms.map fun t => t.2.sum + 4).sum := by
+  simp [compilePoly, compileTerms_length]
+
+/-- Bookkeeping needs no freshness hypothesis: the next wire is always `n + gates.length`. -/
+theorem compilePoly_next (p : PolynomialCode) (n : ℕ) :
+    (compilePoly p n).next = n + (compilePoly p n).gates.length := by
+  rw [compilePoly_length]
+  simp only [compilePoly, compileTerms_next]
+  omega
+
+theorem compilePoly_pos_lt (p : PolynomialCode) (n : ℕ) (h : p.arity ≤ n) :
+    (compilePoly p n).pos < (compilePoly p n).next :=
+  (compilePoly_inv p n h).pos_lt
+
+theorem compilePoly_neg_lt (p : PolynomialCode) (n : ℕ) (h : p.arity ≤ n) :
+    (compilePoly p n).neg < (compilePoly p n).next :=
+  (compilePoly_inv p n h).neg_lt
+
+/-- **Soundness over `ℤ`**: at any assignment satisfying the gates, the polynomial's value is
+the positive accumulator minus the negative one. No freshness hypothesis: this is algebra. -/
+theorem compilePoly_sound (p : PolynomialCode) (n : ℕ) (y : List ℤ)
+    (h : ∀ g ∈ (compilePoly p n).gates, g.Holds y) :
+    evalInt p y = y.getD (compilePoly p n).pos 0 - y.getD (compilePoly p n).neg 0 := by
+  have hz : y.getD n 0 = 0 := by
+    have := h (Gate.const n 0) (mem_gates_compileTerms _ p.terms _ (by simp))
+    simpa [Gate.Holds, Gate.out, Gate.value] using this
+  rw [compilePoly, compileTerms_sound y p.terms _ h, hz]
+  simp
+
+/-- **Soundness over `ℕ`**, through the cast: never a truncated subtraction. -/
+theorem compilePoly_sound_nat (p : PolynomialCode) (n : ℕ) (y : List ℕ)
+    (h : ∀ g ∈ (compilePoly p n).gates, g.Holds y) :
+    eval p y =
+      ((y.getD (compilePoly p n).pos 0 : ℕ) : ℤ) - ((y.getD (compilePoly p n).neg 0 : ℕ) : ℤ) := by
+  rw [← evalInt_map_natCast, compilePoly_sound p n (y.map Nat.cast)
+    (fun g hg => (Gate.holds_map_natCast g y).mpr (h g hg)), getD_map_natCast, getD_map_natCast]
+
 /-! ### Regression examples -/
 
 /-- The empty exponent vector: one wire, holding `1`. -/
@@ -300,5 +527,26 @@ example : ([3, 4, 1, 3, 9, 36] : List ℕ).getD (compileMonomial [2, 1] 2).out 0
 gates. -/
 example : ¬ ∀ g ∈ (compileMonomial [2, 1] 2).gates, g.Holds ([3, 4, 1, 3, 9, 35] : List ℕ) := by
   decide
+
+/-- The constant `1`: a zero wire, a `1` wire, `|1|`, their product, and the positive
+accumulator. Five gates, `pos` last, `neg` still the zero wire. -/
+example : compilePoly ⟨[(1, [])]⟩ 0 =
+    ⟨[Gate.const 0 0, Gate.const 1 1, Gate.const 2 1, Gate.mul 3 1 2, Gate.add 4 0 3],
+      4, 0, 5⟩ := by
+  decide
+
+/-- The constant `−1` takes the other branch: `neg` last, `pos` the zero wire. -/
+example : (compilePoly ⟨[(-1, [])]⟩ 0).pos = 0 := by decide
+example : (compilePoly ⟨[(-1, [])]⟩ 0).neg = 4 := by decide
+
+/-- Soundness, instantiated on `−1`: the satisfying assignment reads `pos − neg = 0 − 1`. -/
+example : ∀ g ∈ (compilePoly ⟨[(-1, [])]⟩ 0).gates, g.Holds ([0, 1, 1, 1, 1] : List ℤ) := by
+  decide
+example : ([0, 1, 1, 1, 1] : List ℤ).getD (compilePoly ⟨[(-1, [])]⟩ 0).pos 0 -
+    ([0, 1, 1, 1, 1] : List ℤ).getD (compilePoly ⟨[(-1, [])]⟩ 0).neg 0 = -1 := by
+  decide
+
+/-- The count formula on `x₀ − 1` from wire `1`: `1 + (1 + 4) + (0 + 4)`. -/
+example : (compilePoly ⟨[(1, [1]), (-1, [])]⟩ 1).gates.length = 10 := by decide
 
 end Hilbert10

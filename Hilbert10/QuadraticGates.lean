@@ -207,6 +207,11 @@ instance {R : Type*} [Semiring R] [DecidableEq R] (g : Gate) (x : List R) :
   unfold Holds
   infer_instance
 
+/-- The equation holds at a natural assignment exactly when it holds at its cast. -/
+theorem holds_map_natCast (g : Gate) (x : List ℕ) :
+    g.Holds (x.map (Nat.cast : ℕ → ℤ)) ↔ g.Holds x := by
+  cases g <;> simp only [Holds, value, out, PolynomialCode.getD_map_natCast] <;> norm_cast
+
 /-- **A gate's code vanishes exactly when its equation holds**, over `ℤ`. -/
 theorem evalInt_code_eq_zero_iff (g : Gate) (x : List ℤ) :
     PolynomialCode.evalInt g.code x = 0 ↔ g.Holds x := by
