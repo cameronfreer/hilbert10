@@ -294,7 +294,7 @@ Measured at the close of #57, not a benchmark:
 | | |
 |---|---|
 | spine modules | 69 |
-| spine lines | ~16300 |
+| spine lines | ~16,300 |
 | headline declarations audited | 77 |
 | axioms used | `propext`, `Classical.choice`, `Quot.sound` |
 | `sorry` in the spine | none |
