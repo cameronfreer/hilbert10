@@ -66,6 +66,19 @@ theorem natSolvable_manyOneEquiv_systemNatSolvable : ManyOneEquiv NatSolvable Sy
 theorem intSolvable_manyOneEquiv_systemIntSolvable : ManyOneEquiv IntSolvable SystemIntSolvable
 ```
 
+And the problem is as hard in degree four as in any degree. Every code is lowered to a
+quadratic system with the same roots by a computable, well-ordered allocation of auxiliary
+variables, and the system is summed by squares:
+
+```lean
+def QuarticNatSolvable (p : PolynomialCode) : Prop := p.degreeBound ≤ 4 ∧ NatSolvable p
+theorem natSolvable_manyOneEquiv_quarticNatSolvable : ManyOneEquiv NatSolvable QuarticNatSolvable
+theorem not_computablePred_quarticNatSolvable : ¬ ComputablePred QuarticNatSolvable
+```
+
+with integer twins. The degree restriction is syntactic, and `totalDegree_denote_le` says the
+denoted polynomial has total degree at most four.
+
 ## Scope
 
 DPRM is developed as a **semantic** theorem: for each recursively enumerable predicate there

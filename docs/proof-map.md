@@ -6,7 +6,7 @@ declaration in the public spine, and every path is a file in this repository. Th
 explained in the module docstrings; this document only says where things are and what depends on
 what.
 
-The spine is `Hilbert10.lean` and its import closure: 60 modules, about 13,900 lines. The gates
+The spine is `Hilbert10.lean` and its import closure: 69 modules, about 16,300 lines. The gates
 that cover it are described in [README](../README.md#verification);
 [lessons.md](lessons.md) is the retrospective and [comparison.md](comparison.md) the comparison
 with the Coq mechanisation.
@@ -207,6 +207,21 @@ transformation and `fourSquares`.
 | extension correctness | `evalInt_eq_zero_iff_exists_aux`, `eval_eq_zero_iff_exists_aux` (completeness forward via `exists_extension`, soundness backward via `compilePoly_sound`; the suffix is invisible to `p` by `evalInt_append_of_arity_le`) | `QuadraticLowering.lean` |
 | root equivalence, unrestricted | `intSolvable_iff_systemIntSolvable_quadraticSystem`, `natSolvable_iff_systemNatSolvable_quadraticSystem` | `QuadraticLowering.lean` |
 | bounds | `systemDegreeBound_quadraticSystem_le` (`≤ 2`), `systemArity_quadraticSystem_le` (`≤ p.arity + gateCount p`), `quadraticSystem_length` (`= gateCount p + 1`) | `QuadraticLowering.lean` |
+| … is primitive recursive | `primrec_quadraticSystem`, `primrec_degreeBound`, `primrecPred_degreeBound_le` | `Internal/QuadraticLoweringComp.lean` |
+
+### 5.3 Degree four (#57, third checkpoint)
+
+| Step | Result | Module |
+|---|---|---|
+| the quartic code | `quarticCode := sumSquaresCode ∘ quadraticSystem`; `degreeBound_quarticCode_le` (`≤ 4`), `arity_quarticCode_le` (`≤ p.arity + gateCount p`) | `Quartic.lean` |
+| same roots | `natSolvable_iff_natSolvable_quarticCode`, `intSolvable_iff_intSolvable_quarticCode` | `Quartic.lean` |
+| the restricted problems | `QuarticNatSolvable`, `QuarticIntSolvable` (`degreeBound ≤ 4 ∧ …`, syntactic; `totalDegree_denote_le` gives the meaning) | `Quartic.lean` |
+| the reverse reduction | `restrictQuartic` (identity below degree four, a fixed unsatisfiable constant above) | `Quartic.lean` |
+| the same many-one degree | `natSolvable_manyOneEquiv_quarticNatSolvable`, `intSolvable_manyOneEquiv_quarticIntSolvable` | `Quartic.lean` |
+| endpoints | `rePred_quartic*Solvable`, `quartic*Solvable_re_complete`, `not_computablePred_quartic*Solvable` | `Quartic.lean` |
+
+Recursive enumerability of the restricted problems is where the degree test's *computability*
+(not merely its decidability) is consumed: it goes through the reverse reduction.
 
 `degreeBound` ignores cancellation, so it is a bound and not a degree; `totalDegree_denote_le`
 is what makes "degree at most four" a statement about the polynomial. The allocation contract —
@@ -274,12 +289,12 @@ depends on any of it.
 
 ## 9. Snapshot
 
-Measured at v2.2.0, not a benchmark:
+Measured at the close of #57, not a benchmark:
 
 | | |
 |---|---|
-| spine modules | 60 |
-| spine lines | ~13,900 |
-| headline declarations audited | 38 |
+| spine modules | 69 |
+| spine lines | ~16300 |
+| headline declarations audited | 77 |
 | axioms used | `propext`, `Classical.choice`, `Quot.sound` |
 | `sorry` in the spine | none |

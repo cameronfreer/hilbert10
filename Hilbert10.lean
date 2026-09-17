@@ -34,6 +34,8 @@ import Hilbert10.DiophToRE
 import Hilbert10.DPRM
 import Hilbert10.DerivedDioph
 import Hilbert10.Endpoints
+-- Hilbert's tenth problem in degree four
+import Hilbert10.Quartic
 -- regressions: every headline at its advertised type, and worked examples
 import Hilbert10.Examples.Headlines
 import Hilbert10.Examples.DerivedDioph

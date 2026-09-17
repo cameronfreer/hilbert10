@@ -12,6 +12,7 @@ import Hilbert10.Systems
 import Hilbert10.Degree
 import Hilbert10.QuadraticGates
 import Hilbert10.QuadraticLowering
+import Hilbert10.Quartic
 import Hilbert10.NormalForm
 import Hilbert10.Computability
 import Hilbert10.DPRM
@@ -286,6 +287,38 @@ example (p : PolynomialCode) :
 
 example (p : PolynomialCode) : (quadraticSystem p).length = gateCount p + 1 :=
   quadraticSystem_length p
+
+/-! ### Degree four -/
+
+example (p : PolynomialCode) : QuarticNatSolvable p ↔ p.degreeBound ≤ 4 ∧ NatSolvable p := Iff.rfl
+
+example (p : PolynomialCode) : QuarticIntSolvable p ↔ p.degreeBound ≤ 4 ∧ IntSolvable p := Iff.rfl
+
+example (p : PolynomialCode) : (PolynomialCode.quarticCode p).degreeBound ≤ 4 :=
+  PolynomialCode.degreeBound_quarticCode_le p
+
+example (p : PolynomialCode) : (PolynomialCode.quarticCode p).arity ≤ p.arity + gateCount p :=
+  PolynomialCode.arity_quarticCode_le p
+
+example (p : PolynomialCode) : NatSolvable p ↔ NatSolvable (PolynomialCode.quarticCode p) :=
+  natSolvable_iff_natSolvable_quarticCode p
+
+example (p : PolynomialCode) : IntSolvable p ↔ IntSolvable (PolynomialCode.quarticCode p) :=
+  intSolvable_iff_intSolvable_quarticCode p
+
+example : ManyOneEquiv NatSolvable QuarticNatSolvable := natSolvable_manyOneEquiv_quarticNatSolvable
+
+example : ManyOneEquiv IntSolvable QuarticIntSolvable := intSolvable_manyOneEquiv_quarticIntSolvable
+
+example {α : Type*} [Primcodable α] {R : α → Prop} (hR : REPred R) : R ≤₀ QuarticNatSolvable :=
+  quarticNatSolvable_re_complete hR
+
+example {α : Type*} [Primcodable α] {R : α → Prop} (hR : REPred R) : R ≤₀ QuarticIntSolvable :=
+  quarticIntSolvable_re_complete hR
+
+example : ¬ ComputablePred QuarticNatSolvable := not_computablePred_quarticNatSolvable
+
+example : ¬ ComputablePred QuarticIntSolvable := not_computablePred_quarticIntSolvable
 
 /-! ### The derived Diophantine API -/
 
