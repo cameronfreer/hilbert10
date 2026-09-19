@@ -203,8 +203,8 @@ transformation and `fourSquares`.
 | the allocation contract | `Gate.Fresh`, `WellOrdered`, `exists_extension` (completeness) | `QuadraticGates.lean` |
 | lowering, stage one: a monomial | `compileMonomial`; `compileMonomial_wellOrdered`, `compileMonomial_next`, `compileMonomial_out_lt`, `compileMonomial_sound` (soundness, any semiring) | `QuadraticLowering.lean` |
 | lowering, stage two: the polynomial into two accumulators | `compilePoly`; `compilePoly_wellOrdered`, `compilePoly_length` (`1 + Σ (exponent sum + 4)`), `compilePoly_sound` (`evalInt p y = y[pos] − y[neg]`), `compilePoly_sound_nat` | `QuadraticLowering.lean` |
-| lowering, stage three: the system | `quadraticSystem` (gates as equations, then the terminal equality `pos = neg`), `gateCount`; `quadraticSystem_eval_zero_iff` | `QuadraticLowering.lean` |
-| extension correctness | `evalInt_eq_zero_iff_exists_aux`, `eval_eq_zero_iff_exists_aux` (completeness forward via `exists_extension`, soundness backward via `compilePoly_sound`; the suffix is invisible to `p` by `evalInt_append_of_arity_le`) | `QuadraticLowering.lean` |
+| lowering, stage three: the system | `quadraticSystemFrom p n` (gates as equations, then the terminal equality `pos = neg`; allocation from any `n ≥ p.arity`), `gateCountFrom`; `quadraticSystem`, `gateCount` at `n = p.arity`; `quadraticSystemFrom_eval_zero_iff` | `QuadraticLowering.lean` |
+| extension correctness | `evalInt_eq_zero_iff_exists_aux_from`, `eval_eq_zero_iff_exists_aux_from` (completeness forward via `exists_extension`, soundness backward via `compilePoly_sound`; the suffix is invisible to `p` by `evalInt_append_of_arity_le`), and the `_aux` specialisations | `QuadraticLowering.lean` |
 | root equivalence, unrestricted | `intSolvable_iff_systemIntSolvable_quadraticSystem`, `natSolvable_iff_systemNatSolvable_quadraticSystem` | `QuadraticLowering.lean` |
 | bounds | `systemDegreeBound_quadraticSystem_le` (`≤ 2`), `systemArity_quadraticSystem_le` (`≤ p.arity + gateCount p`), `quadraticSystem_length` (`= gateCount p + 1`) | `QuadraticLowering.lean` |
 | … is primitive recursive | `primrec_quadraticSystem`, `primrec_degreeBound`, `primrecPred_degreeBound_le` | `Internal/QuadraticLoweringComp.lean` |
@@ -265,10 +265,12 @@ encoding would need a Diophantine encoding contract, and none is stated here.
 | … hence Diophantine | `dioph_univEval` | `Universal.lean` |
 | the universal polynomial | `exists_universal_mvPolynomial` (`∃ k U, ∀ e x y, …`), `exists_universal_code` | `Universal.lean` |
 | the parameterised halting set | `dom_iff_of_universal` | `Universal.lean` |
+| the universal quartic | `exists_universal_quartic_code` (`∃ k Q, degreeBound Q ≤ 4 ∧ arity Q ≤ 3 + k ∧ ∀ e x y, …`): the fixed universal code lowered from wire `3 + k` by `eval_eq_zero_iff_exists_aux_from`, parameters and original witnesses kept as a prefix, fresh wires after | `Universal.lean` |
 
 `k` and `U` are chosen before `e`, `x` and `y`; that quantifier order is the content, and it is
-DPRM applied once to the universal relation rather than once per program. No bound on `k` or the
-degree is claimed here.
+DPRM applied once to the universal relation rather than once per program. The quartic form is
+the first consumer of the lowering at a chosen start wire: the witness count is fixed because the
+code being lowered is fixed, not because programs have bounded compilation size.
 
 ---
 

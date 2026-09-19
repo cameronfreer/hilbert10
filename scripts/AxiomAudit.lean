@@ -121,6 +121,8 @@ def headlineDecls : List Name :=
    ``Hilbert10.exists_universal_mvPolynomial,
    ``Hilbert10.exists_universal_code,
    ``Hilbert10.dom_iff_of_universal,
+   ``Hilbert10.eval_eq_zero_iff_exists_aux_from,
+   ``Hilbert10.exists_universal_quartic_code,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

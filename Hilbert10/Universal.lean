@@ -5,11 +5,13 @@ Authors: Cameron Freer
 -/
 import Hilbert10.DPRM
 import Hilbert10.ExistsCode
+import Hilbert10.Quartic
 
 /-!
-# One universal Diophantine polynomial
+# One universal Diophantine polynomial, and its degree-four form
 
-Issue #54, first stage. `dioph_iff_rePred` says every recursively enumerable predicate has *some*
+Issue #54. The first stage is the universal polynomial; the second lowers that one fixed
+polynomial to degree four. `dioph_iff_rePred` says every recursively enumerable predicate has *some*
 representing polynomial, chosen for that predicate. The classical statement is stronger: one
 fixed polynomial represents universal program evaluation, with the program index, the input and
 the output as its three parameters.
@@ -36,7 +38,16 @@ treat and no side condition on `e`.
 
 Nothing here produces a polynomial from a program, and the witness count `k` is fixed because the
 polynomial is fixed — not because individual programs have bounded compilation size. No bound on
-`k` or on the degree is claimed; the degree-four form is the second stage.
+`k` is claimed.
+
+## The degree-four form
+
+The quadratic lowering of #57 is applied to the *fixed* universal code, allocating from wire
+`3 + k` so that the three parameter positions and the `k` original witness positions are
+preserved as a prefix; the fresh wires follow. The new witness count `k + gateCountFrom q (3 + k)`
+is again fixed because the code being lowered is fixed. This is a consumer of the extension
+theorem in its prefix-preserving form: root-existence equivalence alone would not give the
+parameterised statement, since the parameters must stay where they are.
 
 ## Main definitions
 
@@ -48,6 +59,7 @@ polynomial is fixed — not because individual programs have bounded compilation
 * `Hilbert10.exists_universal_mvPolynomial` — the universal polynomial
 * `Hilbert10.exists_universal_code` — the same, in the wire format
 * `Hilbert10.dom_iff_of_universal` — the parameterised halting set, by projecting the output
+* `Hilbert10.exists_universal_quartic_code` — one universal polynomial of degree at most four
 -/
 
 -- Opened *outside* the namespace: `Hilbert10.Nat.Partrec` exists (it holds `graph_dioph`), and
@@ -126,6 +138,57 @@ theorem dom_iff_of_universal {k : ℕ} {U : MvPolynomial (Fin 3 ⊕ Fin k) ℤ}
           = 0 := by
   rw [Part.dom_iff_mem]
   exact exists_congr fun y => hU e x y
+
+/-! ### One universal quartic polynomial -/
+
+/-- A list of the right length is `List.ofFn` of some function. -/
+private theorem exists_ofFn_eq {m : ℕ} {l : List ℕ} (hl : l.length = m) :
+    ∃ w : Fin m → ℕ, List.ofFn w = l := by
+  subst hl
+  exact ⟨fun i => l[i], List.ofFn_getElem⟩
+
+/-- **One universal polynomial of degree at most four.** There is a code `Q` of degree bound at
+most four in `3 + k` variables such that program `e` returns `y` on `x` exactly when
+`Q (e, x, y, w) = 0` has a natural solution `w`. Obtained by lowering the universal code of
+`exists_universal_code` with the parameters kept in place. -/
+theorem exists_universal_quartic_code :
+    ∃ (k : ℕ) (Q : PolynomialCode), Q.degreeBound ≤ 4 ∧ Q.arity ≤ 3 + k ∧ ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔
+        ∃ w : Fin k → ℕ, Q.eval (List.ofFn ![e, x, y] ++ List.ofFn w) = 0 := by
+  obtain ⟨k, q, hq, hU⟩ := exists_universal_code
+  -- allocate the lowering from wire `3 + k`: parameters, then the original witnesses, are a prefix
+  refine ⟨k + gateCountFrom q (3 + k),
+    PolynomialCode.sumSquaresCode (quadraticSystemFrom q (3 + k)), ?_, ?_, fun e x y => ?_⟩
+  · exact (PolynomialCode.degreeBound_sumSquaresCode_le _).trans
+      (by have := systemDegreeBound_quadraticSystemFrom_le q (3 + k); omega)
+  · exact (PolynomialCode.arity_sumSquaresCode_le _).trans
+      (by have := systemArity_quadraticSystemFrom_le q (3 + k) hq; omega)
+  · rw [hU e x y]
+    constructor
+    · rintro ⟨z, hz⟩
+      have hlen : (List.ofFn ![e, x, y] ++ List.ofFn z).length = 3 + k := by
+        simp only [List.length_append, List.length_ofFn]
+      obtain ⟨aux, haux, hsys⟩ :=
+        (eval_eq_zero_iff_exists_aux_from q (3 + k) hq _ hlen).mp hz
+      obtain ⟨w, hw⟩ := exists_ofFn_eq (m := k + gateCountFrom q (3 + k))
+        (l := List.ofFn z ++ aux) (by simp [haux])
+      refine ⟨w, ?_⟩
+      rw [hw, ← List.append_assoc, PolynomialCode.eval_sumSquaresCode_eq_zero_iff]
+      exact hsys
+    · rintro ⟨w, hw⟩
+      rw [PolynomialCode.eval_sumSquaresCode_eq_zero_iff] at hw
+      -- the first `k` witness wires are the original witnesses; the rest are the fresh wires
+      obtain ⟨z, hz⟩ := exists_ofFn_eq (m := k) (l := (List.ofFn w).take k)
+        (by simp only [List.length_take, List.length_ofFn]; omega)
+      refine ⟨z, ?_⟩
+      have hlen : (List.ofFn ![e, x, y] ++ List.ofFn z).length = 3 + k := by
+        simp only [List.length_append, List.length_ofFn]
+      refine (eval_eq_zero_iff_exists_aux_from q (3 + k) hq _ hlen).mpr
+        ⟨(List.ofFn w).drop k, ?_, ?_⟩
+      · simp only [List.length_drop, List.length_ofFn]
+        omega
+      · rw [hz, List.append_assoc, List.take_append_drop]
+        exact hw
 
 /-! ### Regression: the convention -/
 

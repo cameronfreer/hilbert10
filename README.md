@@ -80,6 +80,22 @@ theorem not_computablePred_quarticNatSolvable : ¬ ComputablePred QuarticNatSolv
 with integer twins. The degree restriction is syntactic, and `totalDegree_denote_le` says the
 denoted polynomial has total degree at most four.
 
+The uniformity that `dioph_iff_rePred` hides is also stated: one fixed polynomial represents
+universal program evaluation, with the index, input and output as parameters, and one fixed
+polynomial of degree at most four does too:
+
+```lean
+theorem exists_universal_mvPolynomial :
+    ∃ (k : ℕ) (U : MvPolynomial (Fin 3 ⊕ Fin k) ℤ), ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔ ∃ z : Fin k → ℕ, MvPolynomial.eval (…) U = 0
+theorem exists_universal_quartic_code :
+    ∃ (k : ℕ) (Q : PolynomialCode), Q.degreeBound ≤ 4 ∧ Q.arity ≤ 3 + k ∧ ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔ ∃ w : Fin k → ℕ, Q.eval (List.ofFn ![e, x, y] ++ List.ofFn w) = 0
+```
+
+Both are existence theorems with `k` and the polynomial chosen before `e`, `x`, `y`; no
+program-to-polynomial compiler is extracted.
+
 ## Scope
 
 DPRM is developed as a **semantic** theorem: for each recursively enumerable predicate there

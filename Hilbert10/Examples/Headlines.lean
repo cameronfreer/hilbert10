@@ -343,6 +343,20 @@ example :
         ∃ z : Fin k → ℕ, q.eval (List.ofFn ![e, x, y] ++ List.ofFn z) = 0 :=
   exists_universal_code
 
+/-- The lowering at a chosen start wire, the form the universal quartic consumes. -/
+example (p : PolynomialCode) (n : ℕ) (hn : p.arity ≤ n) (x : List ℕ) (hx : x.length = n) :
+    PolynomialCode.eval p x = 0 ↔
+      ∃ aux : List ℕ, aux.length = gateCountFrom p n ∧
+        ∀ q ∈ quadraticSystemFrom p n, PolynomialCode.eval q (x ++ aux) = 0 :=
+  eval_eq_zero_iff_exists_aux_from p n hn x hx
+
+/-- One universal polynomial of degree at most four. -/
+example :
+    ∃ (k : ℕ) (Q : PolynomialCode), Q.degreeBound ≤ 4 ∧ Q.arity ≤ 3 + k ∧ ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔
+        ∃ w : Fin k → ℕ, Q.eval (List.ofFn ![e, x, y] ++ List.ofFn w) = 0 :=
+  exists_universal_quartic_code
+
 /-! ### The derived Diophantine API -/
 
 example {α β : Type*} [Primcodable α] [Primcodable β] {p : α → Prop} {q : β → Prop}
