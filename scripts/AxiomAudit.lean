@@ -116,6 +116,11 @@ def headlineDecls : List Name :=
    ``Hilbert10.quarticIntSolvable_re_complete,
    ``Hilbert10.not_computablePred_quarticNatSolvable,
    ``Hilbert10.not_computablePred_quarticIntSolvable,
+   -- one universal Diophantine polynomial (#54, first stage)
+   ``Hilbert10.rePred_univEval,
+   ``Hilbert10.exists_universal_mvPolynomial,
+   ``Hilbert10.exists_universal_code,
+   ``Hilbert10.dom_iff_of_universal,
    -- the derived Diophantine API, all strictly post-DPRM (v2.1.0)
    ``Hilbert10.REPred.of_manyOneReducible,
    ``Hilbert10.dioph_iff_exists_finite_mvPolynomial,

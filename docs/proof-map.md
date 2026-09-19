@@ -256,6 +256,20 @@ computability fact, `DerivedDioph.lean` sits *above* it and holds the Diophantin
 The domains are `Fin n → ℕ`, not arbitrary `Primcodable` types: transporting across an opaque
 encoding would need a Diophantine encoding contract, and none is stated here.
 
+### 6.1 One universal polynomial (#54, first stage)
+
+| Step | Result | Module |
+|---|---|---|
+| the index convention | `program e := Denumerable.ofNat Code e`; `program_encode` | `Universal.lean` |
+| the universal relation is RE | `rePred_univEval` (via `Code.evaln_complete`, `Code.primrec_evaln`, `ComputablePred.rePred_exists`) | `Universal.lean` |
+| … hence Diophantine | `dioph_univEval` | `Universal.lean` |
+| the universal polynomial | `exists_universal_mvPolynomial` (`∃ k U, ∀ e x y, …`), `exists_universal_code` | `Universal.lean` |
+| the parameterised halting set | `dom_iff_of_universal` | `Universal.lean` |
+
+`k` and `U` are chosen before `e`, `x` and `y`; that quantifier order is the content, and it is
+DPRM applied once to the universal relation rather than once per program. No bound on `k` or the
+degree is claimed here.
+
 ---
 
 ## 7. What the spine takes from mathlib

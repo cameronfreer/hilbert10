@@ -18,6 +18,7 @@ import Hilbert10.Computability
 import Hilbert10.DPRM
 import Hilbert10.DerivedDioph
 import Hilbert10.Endpoints
+import Hilbert10.Universal
 
 /-!
 # The headline results, at their advertised types
@@ -319,6 +320,28 @@ example {α : Type*} [Primcodable α] {R : α → Prop} (hR : REPred R) : R ≤�
 example : ¬ ComputablePred QuarticNatSolvable := not_computablePred_quarticNatSolvable
 
 example : ¬ ComputablePred QuarticIntSolvable := not_computablePred_quarticIntSolvable
+
+/-! ### One universal polynomial -/
+
+/-- The convention: every natural number is a program, decoded by `Denumerable`. -/
+example (e : ℕ) : program e = Denumerable.ofNat Nat.Partrec.Code e := rfl
+
+example : REPred UnivEval := rePred_univEval
+
+/-- `k` and `U` before `e`, `x`, `y`: that order is the theorem. -/
+example :
+    ∃ (k : ℕ) (U : MvPolynomial (Fin 3 ⊕ Fin k) ℤ), ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔
+        ∃ z : Fin k → ℕ,
+          MvPolynomial.eval (Sum.elim (fun i => ((![e, x, y] i : ℕ) : ℤ)) fun j => (z j : ℤ)) U
+            = 0 :=
+  exists_universal_mvPolynomial
+
+example :
+    ∃ (k : ℕ) (q : PolynomialCode), q.arity ≤ 3 + k ∧ ∀ e x y : ℕ,
+      y ∈ (program e).eval x ↔
+        ∃ z : Fin k → ℕ, q.eval (List.ofFn ![e, x, y] ++ List.ofFn z) = 0 :=
+  exists_universal_code
 
 /-! ### The derived Diophantine API -/
 

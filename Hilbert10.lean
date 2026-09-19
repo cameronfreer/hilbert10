@@ -33,6 +33,7 @@ import Hilbert10.Computability
 import Hilbert10.DiophToRE
 import Hilbert10.DPRM
 import Hilbert10.DerivedDioph
+import Hilbert10.Universal
 import Hilbert10.Endpoints
 -- Hilbert's tenth problem in degree four
 import Hilbert10.Quartic
