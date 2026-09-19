@@ -12,9 +12,12 @@ import Hilbert10.Endpoints
 # Hilbert's tenth problem in degree four
 
 Issue #57, third checkpoint. The quadratic system of a polynomial, summed by squares, is a single
-equation of degree at most four with the same roots. So solvability of *arbitrary* encoded
-polynomials reduces to solvability of those of degree at most four, and the restricted problems
-inherit recursive enumerability, many-one completeness and undecidability.
+equation of degree at most four that preserves solvability: a source root extends to a
+satisfying assignment (`evalInt_eq_zero_iff_exists_aux`), and a satisfying assignment recovers a
+source root (`compilePoly_sound`). The transformation introduces auxiliary coordinates, so it does
+not have the *same roots* as the source. Solvability of *arbitrary* encoded polynomials therefore
+reduces to solvability of those of degree at most four, and the restricted problems inherit
+recursive enumerability, many-one completeness and undecidability.
 
 ## The restricted problems are syntactic
 
@@ -25,7 +28,7 @@ code passing the test denotes a polynomial of total degree at most four.
 
 ## Both reductions
 
-`quarticCode` sends any code to a quartic one with the same roots, in both domains. The reverse
+`quarticCode` sends any code to a quartic one preserving solvability, in both domains. The reverse
 direction is *not* the identity on all codes: a code failing the degree test is sent to a fixed
 unsatisfiable constant, since otherwise a solvable high-degree code would be a counterexample.
 With both, the restricted and unrestricted problems have the same many-one degree.
@@ -82,7 +85,7 @@ theorem computable_restrictQuartic : Computable restrictQuartic := primrec_restr
 
 end PolynomialCode
 
-/-! ### Root equivalence with the quartic code -/
+/-! ### Solvability is preserved by the quartic code -/
 
 theorem natSolvable_iff_natSolvable_quarticCode (p : PolynomialCode) :
     NatSolvable p ↔ NatSolvable (quarticCode p) :=

@@ -214,7 +214,7 @@ transformation and `fourSquares`.
 | Step | Result | Module |
 |---|---|---|
 | the quartic code | `quarticCode := sumSquaresCode ∘ quadraticSystem`; `degreeBound_quarticCode_le` (`≤ 4`), `arity_quarticCode_le` (`≤ p.arity + gateCount p`) | `Quartic.lean` |
-| same roots | `natSolvable_iff_natSolvable_quarticCode`, `intSolvable_iff_intSolvable_quarticCode` | `Quartic.lean` |
+| preserves solvability | `natSolvable_iff_natSolvable_quarticCode`, `intSolvable_iff_intSolvable_quarticCode` | `Quartic.lean` |
 | the restricted problems | `QuarticNatSolvable`, `QuarticIntSolvable` (`degreeBound ≤ 4 ∧ …`, syntactic; `totalDegree_denote_le` gives the meaning) | `Quartic.lean` |
 | the reverse reduction | `restrictQuartic` (identity below degree four, a fixed unsatisfiable constant above) | `Quartic.lean` |
 | the same many-one degree | `natSolvable_manyOneEquiv_quarticNatSolvable`, `intSolvable_manyOneEquiv_quarticIntSolvable` | `Quartic.lean` |

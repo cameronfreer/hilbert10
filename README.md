@@ -67,8 +67,9 @@ theorem intSolvable_manyOneEquiv_systemIntSolvable : ManyOneEquiv IntSolvable Sy
 ```
 
 And the problem is as hard in degree four as in any degree. Every code is lowered to a
-quadratic system with the same roots by a computable, well-ordered allocation of auxiliary
-variables, and the system is summed by squares:
+quadratic system that preserves solvability — source roots extend to satisfying assignments of
+the system, and satisfying assignments recover source roots — by a computable, well-ordered
+allocation of auxiliary variables, and the system is summed by squares:
 
 ```lean
 def QuarticNatSolvable (p : PolynomialCode) : Prop := p.degreeBound ≤ 4 ∧ NatSolvable p
