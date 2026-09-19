@@ -14,16 +14,20 @@ abstract: >-
   question about integer solutions is covered. The library also exposes the
   reusable consequences of the theorem: a derived computability-Diophantine
   API, a normal form at any finite input type, the two code transformations
-  that relate the formulations, and an integer-valued semantics for the
-  encoded polynomials under which solvability depends only on the polynomial
-  denoted.
+  that relate the formulations, an integer-valued semantics for the encoded
+  polynomials under which solvability depends only on the polynomial denoted,
+  and the degree-four form: solvability stays many-one complete among
+  recursively enumerable predicates, hence undecidable, when restricted to
+  encoded polynomials of degree at most four, over the naturals and over the
+  integers, by a computable lowering to quadratic systems with an explicit
+  auxiliary-variable count.
 authors:
   - family-names: Freer
     given-names: Cameron
 repository-code: "https://github.com/cameronfreer/hilbert10"
 url: "https://github.com/cameronfreer/hilbert10"
 license: Apache-2.0
-version: 2.2.0
+version: 2.3.0
 keywords:
   - Lean 4
   - mathlib
